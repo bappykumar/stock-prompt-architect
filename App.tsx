@@ -121,14 +121,14 @@ export default function App() {
         .split('\n')
         .filter(Boolean)
         .map(text => ({
-          id: crypto.randomUUID(),
+          id: Math.random().toString(36).substring(2, 11)(),
           text: text.trim(),
           qualityScore: Math.floor(80 + Math.random() * 20),
           copied: false
         }));
 
       const newBatch: PromptBatch = {
-        id: crypto.randomUUID(),
+        id: Math.random().toString(36).substring(2, 11)(),
         timestamp: Date.now(),
         prompts: parsedPrompts
       };
