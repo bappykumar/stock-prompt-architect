@@ -6,7 +6,7 @@ import {
   ExternalLink, Zap, Clock, 
   Globe, Shield, Terminal, Calendar, 
   Layers, Camera, Box, Maximize, User, Moon,
-  Layout, Fingerprint, Focus, Settings2, Download, MessageSquareCode, Send
+  Layout, Fingerprint, Focus, Settings2, Download, MessageSquareCode, Send, AlertCircle, X
 } from 'lucide-react';
 import { PromptOptions, GeneratedPrompt, PromptBatch, HistoricalPrompt } from './types';
 import { generateStockPrompts } from './services/geminiService';
@@ -215,6 +215,7 @@ export default function App() {
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAllCopied, setIsAllCopied] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     sessionStorage.setItem('prompt_options', JSON.stringify(options));
@@ -226,6 +227,7 @@ export default function App() {
 
   const handleGenerate = useCallback(async () => {
     setIsGenerating(true);
+    setErrorMessage(null);
     try {
       const history: HistoricalPrompt[] = batches.flatMap(batch => 
         batch.prompts.map(p => ({ text: p.text, score: p.qualityScore }))
@@ -248,6 +250,7 @@ export default function App() {
       setBatches(prev => [newBatch, ...prev]);
     } catch (error: any) {
       console.error(error);
+      setErrorMessage(error.message || "An unexpected error occurred while generating prompts.");
     } finally {
       setIsGenerating(false);
     }
@@ -463,7 +466,7 @@ export default function App() {
               {isGenerating ? (
                 <div className="flex items-center gap-2">
                   <Loader2 size={14} className="animate-spin" />
-                  <span>Generating...</span>
+                  <span>Architecting...</span>
                 </div>
               ) : (
                 <>
@@ -483,6 +486,39 @@ export default function App() {
         {isGenerating && (
           <div className="fixed top-16 left-[340px] right-0 h-[2px] z-50 overflow-hidden">
             <div className="h-full bg-slate-900 animate-[loading_1s_linear_infinite]"></div>
+          </div>
+        )}
+
+        {/* Error Notification */}
+        {errorMessage && (
+          <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[150] w-[90%] max-w-lg bg-white border border-red-100 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] p-4 animate-in">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center text-red-500 shrink-0">
+                <AlertCircle size={20} />
+              </div>
+              <div className="flex-1">
+                <h4 className="text-[13px] font-bold text-slate-900 uppercase tracking-tight mb-1">Architecture Failed</h4>
+                <p className="text-[12px] text-slate-500 font-medium leading-relaxed">{errorMessage}</p>
+                <div className="mt-3 flex items-center gap-3">
+                  <button 
+                    onClick={handleGenerate}
+                    className="text-[10px] font-bold uppercase tracking-widest text-slate-900 hover:underline"
+                  >
+                    Retry Now
+                  </button>
+                  <span className="text-slate-200">|</span>
+                  <button 
+                    onClick={() => setErrorMessage(null)}
+                    className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-600"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+              <button onClick={() => setErrorMessage(null)} className="text-slate-300 hover:text-slate-500">
+                <X size={16} />
+              </button>
+            </div>
           </div>
         )}
 
