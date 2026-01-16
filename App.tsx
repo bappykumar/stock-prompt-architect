@@ -6,7 +6,7 @@ import {
   ExternalLink, Zap, Clock, 
   Globe, Shield, Terminal, Calendar, 
   Layers, Camera, Box, Maximize, User, Moon,
-  Layout, Fingerprint, Focus, Settings2, Download, MessageSquareCode
+  Layout, Fingerprint, Focus, Settings2, Download, MessageSquareCode, Send
 } from 'lucide-react';
 import { PromptOptions, GeneratedPrompt, PromptBatch, HistoricalPrompt } from './types';
 import { generateStockPrompts } from './services/geminiService';
@@ -593,12 +593,10 @@ export default function App() {
             </div>
 
             <div className="flex items-center gap-8">
-              <div className="flex items-center gap-8">
-                 <a href="https://stock.adobe.com/contributor" target="_blank" className="group text-[10px] font-bold text-slate-400 hover:text-slate-900 transition-colors uppercase tracking-widest flex items-center gap-1.5">
-                   Adobe <ExternalLink size={10} />
-                 </a>
-                 <a href="https://contributor.freepik.com" target="_blank" className="group text-[10px] font-bold text-slate-400 hover:text-slate-900 transition-colors uppercase tracking-widest flex items-center gap-1.5">
-                   Freepik <ExternalLink size={10} />
+              <div className="flex items-center">
+                 <a href="https://t.me/designbd2" target="_blank" className="group text-[10px] font-black text-slate-400 hover:text-slate-900 transition-all uppercase tracking-[0.2em] flex items-center gap-2">
+                   <Send size={12} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                   Telegram
                  </a>
               </div>
               <div className="h-4 w-[1px] bg-slate-200 hidden md:block"></div>
