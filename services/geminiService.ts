@@ -3,7 +3,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { PromptOptions, HistoricalPrompt } from "../types";
 
 export const generateStockPrompts = async (options: PromptOptions, sessionHistory: HistoricalPrompt[] = []): Promise<{text: string, score: number}[]> => {
-  // Safe access to process.env for browser environments
+  // Safe access to environment variables for Vercel/Vite
   const env = typeof process !== 'undefined' ? process.env : (import.meta as any).env;
   const apiKey = env?.API_KEY || env?.VITE_API_KEY;
 
@@ -86,7 +86,7 @@ export const generateStockPrompts = async (options: PromptOptions, sessionHistor
     Output pure JSON matching the responseSchema.`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview', // Upgraded to Pro for better prompt reasoning
+      model: 'gemini-3-flash-preview', // Switched to Flash model to avoid quota issues
       contents: systemPrompt,
       config: {
         responseMimeType: "application/json",
@@ -102,6 +102,9 @@ export const generateStockPrompts = async (options: PromptOptions, sessionHistor
     }));
   } catch (error: any) {
     console.error("Gemini Execution Error:", error);
-    throw new Error(error.message || "Failed to generate prompts. Check API key and quota.");
+    if (error.message?.includes('429')) {
+      throw new Error("Quota Exceeded: Your API key has run out of free requests for today. Please wait a few minutes or try another key.");
+    }
+    throw new Error(error.message || "Failed to generate prompts. Check API key and connection.");
   }
 };
