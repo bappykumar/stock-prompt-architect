@@ -6,10 +6,10 @@ import {
   ExternalLink, Zap, Clock, 
   Globe, Shield, Terminal, Calendar, 
   Layers, Camera, Box, Maximize, User, Moon,
-  Layout, Fingerprint, Focus, Settings2, Download, MessageSquareCode, Send, AlertCircle, X
+  Layout, Fingerprint, Focus, Settings2, Download, MessageSquareCode, Send, AlertCircle, X, Cpu
 } from 'lucide-react';
 import { PromptOptions, GeneratedPrompt, PromptBatch, HistoricalPrompt } from './types';
-import { generateStockPrompts } from './services/geminiService';
+import { generateStockPrompts, ACTIVE_MODEL } from './services/geminiService';
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -298,7 +298,13 @@ export default function App() {
           </div>
           <div>
             <h1 className="text-[13px] font-bold tracking-tight uppercase leading-none text-slate-900">PROMPT MASTER</h1>
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">v3.0 Production Core</span>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">v3.0 Production</span>
+              <div className="flex items-center gap-1 bg-slate-100 px-1.5 py-0.5 rounded text-[8px] font-black text-slate-500 uppercase tracking-tighter border border-slate-200">
+                <Cpu size={8} />
+                <span>{ACTIVE_MODEL.replace('-preview', '').toUpperCase()}</span>
+              </div>
+            </div>
           </div>
         </div>
 

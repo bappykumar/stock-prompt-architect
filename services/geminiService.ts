@@ -2,6 +2,9 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { PromptOptions, HistoricalPrompt } from "../types";
 
+// Exporting model name for UI visibility
+export const ACTIVE_MODEL = 'gemini-3-flash-preview';
+
 export const generateStockPrompts = async (options: PromptOptions, sessionHistory: HistoricalPrompt[] = []): Promise<{text: string, score: number}[]> => {
   // Safe access to environment variables for Vercel/Vite
   const env = typeof process !== 'undefined' ? process.env : (import.meta as any).env;
@@ -86,7 +89,7 @@ export const generateStockPrompts = async (options: PromptOptions, sessionHistor
     Output pure JSON matching the responseSchema.`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview', // Switched to Flash model to avoid quota issues
+      model: ACTIVE_MODEL, 
       contents: systemPrompt,
       config: {
         responseMimeType: "application/json",
