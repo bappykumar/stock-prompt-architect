@@ -13,6 +13,7 @@ export interface PromptOptions {
   shadowStyle: string;
   mockup: string;
   visual3DStyle: string;
+  materialStyle: string; // New: Glossy, Metallic, etc.
   quantity: number;
   useExtraKeywords: boolean;
   extraKeywords: string;
