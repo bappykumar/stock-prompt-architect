@@ -5,12 +5,14 @@ import { PromptOptions, HistoricalPrompt } from "../types";
 // Switched to Flash for faster, high-efficiency generation suitable for broader use
 export const ACTIVE_MODEL = 'gemini-3-flash-preview';
 
-export const generateStockPrompts = async (options: PromptOptions, sessionHistory: HistoricalPrompt[] = []): Promise<{text: string, score: number}[]> => {
-  // Always get the latest key from the bridge/env
-  const apiKey = process.env.API_KEY;
-
+export const generateStockPrompts = async (
+  options: PromptOptions, 
+  apiKey: string,
+  sessionHistory: HistoricalPrompt[] = []
+): Promise<{text: string, score: number}[]> => {
+  
   if (!apiKey) {
-    throw new Error("API Key is missing. Please link your Google AI Key using the connectivity panel.");
+    throw new Error("API Key is missing. Please enter your Gemini API Key in the settings.");
   }
 
   // New instance for every call to ensure key freshness

@@ -7,7 +7,7 @@ import {
   Globe, Shield, Terminal, Calendar, 
   Layers, Camera, Box, Maximize, User, Moon,
   Layout, Fingerprint, Focus, Settings2, Download, MessageSquareCode, Send, AlertCircle, X, Cpu, Paintbrush,
-  ChevronUp
+  ChevronUp, Key, Lock, Info
 } from 'lucide-react';
 import { PromptOptions, GeneratedPrompt, PromptBatch, HistoricalPrompt } from './types';
 import { generateStockPrompts, ACTIVE_MODEL } from './services/geminiService';
@@ -229,10 +229,15 @@ export default function App() {
     return saved ? JSON.parse(saved) : [];
   });
 
+  const [apiKey, setApiKey] = useState<string>(() => {
+    return localStorage.getItem('user_gemini_api_key') || '';
+  });
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAllCopied, setIsAllCopied] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [showKeyWarning, setShowKeyWarning] = useState(false);
 
   const mainScrollRef = useRef<HTMLElement>(null);
 
@@ -243,6 +248,12 @@ export default function App() {
   useEffect(() => {
     sessionStorage.setItem('prompt_session_history', JSON.stringify(batches));
   }, [batches]);
+
+  const saveApiKey = (key: string) => {
+    setApiKey(key);
+    localStorage.setItem('user_gemini_api_key', key);
+    setShowKeyWarning(false);
+  };
 
   // Scroll to top visibility logic
   useEffect(() => {
@@ -262,6 +273,11 @@ export default function App() {
   };
 
   const handleGenerate = useCallback(async () => {
+    if (!apiKey) {
+      setShowKeyWarning(true);
+      return;
+    }
+
     setIsGenerating(true);
     setErrorMessage(null);
     try {
@@ -269,7 +285,7 @@ export default function App() {
         batch.prompts.map(p => ({ text: p.text, score: p.qualityScore }))
       );
 
-      const results = await generateStockPrompts(options, history);
+      const results = await generateStockPrompts(options, apiKey, history);
       const newPrompts: GeneratedPrompt[] = results.map(r => ({
         id: crypto.randomUUID(),
         text: r.text,
@@ -290,7 +306,7 @@ export default function App() {
     } finally {
       setIsGenerating(false);
     }
-  }, [options, batches]);
+  }, [options, batches, apiKey]);
 
   const copyIndividual = (batchId: string, promptId: string, text: string) => {
     navigator.clipboard.writeText(text);
@@ -370,6 +386,42 @@ export default function App() {
         <div className="flex-1 overflow-y-auto custom-scrollbar pt-16 px-8">
           <div className="py-8 flex flex-col gap-8 pb-40">
             
+            {/* API Settings Section */}
+            <section className={`p-5 rounded-[20px] border transition-all duration-300 ${apiKey ? 'bg-slate-50 border-slate-100 shadow-sm' : 'bg-red-50 border-red-100 shadow-[0_10px_30px_rgba(239,68,68,0.1)]'}`}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Key size={14} className={apiKey ? "text-slate-900" : "text-red-500"} />
+                  <span className={`text-[11px] font-bold uppercase tracking-tight ${apiKey ? 'text-slate-900' : 'text-red-600'}`}>API Configuration</span>
+                </div>
+                <div className={`w-2 h-2 rounded-full ${apiKey ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 animate-pulse'}`}></div>
+              </div>
+              
+              <div className="space-y-3">
+                <div className="relative group">
+                  <input
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => saveApiKey(e.target.value)}
+                    placeholder="Enter Gemini API Key..."
+                    className={`w-full bg-white border px-3.5 py-2.5 rounded-xl text-[12px] font-medium outline-none transition-all placeholder:text-slate-300 ${apiKey ? 'border-slate-200 focus:border-slate-900' : 'border-red-200 focus:border-red-400 shadow-sm'}`}
+                  />
+                  <Lock size={12} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-300" />
+                </div>
+                
+                <div className="flex items-center gap-2 px-1">
+                  <Info size={11} className="text-slate-400 shrink-0" />
+                  <a 
+                    href="https://aistudio.google.com/app/apikey" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-colors"
+                  >
+                    Get free API key here
+                  </a>
+                </div>
+              </div>
+            </section>
+
             {/* Section: Custom Architect Input */}
             <section className="bg-slate-50/50 p-5 rounded-[20px] border border-slate-200/60 flex flex-col gap-4 shadow-sm relative z-[100]">
               <div className="flex items-center justify-between">
@@ -530,7 +582,7 @@ export default function App() {
           <button 
             onClick={handleGenerate}
             disabled={isGenerating}
-            className="w-full py-4 bg-slate-900 text-white rounded-xl text-[12px] font-bold uppercase tracking-wider hover:bg-slate-800 disabled:opacity-30 transition-all shadow-md hover:shadow-lg active:scale-[0.98] flex items-center justify-center gap-2.5 relative"
+            className={`w-full py-4 rounded-xl text-[12px] font-bold uppercase tracking-wider transition-all shadow-md active:scale-[0.98] flex items-center justify-center gap-2.5 relative ${isGenerating ? 'bg-slate-800 text-white' : 'bg-slate-900 text-white hover:bg-slate-800 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed'}`}
           >
             {isGenerating ? (
               <div className="flex items-center gap-2">
@@ -544,6 +596,13 @@ export default function App() {
               </>
             )}
           </button>
+          
+          {showKeyWarning && (
+            <div className="mt-3 flex items-center gap-2 px-2 animate-bounce">
+              <AlertCircle size={12} className="text-red-500" />
+              <span className="text-[10px] font-bold text-red-500 uppercase">API Key Required to proceed</span>
+            </div>
+          )}
         </div>
       </aside>
 
