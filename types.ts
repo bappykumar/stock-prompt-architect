@@ -13,7 +13,7 @@ export interface PromptOptions {
   shadowStyle: string;
   mockup: string;
   visual3DStyle: string;
-  materialStyle: string; // New: Glossy, Metallic, etc.
+  materialStyle: string;
   quantity: number;
   useExtraKeywords: boolean;
   extraKeywords: string;
@@ -21,6 +21,7 @@ export interface PromptOptions {
   useCalendar: boolean;
   calendarMonth: string;
   calendarEvent: string;
+  model: 'gemini-3-flash-preview' | 'gemini-3-pro-preview';
 }
 
 export interface GeneratedPrompt {

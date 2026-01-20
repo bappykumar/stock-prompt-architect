@@ -2,21 +2,20 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { PromptOptions, HistoricalPrompt } from "../types";
 
-// Switched to Flash for faster, high-efficiency generation suitable for broader use
-export const ACTIVE_MODEL = 'gemini-3-flash-preview';
-
 export const generateStockPrompts = async (
   options: PromptOptions, 
   apiKey: string,
   sessionHistory: HistoricalPrompt[] = []
 ): Promise<{text: string, score: number}[]> => {
   
-  if (!apiKey) {
-    throw new Error("API Key is missing. Please enter your Gemini API Key in the settings.");
+  // Use provided key or fallback to environment key
+  const finalKey = apiKey || process.env.API_KEY;
+
+  if (!finalKey) {
+    throw new Error("No API Key found. Please configure your key in settings.");
   }
 
-  // New instance for every call to ensure key freshness
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI({ apiKey: finalKey });
 
   try {
     const schema = {
@@ -43,7 +42,6 @@ export const generateStockPrompts = async (
       required: ["prompts"]
     };
 
-    // Guidance generation logic...
     let materialGuidance = `Material Finish: ${options.materialStyle}. `;
     if (options.visualType.includes('3D')) {
       materialGuidance += "Technical: PBR shaders, ambient occlusion, realistic ray-tracing. ";
@@ -86,11 +84,11 @@ export const generateStockPrompts = async (
     ${options.useCalendar ? `- Event: ${options.calendarMonth} ${options.calendarEvent}` : ''}
     ${options.useExtraKeywords ? `- User Refinement: ${options.extraKeywords}` : ''}
 
-    Standards: No logos, no brand names, commercially safe, technically descriptive. Avoid words like '8k', 'photorealistic'.
+    Standards: Commercially safe, technically descriptive. Avoid buzzwords like 'photorealistic'.
     Return JSON per schema.`;
 
     const response = await ai.models.generateContent({
-      model: ACTIVE_MODEL, 
+      model: options.model, 
       contents: systemPrompt,
       config: {
         responseMimeType: "application/json",
