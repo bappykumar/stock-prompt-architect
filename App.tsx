@@ -153,17 +153,18 @@ const SYSTEM_QUANTITY_OPTIONS = [
 ];
 
 const PERSONAL_QUANTITY_OPTIONS = [
+  { value: 1, label: '1 Prompt' },
+  { value: 3, label: '3 Prompts' },
   { value: 5, label: '5 Prompts' },
   { value: 10, label: '10 Prompts' },
+  { value: 15, label: '15 Prompts' },
   { value: 20, label: '20 Prompts' },
+  { value: 25, label: '25 Prompts' },
   { value: 30, label: '30 Prompts' },
+  { value: 35, label: '35 Prompts' },
   { value: 40, label: '40 Prompts' },
-  { value: 50, label: '50 Prompts' },
-  { value: 60, label: '60 Prompts' },
-  { value: 70, label: '70 Prompts' },
-  { value: 80, label: '80 Prompts' },
-  { value: 90, label: '90 Prompts' },
-  { value: 100, label: '100 Prompts' }
+  { value: 45, label: '45 Prompts' },
+  { value: 50, label: '50 Prompts' }
 ];
 
 const CustomDropdown = ({ 
@@ -284,10 +285,18 @@ export default function App() {
     setUseSystemKey(val);
     localStorage.setItem('use_system_api_key', String(val));
     
-    // If switching TO system key and current quantity is invalid (above 5)
-    // reset it to 5 to avoid API errors or UI glitches.
-    if (val && options.quantity > 5) {
-      setOptions(prev => ({ ...prev, quantity: 5 }));
+    // When personal key is selected (useSystemKey = false)
+    if (!val) {
+      // Auto select gemini-3-flash-preview
+      setOptions(prev => ({ 
+        ...prev, 
+        model: 'gemini-3-flash-preview'
+      }));
+    } else {
+      // If switching TO system key and current quantity is above 5, reset to 5
+      if (options.quantity > 5) {
+        setOptions(prev => ({ ...prev, quantity: 5 }));
+      }
     }
   };
 
@@ -348,15 +357,11 @@ export default function App() {
     setTimeout(() => setIsAllCopied(false), 2000);
   };
 
-  // Visibility Logic: 
-  // Material & Finish appears for Products OR 3D Styles.
   const isMaterialFinishVisible = options.subject === 'No person (product)' || options.visualType.toLowerCase().includes('3d');
-  
-  // Cultural Heritage is only for human subjects.
   const isCulturalHeritageVisible = options.subject !== 'No person (product)' && options.subject !== 'Background / Landscape only';
 
   // Dynamic Quantity Options:
-  // Restricted for system key, expanded for personal key.
+  // Restricted for system key, expanded (1-50) for personal key.
   const currentQuantityOptions = useSystemKey ? SYSTEM_QUANTITY_OPTIONS : PERSONAL_QUANTITY_OPTIONS;
 
   return (
@@ -430,21 +435,26 @@ export default function App() {
                   <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Intelligence Engine</span>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  {OPTIONS.model.map((m) => (
-                    <button
-                      key={m.value}
-                      onClick={() => setOptions({...options, model: m.value as any})}
-                      className={`p-4 rounded-2xl border text-left transition-all ${options.model === m.value ? 'bg-slate-900 border-slate-900 shadow-md' : 'bg-slate-50 border-slate-100 hover:border-slate-200'}`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                         <div className={`p-1.5 rounded-lg ${options.model === m.value ? 'bg-white/10 text-white' : 'bg-white text-slate-400'}`}>
-                           {m.value.includes('pro') ? <Zap size={14} /> : <Cpu size={14} />}
-                         </div>
-                         {options.model === m.value && <Check size={14} className="text-emerald-400" />}
-                      </div>
-                      <p className={`text-[12px] font-bold leading-tight ${options.model === m.value ? 'text-white' : 'text-slate-900'}`}>{m.label}</p>
-                    </button>
-                  ))}
+                  {OPTIONS.model.map((m) => {
+                    const isDisabled = !useSystemKey && m.value === 'gemini-3-pro-preview';
+                    return (
+                      <button
+                        key={m.value}
+                        disabled={isDisabled}
+                        onClick={() => setOptions({...options, model: m.value as any})}
+                        className={`p-4 rounded-2xl border text-left transition-all ${options.model === m.value ? 'bg-slate-900 border-slate-900 shadow-md' : 'bg-slate-50 border-slate-100 hover:border-slate-200'} ${isDisabled ? 'opacity-30 cursor-not-allowed grayscale' : ''}`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                           <div className={`p-1.5 rounded-lg ${options.model === m.value ? 'bg-white/10 text-white' : 'bg-white text-slate-400'}`}>
+                             {m.value.includes('pro') ? <Zap size={14} /> : <Cpu size={14} />}
+                           </div>
+                           {options.model === m.value && <Check size={14} className="text-emerald-400" />}
+                        </div>
+                        <p className={`text-[12px] font-bold leading-tight ${options.model === m.value ? 'text-white' : 'text-slate-900'}`}>{m.label}</p>
+                        {isDisabled && <p className="text-[9px] font-bold text-slate-400 mt-1">LOCKED IN PERSONAL MODE</p>}
+                      </button>
+                    );
+                  })}
                 </div>
               </section>
 
@@ -485,12 +495,11 @@ export default function App() {
         </div>
       )}
 
-      {/* Sidebar - z-index hierarchy fixed by using descending values for sections */}
+      {/* Sidebar - z-index hierarchy fixed */}
       <aside className="w-[340px] border-r border-slate-200/80 bg-white flex flex-col shrink-0 relative z-40 h-full overflow-hidden">
         <div className="flex-1 overflow-y-auto custom-scrollbar pt-16 px-8">
           <div className="py-8 flex flex-col gap-8 pb-40">
             
-            {/* TOP CARDS - Highest Priority (z-100) */}
             <div className="space-y-4 relative z-[100]">
               <div className="bg-white border border-slate-100 p-6 rounded-[28px] shadow-sm flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -557,7 +566,6 @@ export default function App() {
               )}
             </div>
 
-            {/* IDENTITY SECTION - z-[90] */}
             <section className="flex flex-col gap-6 pt-4 relative z-[90]">
               <div className="flex items-center gap-2 px-1">
                 <User size={12} strokeWidth={2.5} className="text-slate-400" />
@@ -577,7 +585,6 @@ export default function App() {
               )}
             </section>
 
-            {/* ENVIRONMENT SECTION - z-[80] */}
             <section className="flex flex-col gap-6 pt-4 relative z-[80]">
               <div className="flex items-center gap-2 px-1">
                 <Box size={12} strokeWidth={2.5} className="text-slate-400" />
@@ -587,7 +594,6 @@ export default function App() {
               <CustomDropdown label="Scene Location" value={options.environment} options={OPTIONS.environment} onChange={(val) => setOptions({...options, environment: val})} />
             </section>
 
-            {/* MATERIAL & FINISH SECTION - z-[70] - Condition: Product OR 3D Style */}
             {isMaterialFinishVisible && (
               <section className="flex flex-col gap-6 pt-4 relative z-[70] animate-in">
                 <div className="flex items-center gap-2 px-1">
@@ -603,7 +609,6 @@ export default function App() {
               </section>
             )}
 
-            {/* OPTICS SECTION - z-[60] */}
             <section className="flex flex-col gap-6 pt-4 relative z-[60]">
               <div className="flex items-center gap-2 px-1">
                 <Camera size={12} strokeWidth={2.5} className="text-slate-400" />
@@ -618,13 +623,11 @@ export default function App() {
               </div>
             </section>
 
-            {/* SETTINGS SECTION - z-[50] */}
             <section className="flex flex-col gap-6 pt-4 relative z-[50]">
               <div className="flex items-center gap-2 px-1">
                 <Settings2 size={12} strokeWidth={2.5} className="text-slate-400" />
                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Settings</h3>
               </div>
-              {/* Batch Quantity: Conditionally uses restricted or expanded list based on API Key */}
               <CustomDropdown 
                 label="Batch Quantity" 
                 value={options.quantity} 
@@ -635,7 +638,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Sidebar Fixed Button */}
         <div className="shrink-0 bg-white border-t border-slate-100 p-8 z-[150] shadow-[0_-10px_30px_rgba(0,0,0,0.02)]">
           <button 
             onClick={handleGenerate}
@@ -647,7 +649,6 @@ export default function App() {
         </div>
       </aside>
 
-      {/* Main Workspace */}
       <main ref={mainScrollRef} className="flex-1 overflow-y-auto custom-scrollbar relative flex flex-col pt-16">
         {isGenerating && (
           <div className="fixed top-16 left-[340px] right-0 h-[2px] z-[110] overflow-hidden">
