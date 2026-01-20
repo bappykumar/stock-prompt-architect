@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             colors: {
@@ -21,6 +22,7 @@
                 700: '#334155',
                 800: '#1e293b',
                 900: '#0f172a',
+                950: '#020617',
               }
             },
             fontFamily: {
@@ -44,6 +46,12 @@
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         overflow-x: hidden;
+        transition: background-color 0.3s ease;
+      }
+
+      .dark body {
+        background-color: #020617;
+        color: #f8fafc;
       }
 
       /* Premium Scrollbar */
@@ -57,8 +65,14 @@
         background: #e2e8f0;
         border-radius: 20px;
       }
+      .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #1e293b;
+      }
       .custom-scrollbar::-webkit-scrollbar-thumb:hover {
         background: #cbd5e1;
+      }
+      .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #334155;
       }
 
       /* Transitions */
@@ -80,21 +94,27 @@
         border: 1px solid #f1f5f9;
         box-shadow: 0 1px 3px rgba(0,0,0,0.02), 0 4px 12px rgba(0,0,0,0.02);
       }
-      .card-premium:hover {
-        border-color: #e2e8f0;
-        box-shadow: 0 10px 30px -10px rgba(0,0,0,0.08);
-        transform: translateY(-2px);
+      .dark .card-premium {
+        background: #0f172a;
+        border-color: #1e293b;
       }
 
       .bg-dot-pattern {
         background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
         background-size: 20px 20px;
       }
+      .dark .bg-dot-pattern {
+        background-image: radial-gradient(#1e293b 1px, transparent 1px);
+      }
 
       /* Text highlight color */
       ::selection {
         background: #0f172a;
         color: white;
+      }
+      .dark ::selection {
+        background: #f1f5f9;
+        color: #0f172a;
       }
     </style>
   <script type="importmap">
@@ -110,7 +130,7 @@
 </script>
 </head>
   <body>
-    <div id="root" class="bg-dot-pattern min-h-screen"></div>
+    <div id="root" class="bg-dot-pattern min-h-screen transition-colors duration-300"></div>
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>
