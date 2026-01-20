@@ -7,7 +7,7 @@ import {
   Globe, Shield, Terminal, Calendar, 
   Layers, Camera, Box, Maximize, User, Moon,
   Layout, Fingerprint, Focus, Settings2, Download, MessageSquareCode, Send, AlertCircle, X, Cpu, Paintbrush,
-  ChevronUp, Key, Lock, Info
+  ChevronUp, Key, Lock, Info, Settings
 } from 'lucide-react';
 import { PromptOptions, GeneratedPrompt, PromptBatch, HistoricalPrompt } from './types';
 import { generateStockPrompts, ACTIVE_MODEL } from './services/geminiService';
@@ -237,7 +237,7 @@ export default function App() {
   const [isAllCopied, setIsAllCopied] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
-  const [showKeyWarning, setShowKeyWarning] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const mainScrollRef = useRef<HTMLElement>(null);
 
@@ -252,7 +252,6 @@ export default function App() {
   const saveApiKey = (key: string) => {
     setApiKey(key);
     localStorage.setItem('user_gemini_api_key', key);
-    setShowKeyWarning(false);
   };
 
   // Scroll to top visibility logic
@@ -274,7 +273,7 @@ export default function App() {
 
   const handleGenerate = useCallback(async () => {
     if (!apiKey) {
-      setShowKeyWarning(true);
+      setIsModalOpen(true);
       return;
     }
 
@@ -360,7 +359,19 @@ export default function App() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          {/* API Key Settings Button */}
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all border ${apiKey ? 'bg-white text-slate-900 border-slate-200 hover:border-slate-400' : 'bg-red-50 text-red-600 border-red-100 animate-pulse hover:bg-red-100'}`}
+          >
+            <div className={`w-1.5 h-1.5 rounded-full ${apiKey ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
+            <Key size={14} />
+            <span>API {apiKey ? 'Settings' : 'Required'}</span>
+          </button>
+
+          <div className="h-5 w-[1px] bg-slate-200 mx-2"></div>
+
           {batches.length > 0 && (
             <button 
               onClick={copyAllWorkspacePrompts}
@@ -371,14 +382,77 @@ export default function App() {
             </button>
           )}
           
-          <div className="h-5 w-[1px] bg-slate-200"></div>
-          
-          <div className="flex items-center gap-2 text-slate-400">
+          <div className="flex items-center gap-2 text-slate-400 ml-2">
             <Layers size={14} />
             <span className="text-[11px] font-bold tracking-tight text-slate-600 uppercase">{batches.length} Batches</span>
           </div>
         </div>
       </header>
+
+      {/* API Configuration Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-md rounded-[32px] p-8 shadow-[0_30px_100px_rgba(0,0,0,0.25)] border border-slate-100 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-full blur-3xl -mr-16 -mt-16 -z-10"></div>
+            
+            <button 
+              onClick={() => setIsModalOpen(false)}
+              className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-900 transition-colors"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="flex flex-col items-center text-center mb-8">
+              <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center text-white mb-6 shadow-xl">
+                <Key size={28} />
+              </div>
+              <h2 className="text-[20px] font-black text-slate-900 uppercase tracking-tight mb-2">API Configuration</h2>
+              <p className="text-[13px] text-slate-500 font-medium leading-relaxed max-w-[300px]">
+                Enter your Gemini API Key to enable professional prompt generation. Your key is stored locally in your browser.
+              </p>
+            </div>
+
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Your Gemini API Key</label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => saveApiKey(e.target.value)}
+                    placeholder="Enter key starting with AIza..."
+                    className="w-full bg-slate-50 border border-slate-200 px-4 py-4 rounded-2xl text-[14px] font-medium outline-none focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 transition-all placeholder:text-slate-300"
+                  />
+                  <Lock size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300" />
+                </div>
+              </div>
+
+              <div className="bg-amber-50 rounded-2xl p-4 flex gap-3 items-start border border-amber-100/50">
+                <Info size={16} className="text-amber-600 mt-0.5 shrink-0" />
+                <div className="text-[11px] leading-relaxed">
+                  <p className="text-amber-900 font-bold mb-1">Don't have a key yet?</p>
+                  <p className="text-amber-800 font-medium opacity-80 mb-2">Google provides a free tier for Gemini that works perfectly with this app.</p>
+                  <a 
+                    href="https://aistudio.google.com/app/apikey" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 font-black text-amber-700 uppercase tracking-widest hover:underline"
+                  >
+                    Get free key here <ExternalLink size={10} />
+                  </a>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[12px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg active:scale-[0.98]"
+              >
+                Save & Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Sidebar - Fixed Container */}
       <aside className="w-[340px] border-r border-slate-200/80 bg-white flex flex-col shrink-0 relative z-40 h-full overflow-hidden">
@@ -386,42 +460,6 @@ export default function App() {
         <div className="flex-1 overflow-y-auto custom-scrollbar pt-16 px-8">
           <div className="py-8 flex flex-col gap-8 pb-40">
             
-            {/* API Settings Section */}
-            <section className={`p-5 rounded-[20px] border transition-all duration-300 ${apiKey ? 'bg-slate-50 border-slate-100 shadow-sm' : 'bg-red-50 border-red-100 shadow-[0_10px_30px_rgba(239,68,68,0.1)]'}`}>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Key size={14} className={apiKey ? "text-slate-900" : "text-red-500"} />
-                  <span className={`text-[11px] font-bold uppercase tracking-tight ${apiKey ? 'text-slate-900' : 'text-red-600'}`}>API Configuration</span>
-                </div>
-                <div className={`w-2 h-2 rounded-full ${apiKey ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 animate-pulse'}`}></div>
-              </div>
-              
-              <div className="space-y-3">
-                <div className="relative group">
-                  <input
-                    type="password"
-                    value={apiKey}
-                    onChange={(e) => saveApiKey(e.target.value)}
-                    placeholder="Enter Gemini API Key..."
-                    className={`w-full bg-white border px-3.5 py-2.5 rounded-xl text-[12px] font-medium outline-none transition-all placeholder:text-slate-300 ${apiKey ? 'border-slate-200 focus:border-slate-900' : 'border-red-200 focus:border-red-400 shadow-sm'}`}
-                  />
-                  <Lock size={12} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-300" />
-                </div>
-                
-                <div className="flex items-center gap-2 px-1">
-                  <Info size={11} className="text-slate-400 shrink-0" />
-                  <a 
-                    href="https://aistudio.google.com/app/apikey" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-colors"
-                  >
-                    Get free API key here
-                  </a>
-                </div>
-              </div>
-            </section>
-
             {/* Section: Custom Architect Input */}
             <section className="bg-slate-50/50 p-5 rounded-[20px] border border-slate-200/60 flex flex-col gap-4 shadow-sm relative z-[100]">
               <div className="flex items-center justify-between">
@@ -596,13 +634,6 @@ export default function App() {
               </>
             )}
           </button>
-          
-          {showKeyWarning && (
-            <div className="mt-3 flex items-center gap-2 px-2 animate-bounce">
-              <AlertCircle size={12} className="text-red-500" />
-              <span className="text-[10px] font-bold text-red-500 uppercase">API Key Required to proceed</span>
-            </div>
-          )}
         </div>
       </aside>
 
