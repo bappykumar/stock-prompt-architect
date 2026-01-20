@@ -35,7 +35,7 @@ const DEFAULT_OPTIONS: PromptOptions = {
   useCase: 'Stock image',
   visualType: 'Standard photo',
   format: 'Realistic photo',
-  environment: 'White Background',
+  environment: 'Default / Auto',
   lighting: 'Natural daylight',
   framing: 'Portrait',
   cameraAngle: 'Eye Level',
@@ -65,7 +65,8 @@ const OPTIONS = {
     { value: 'Tech developer', label: 'Tech Developer' },
     { value: 'Family group', label: 'Family Group' },
     { value: 'Manual laborer', label: 'Manual Laborer' },
-    { value: 'No person (product)', label: 'Product / Object Only' }
+    { value: 'No person (product)', label: 'Product / Object Only' },
+    { value: 'Background / Landscape only', label: 'Background / Landscape Only' }
   ],
   characterBackground: [
     { value: 'Global / Neutral', label: 'Global / Neutral' },
@@ -94,6 +95,7 @@ const OPTIONS = {
     { value: 'Random / Auto', label: 'Random / Auto' }
   ],
   environment: [
+    { value: 'Default / Auto', label: 'Default / Auto' },
     { value: 'White Background', label: 'White Background' },
     { value: 'Solid Color / Studio', label: 'Solid Color / Studio' },
     { value: 'Modern Office', label: 'Modern Office' },
@@ -366,7 +368,7 @@ export default function App() {
       <aside className="w-[340px] border-r border-slate-200/80 bg-white flex flex-col shrink-0 relative z-40 h-full overflow-hidden">
         {/* Scrollable Part */}
         <div className="flex-1 overflow-y-auto custom-scrollbar pt-16 px-8">
-          <div className="py-8 flex flex-col gap-8 pb-40"> {/* pb-40 ensures we can scroll high enough for bottom dropdowns */}
+          <div className="py-8 flex flex-col gap-8 pb-40">
             
             {/* Section: Custom Architect Input */}
             <section className="bg-slate-50/50 p-5 rounded-[20px] border border-slate-200/60 flex flex-col gap-4 shadow-sm relative z-[100]">
@@ -462,7 +464,7 @@ export default function App() {
                 <h3 className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400">Identity</h3>
               </div>
               <CustomDropdown label="Primary Actor" value={options.subject} options={OPTIONS.subject} onChange={(val) => setOptions({...options, subject: val})} />
-              <CustomDropdown label="Cultural Heritage" value={options.characterBackground} options={OPTIONS.characterBackground} onChange={(val) => setOptions({...options, characterBackground: val})} disabled={options.subject.includes('No person')} />
+              <CustomDropdown label="Cultural Heritage" value={options.characterBackground} options={OPTIONS.characterBackground} onChange={(val) => setOptions({...options, characterBackground: val})} disabled={options.subject.includes('No person') || options.subject.includes('Background')} />
             </section>
 
             {/* Section: Environment */}
@@ -645,6 +647,7 @@ export default function App() {
               </div>
               <h2 className="text-[24px] font-bold text-slate-900 mb-4 tracking-tight">Architect Workspace Ready</h2>
               <p className="text-[14px] font-medium text-slate-400 max-w-sm leading-relaxed mb-12">Configure your vision in the control panel to generate high-performance stock prompts.</p>
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-xl w-full">
                  <div className="p-6 bg-white border border-slate-100 rounded-3xl text-left shadow-sm">
                     <div className="w-9 h-9 bg-amber-50 rounded-lg flex items-center justify-center mb-3"><Zap size={16} className="text-amber-500" /></div>
