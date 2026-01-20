@@ -669,6 +669,15 @@ export default function App() {
             </a>
           </footer>
         </div>
+
+        {/* Scroll To Top Button */}
+        <button
+          onClick={scrollToTop}
+          className={`fixed bottom-10 right-10 z-[90] p-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full shadow-2xl transition-all duration-500 ease-out transform ${showScrollTop ? 'translate-y-0 opacity-100 rotate-0' : 'translate-y-20 opacity-0 rotate-45 pointer-events-none'}`}
+        >
+          <ChevronUp size={24} strokeWidth={3} />
+        </button>
+
       </main>
 
       {/* CONFIG MODAL */}
