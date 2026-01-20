@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { PromptOptions, HistoricalPrompt } from "../types";
 
@@ -66,15 +65,32 @@ export const generateStockPrompts = async (
       ? "Setting: Aesthetically pleasing context that matches the subject's story."
       : `Setting: Realistic ${options.environment}.`;
 
-    const historyContext = sessionHistory.length > 0 
-      ? `Avoid these specific previous themes: ${sessionHistory.slice(0, 5).map(h => h.text.substring(0, 50)).join('; ')}`
-      : "";
+    // Enhanced History Usage: Take up to 40 recent prompts to ensure diversity
+    const recentPrompts = sessionHistory.slice(0, 40).map(h => h.text);
+    
+    let uniquenessInstruction = "";
+    if (recentPrompts.length > 0) {
+      uniquenessInstruction = `
+      CRITICAL DIVERGENCE PROTOCOL (STRICT ENFORCEMENT):
+      The following concepts have been recently generated and are BANNED from being repeated.
+      
+      --- BANNED CONCEPTS HISTORY (Recent ${recentPrompts.length}) ---
+      ${recentPrompts.map((p, i) => `[${i+1}] ${p.substring(0, 150)}...`).join('\n')}
+      ------------------------------------------------------------
+      
+      INSTRUCTIONS FOR MANDATORY VARIATION:
+      1. SCENARIO SHIFT: If previous prompts showed "working on laptop", you must generate "sketching on paper", "discussing with colleague", or "looking out window".
+      2. COMPOSITION FLIP: If recent outputs were "close-ups", force "wide angles" or "over-the-shoulder" views.
+      3. LIGHTING ROTATION: Avoid repeating the exact lighting setup of the last 5 prompts.
+      4. ACTION VARIETY: Do not rephrase the same action. Invent a completely new interaction with the environment.
+      5. DISTINCT OUTPUT: Each generated prompt must be conceptuallly distinct from the Banned List.
+      `;
+    }
 
     const systemPrompt = `Expert Stock Prompt Architect Task.
     Generate ${options.quantity} unique, high-conversion prompts for Adobe Stock/Freepik.
-    ${historyContext}
     
-    Constraints:
+    Target Metadata:
     - Subject: ${options.subject} (${options.characterBackground} heritage)
     - Style: ${visualTypeGuidance}
     - Scene: ${backgroundGuidance}
@@ -84,7 +100,14 @@ export const generateStockPrompts = async (
     ${options.useCalendar ? `- Event: ${options.calendarMonth} ${options.calendarEvent}` : ''}
     ${options.useExtraKeywords ? `- User Refinement: ${options.extraKeywords}` : ''}
 
-    Standards: Commercially safe, technically descriptive. Avoid buzzwords like 'photorealistic'.
+    ${uniquenessInstruction}
+
+    Output Standards: 
+    - Commercially safe, technically descriptive. 
+    - Avoid buzzwords like 'photorealistic'. 
+    - Focus on visual storytelling elements (textures, micro-expressions, specific lighting falloff).
+    - Ensure prompts are distinct from one another within this batch as well.
+    
     Return JSON per schema.`;
 
     const response = await ai.models.generateContent({
@@ -93,7 +116,7 @@ export const generateStockPrompts = async (
       config: {
         responseMimeType: "application/json",
         responseSchema: schema,
-        temperature: 0.8,
+        temperature: 0.9, // Increased temperature for higher creativity and divergence
       }
     });
 

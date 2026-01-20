@@ -23,11 +23,20 @@
                 800: '#1e293b',
                 900: '#0f172a',
                 950: '#020617',
+              },
+              brand: {
+                navy: '#0b1120',
+                card: '#111827',
+                border: '#1f2937'
               }
             },
             fontFamily: {
               sans: ['"Inter"', 'system-ui', 'sans-serif'],
             },
+            letterSpacing: {
+              tightest: '-.075em',
+              tighter: '-.05em',
+            }
           }
         }
       }
@@ -41,22 +50,21 @@
 
       body {
         font-family: 'Inter', sans-serif;
-        background-color: #fcfcfd;
+        background-color: #ffffff;
         color: #0f172a;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         overflow-x: hidden;
-        transition: background-color 0.3s ease;
       }
 
       .dark body {
-        background-color: #020617;
+        background-color: #0b1120;
         color: #f8fafc;
       }
 
-      /* Premium Scrollbar */
+      /* Ultra-thin Scrollbar */
       .custom-scrollbar::-webkit-scrollbar {
-        width: 6px;
+        width: 4px;
       }
       .custom-scrollbar::-webkit-scrollbar-track {
         background: transparent;
@@ -68,53 +76,24 @@
       .dark .custom-scrollbar::-webkit-scrollbar-thumb {
         background: #1e293b;
       }
-      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-        background: #cbd5e1;
-      }
-      .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-        background: #334155;
-      }
 
-      /* Transitions */
-      button, input, select, a, div {
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      /* Entrance Animation (ONLY for Welcome Section) */
+      .animate-welcome-reveal {
+        animation: welcome-reveal 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
       }
-
-      /* Premium Animations */
-      .animate-in {
-        animation: animate-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-      }
-      @keyframes animate-in {
-        from { opacity: 0; transform: translateY(10px); }
+      @keyframes welcome-reveal {
+        from { opacity: 0; transform: translateY(15px); }
         to { opacity: 1; transform: translateY(0); }
       }
 
-      .card-premium {
-        background: #ffffff;
-        border: 1px solid #f1f5f9;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.02), 0 4px 12px rgba(0,0,0,0.02);
-      }
-      .dark .card-premium {
-        background: #0f172a;
-        border-color: #1e293b;
+      /* Button Hover Transitions */
+      button, select, input, .card-hover {
+        transition: all 0.2s ease;
       }
 
-      .bg-dot-pattern {
-        background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
-        background-size: 20px 20px;
-      }
-      .dark .bg-dot-pattern {
-        background-image: radial-gradient(#1e293b 1px, transparent 1px);
-      }
-
-      /* Text highlight color */
-      ::selection {
-        background: #0f172a;
-        color: white;
-      }
       .dark ::selection {
-        background: #f1f5f9;
-        color: #0f172a;
+        background: #3b82f6;
+        color: #ffffff;
       }
     </style>
   <script type="importmap">
@@ -130,7 +109,7 @@
 </script>
 </head>
   <body>
-    <div id="root" class="bg-dot-pattern min-h-screen transition-colors duration-300"></div>
+    <div id="root" class="min-h-screen"></div>
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>
