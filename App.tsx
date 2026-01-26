@@ -63,8 +63,27 @@ const OPTIONS = {
     { value: 'Senior citizen', label: 'Senior Citizen' },
     { value: 'Fitness enthusiast', label: 'Fitness Enthusiast' },
     { value: 'Tech developer', label: 'Tech Developer' },
-    { value: 'Family group', label: 'Family Group' },
     { value: 'Manual laborer', label: 'Manual Laborer' },
+    
+    // Relationships & Groups
+    { value: 'Romantic Couple', label: 'Romantic Couple' },
+    { value: 'Group of Friends', label: 'Group of Friends' },
+    { value: 'Business Team', label: 'Business Team' },
+    { value: 'Parent & Child', label: 'Parent & Child' },
+    { value: 'Family group', label: 'Family Group' },
+    { value: 'Elderly Couple', label: 'Elderly Couple' },
+
+    // Specific Professions
+    { value: 'Chef / Kitchen Staff', label: 'Chef / Kitchen Staff' },
+    { value: 'Construction Worker', label: 'Construction Worker' },
+    { value: 'Doctor / Medical Team', label: 'Doctor / Medical Team' },
+    { value: 'Delivery Person', label: 'Delivery Person' },
+
+    // Age Specific
+    { value: 'Baby / Toddler', label: 'Baby / Toddler' },
+    { value: 'Teenager / Gen Z', label: 'Teenager / Gen Z' },
+
+    // Non-Human
     { value: 'Domestic Pet (Cat, Dog, etc.)', label: 'Domestic Pet (Cat, Dog)' },
     { value: 'Wild Animal (Tiger, Lion, etc.)', label: 'Wild Animal' },
     { value: 'Bird / Avian life', label: 'Bird / Avian Life' },

@@ -100,6 +100,17 @@ export const generateStockPrompts = async (
     ${options.useCalendar ? `- Event: ${options.calendarMonth} ${options.calendarEvent}` : ''}
     ${options.useExtraKeywords ? `- User Refinement: ${options.extraKeywords}` : ''}
 
+    COMMERCIAL SAFETY & COMPLIANCE (STRICT RULES):
+    1. NO TEXT/TYPOGRAPHY: The image must NOT contain any text, letters, numbers, or watermarks. Explicitly describe the scene as "clean, without text overlays".
+    2. NO TRADEMARKS: Do not mention specific brands (e.g., Apple, Nike), logos on clothing/devices, or copyrighted characters (e.g., Marvel). Use generic terms like "smartphone" instead of "iPhone", "sneakers" instead of "Nike".
+    3. NO SPECIFIC YEARS: Do not include visual representations of years like "2024" or "2025" in the background or foreground.
+    4. GENERIC DESIGN: Any UI screens, posters, or books in the scene must be abstract or blank.
+
+    ANTI-REPETITION & CREATIVITY ENGINE:
+    - Dynamic Phrasing: Do not start every prompt with the same phrase (e.g., avoid always starting with "A photo of..."). vary the sentence structure.
+    - Emotional Depth: Vary the mood (Focused, Joyful, Serious, Collaborative, Serene).
+    - Uniqueness: Each of the ${options.quantity} prompts MUST be significantly different from each other in this batch.
+
     ${uniquenessInstruction}
 
     Output Standards: 
@@ -116,7 +127,7 @@ export const generateStockPrompts = async (
       config: {
         responseMimeType: "application/json",
         responseSchema: schema,
-        temperature: 0.9, // Increased temperature for higher creativity and divergence
+        temperature: 0.95, // Increased temperature for maximum variety
       }
     });
 
