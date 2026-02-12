@@ -22,6 +22,7 @@ export interface PromptOptions {
   calendarMonth: string;
   calendarEvent: string;
   model: 'gemini-3-flash-preview' | 'gemini-3-pro-preview';
+  activeFields: Record<string, boolean>;
 }
 
 export interface GeneratedPrompt {

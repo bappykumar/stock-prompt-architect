@@ -16,6 +16,9 @@ export const generateStockPrompts = async (
 
   const ai = new GoogleGenAI({ apiKey: finalKey });
 
+  // Helper to check if a field is active (backward compatible)
+  const isFieldActive = (key: string) => options.activeFields ? options.activeFields[key] !== false : true;
+
   try {
     const schema = {
       type: Type.OBJECT,
@@ -41,33 +44,86 @@ export const generateStockPrompts = async (
       required: ["prompts"]
     };
 
-    let materialGuidance = `Material Finish: ${options.materialStyle}. `;
-    if (options.visualType.includes('3D')) {
-      materialGuidance += "Technical: PBR shaders, ambient occlusion, realistic ray-tracing. ";
+    // Construct Subject Guidance
+    let subjectGuidance = "";
+    if (isFieldActive('subject')) {
+      subjectGuidance = `- Subject: ${options.subject} ${isFieldActive('characterBackground') ? `(${options.characterBackground} heritage)` : ''}`;
+    } else {
+      subjectGuidance = `- Subject: AI choice (Creative freedom). Focus on an aesthetically captivating scene, object, or nature-based focal point without a specific human actor.`;
     }
 
+    // Construct Material Guidance
+    let materialGuidance = "";
+    if (isFieldActive('materialStyle')) {
+       materialGuidance = `Material Finish: ${options.materialStyle}. `;
+       if (options.visualType.includes('3D') || options.visualType === 'Claymorphism' || options.visualType.includes('Art')) {
+         materialGuidance += "Technical: PBR shaders, ambient occlusion, realistic ray-tracing, subsurface scattering. ";
+       }
+    }
+
+    // Construct Visual Type Guidance
     let visualTypeGuidance = "";
-    switch (options.visualType) {
-      case '3D illustration':
-        visualTypeGuidance = `Style: High-end 3D render, ${options.visual3DStyle} shapes, ${materialGuidance} vibrant professional palette.`;
-        break;
-      case '3D icon':
-        visualTypeGuidance = `Style: Premium 3D icon isolated on center, ${materialGuidance} soft ambient light.`;
-        break;
-      case 'Minimalist Vector':
-        visualTypeGuidance = `Style: Modern flat corporate vector, clean solid colors, commercially high appeal.`;
-        break;
-      default:
-        visualTypeGuidance = `Style: High-end commercial stock photography, prime lens bokeh, ${materialGuidance}, authentic textures.`;
+    if (isFieldActive('visualType')) {
+      switch (options.visualType) {
+        case '3D illustration':
+          visualTypeGuidance = `Style: High-end 3D render, ${options.visual3DStyle} shapes, ${materialGuidance} vibrant professional palette.`;
+          break;
+        case '3D icon':
+          visualTypeGuidance = `Style: Premium 3D icon isolated on center, ${materialGuidance} soft ambient light.`;
+          break;
+        case 'Abstract Fractal':
+          visualTypeGuidance = `Style: Intricate Abstract Fractal Art, mathematical recursion patterns, complex geometric self-similarity, high-contrast neon glow, deep shadows.`;
+          break;
+        case 'Parametric Art':
+          visualTypeGuidance = `Style: Modern Parametric Design, flowing mathematical curves, algorithmically generated architecture, sleek procedural surfaces, vibrant color gradients.`;
+          break;
+        case 'Isometric 3D':
+          visualTypeGuidance = `Style: High-end Isometric 3D render, 45-degree perspective, clean geometric alignment, professional soft shadows.`;
+          break;
+        case 'Claymorphism':
+          visualTypeGuidance = `Style: Trendy Claymorphism, soft rounded matte surfaces, playful plastic/clay texture, soft inner shadows.`;
+          break;
+        case 'Flat Illustration':
+          visualTypeGuidance = `Style: Modern flat 2D vector illustration, corporate Memphis aesthetic, clean lines, vibrant limited color palette.`;
+        case 'Paper Cut Art':
+          visualTypeGuidance = `Style: Intricate paper-cut craft art, layered paper textures, soft drop shadows between cut layers, handcrafted look.`;
+          break;
+        case 'Minimalist Vector':
+          visualTypeGuidance = `Style: Modern flat corporate vector, clean solid colors, commercially high appeal.`;
+          break;
+        case 'Line Art':
+          visualTypeGuidance = `Style: Minimalist continuous line art, clean strokes, sophisticated professional sketch look, white or solid background.`;
+          break;
+        case 'Double Exposure':
+          visualTypeGuidance = `Style: Creative double exposure photography, blending two distinct visual concepts into one silhouette, artistic bokeh.`;
+          break;
+        default:
+          visualTypeGuidance = `Style: High-end commercial stock photography, prime lens bokeh, ${materialGuidance}, authentic textures.`;
+      }
+    } else {
+      // Fallback/Auto behavior if Visual Type is disabled
+      visualTypeGuidance = "Style: Premium commercial stock imagery, high quality, authentic look.";
     }
 
-    let backgroundGuidance = options.environment === 'Default / Auto' 
-      ? "Setting: Aesthetically pleasing context that matches the subject's story."
-      : `Setting: Realistic ${options.environment}.`;
+    // Construct Background Guidance
+    let backgroundGuidance = "";
+    if (isFieldActive('environment')) {
+      backgroundGuidance = options.environment === 'Default / Auto' 
+        ? "Setting: Aesthetically pleasing context that matches the subject's story."
+        : `Setting: Realistic ${options.environment}.`;
+    } else {
+      backgroundGuidance = "Setting: Contextual background suited for high-value stock photography.";
+    }
 
-    // Enhanced History Usage: Take up to 40 recent prompts to ensure diversity
+    // Construct View/Framing Guidance
+    const viewParams = [];
+    if (isFieldActive('framing')) viewParams.push(options.framing);
+    if (isFieldActive('subjectPosition')) viewParams.push(options.subjectPosition);
+    if (isFieldActive('cameraAngle')) viewParams.push(options.cameraAngle);
+    const viewGuidance = viewParams.length > 0 ? `- View: ${viewParams.join(', ')}` : '';
+
+    // Enhanced History Usage
     const recentPrompts = sessionHistory.slice(0, 40).map(h => h.text);
-    
     let uniquenessInstruction = "";
     if (recentPrompts.length > 0) {
       uniquenessInstruction = `
@@ -91,12 +147,12 @@ export const generateStockPrompts = async (
     Generate ${options.quantity} unique, high-conversion prompts for Adobe Stock/Freepik.
     
     Target Metadata:
-    - Subject: ${options.subject} (${options.characterBackground} heritage)
+    ${subjectGuidance}
     - Style: ${visualTypeGuidance}
     - Scene: ${backgroundGuidance}
-    - Lighting: ${options.lighting}
-    - View: ${options.framing}, ${options.subjectPosition}, ${options.cameraAngle}
-    - Shadows: ${options.shadowStyle}
+    ${isFieldActive('lighting') ? `- Lighting: ${options.lighting}` : ''}
+    ${viewGuidance}
+    ${isFieldActive('shadowStyle') ? `- Shadows: ${options.shadowStyle}` : ''}
     ${options.useCalendar ? `- Event: ${options.calendarMonth} ${options.calendarEvent}` : ''}
     ${options.useExtraKeywords ? `- User Refinement: ${options.extraKeywords}` : ''}
 

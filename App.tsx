@@ -6,7 +6,7 @@ import {
   Globe, Shield, Terminal, Calendar, 
   Layers, Camera, Box, Maximize, User, Moon, Sun,
   Layout, Fingerprint, Focus, Settings2, Download, MessageSquareCode, Send, AlertCircle, X, Cpu, Paintbrush,
-  ChevronUp, Key, Lock, Info, Settings, ToggleLeft, ToggleRight, Activity
+  ChevronUp, Key, Lock, Info, Settings, ToggleLeft, ToggleRight, Activity, Power
 } from 'lucide-react';
 import { PromptOptions, GeneratedPrompt, PromptBatch, HistoricalPrompt } from './types';
 import { generateStockPrompts } from './services/geminiService';
@@ -50,7 +50,20 @@ const DEFAULT_OPTIONS: PromptOptions = {
   useCalendar: false,
   calendarMonth: MONTHS[new Date().getMonth()],
   calendarEvent: 'None',
-  model: 'gemini-3-flash-preview'
+  model: 'gemini-3-flash-preview',
+  activeFields: {
+    subject: true,
+    characterBackground: true,
+    visualType: true,
+    environment: true,
+    lighting: true,
+    framing: true,
+    cameraAngle: true,
+    subjectPosition: true,
+    shadowStyle: true,
+    materialStyle: true,
+    visual3DStyle: true
+  }
 };
 
 const OPTIONS = {
@@ -65,6 +78,10 @@ const OPTIONS = {
     { value: 'Tech developer', label: 'Tech Developer' },
     { value: 'Manual laborer', label: 'Manual Laborer' },
     
+    // Abstract Subjects
+    { value: 'Abstract Geometric Structure', label: 'Abstract Geometric Structure' },
+    { value: 'Parametric Fluid Shapes', label: 'Parametric Fluid Shapes' },
+
     // Relationships & Groups
     { value: 'Romantic Couple', label: 'Romantic Couple' },
     { value: 'Group of Friends', label: 'Group of Friends' },
@@ -107,7 +124,15 @@ const OPTIONS = {
     { value: 'Standard photo', label: 'Standard Photo' },
     { value: '3D illustration', label: '3D Illustration' },
     { value: '3D icon', label: '3D Icon' },
-    { value: 'Minimalist Vector', label: 'Minimalist Vector' }
+    { value: 'Abstract Fractal', label: 'Abstract Fractal (Math Art)' },
+    { value: 'Parametric Art', label: 'Parametric Art (Flowing Curves)' },
+    { value: 'Isometric 3D', label: 'Isometric 3D' },
+    { value: 'Claymorphism', label: 'Claymorphism' },
+    { value: 'Minimalist Vector', label: 'Minimalist Vector' },
+    { value: 'Flat Illustration', label: 'Flat Illustration' },
+    { value: 'Paper Cut Art', label: 'Paper Cut Art' },
+    { value: 'Line Art', label: 'Line Art / Sketch' },
+    { value: 'Double Exposure', label: 'Double Exposure' }
   ],
   materialStyle: [
     { value: 'Realistic', label: 'Realistic' },
@@ -123,6 +148,7 @@ const OPTIONS = {
     { value: 'Default / Auto', label: 'Default / Auto' },
     { value: 'White Background', label: 'White Background' },
     { value: 'Solid Color / Studio', label: 'Solid Color / Studio' },
+    { value: 'Pitch Black / Void', label: 'Pitch Black / Void' },
     { value: 'Modern Office', label: 'Modern Office' },
     { value: 'Home Interior', label: 'Home Interior' },
     { value: 'Nature / Outdoor', label: 'Nature / Outdoor' },
@@ -156,7 +182,8 @@ const OPTIONS = {
     { value: 'Natural daylight', label: 'Natural Daylight' },
     { value: 'Soft studio', label: 'Soft Studio' },
     { value: 'Warm indoor', label: 'Warm Indoor' },
-    { value: 'Golden hour', label: 'Golden Hour' }
+    { value: 'Golden hour', label: 'Golden Hour' },
+    { value: 'Neon Glow', label: 'Neon / Cyber Glow' }
   ],
   shadowStyle: [
     { value: 'Natural Shadow', label: 'Natural Shadow' },
@@ -205,20 +232,28 @@ const CustomDropdown = ({
   options, 
   onChange, 
   icon: Icon,
-  disabled = false 
+  disabled = false,
+  canToggle = false,
+  isActive = true,
+  onToggle
 }: { 
   label: string; 
   value: string | number; 
   options: { value: string | number; label: string }[]; 
   onChange: (val: any) => void; 
   icon?: any;
-  disabled?: boolean 
+  disabled?: boolean;
+  canToggle?: boolean;
+  isActive?: boolean;
+  onToggle?: (val: boolean) => void;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   
   const safeOptions = Array.isArray(options) ? options : [];
   const selectedOption = safeOptions.find(opt => opt.value === value) || safeOptions[0] || { label: 'Select...', value: '' };
+  
+  const isInputDisabled = disabled || (canToggle && !isActive);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -231,15 +266,33 @@ const CustomDropdown = ({
   }, []);
 
   return (
-    <div className={`w-full relative ${disabled ? 'opacity-30 pointer-events-none grayscale' : 'opacity-100'} ${isOpen ? 'z-[100]' : 'z-auto'}`} ref={dropdownRef}>
-      <div className="flex items-center gap-1.5 mb-1.5 ml-1">
-        {Icon && <Icon size={12} className="text-slate-400 dark:text-slate-500" />}
-        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{label}</label>
+    <div className={`w-full relative ${isOpen ? 'z-[100]' : 'z-auto'}`} ref={dropdownRef}>
+      <div className="flex items-center justify-between mb-1.5 ml-1">
+        <div className={`flex items-center gap-1.5 ${isInputDisabled ? 'opacity-50' : 'opacity-100'}`}>
+          {Icon && <Icon size={12} className="text-slate-400 dark:text-slate-500" />}
+          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{label}</label>
+        </div>
+        {canToggle && onToggle && (
+          <button 
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggle(!isActive);
+            }}
+            className="focus:outline-none transition-colors"
+          >
+            {isActive ? (
+              <ToggleRight size={18} className="text-blue-500 dark:text-blue-400" />
+            ) : (
+              <ToggleLeft size={18} className="text-slate-300 dark:text-slate-700" />
+            )}
+          </button>
+        )}
       </div>
-      <div className="relative">
+      <div className={`relative ${isInputDisabled ? 'opacity-40 grayscale pointer-events-none' : 'opacity-100'}`}>
         <button
           type="button"
-          disabled={disabled}
+          disabled={isInputDisabled}
           onClick={() => setIsOpen(!isOpen)}
           className={`w-full flex items-center justify-between bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/80 px-4 py-2.5 rounded-xl text-[13px] font-medium text-slate-800 dark:text-slate-200 text-left hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:cursor-not-allowed`}
         >
@@ -275,7 +328,12 @@ const CustomDropdown = ({
 export default function App() {
   const [options, setOptions] = useState<PromptOptions>(() => {
     const saved = sessionStorage.getItem('prompt_options');
-    return saved ? JSON.parse(saved) : DEFAULT_OPTIONS;
+    const parsed = saved ? JSON.parse(saved) : DEFAULT_OPTIONS;
+    // Ensure activeFields exists for backward compatibility
+    if (!parsed.activeFields) {
+      parsed.activeFields = DEFAULT_OPTIONS.activeFields;
+    }
+    return parsed;
   });
 
   const [batches, setBatches] = useState<PromptBatch[]>(() => {
@@ -347,6 +405,16 @@ export default function App() {
     }
   };
 
+  const toggleField = (field: string, isActive: boolean) => {
+    setOptions(prev => ({
+      ...prev,
+      activeFields: {
+        ...prev.activeFields,
+        [field]: isActive
+      }
+    }));
+  };
+
   useEffect(() => {
     const scrollContainer = mainScrollRef.current;
     if (!scrollContainer) return;
@@ -414,9 +482,9 @@ export default function App() {
     setTimeout(() => setIsAllCopied(false), 2000);
   };
 
-  const isMaterialFinishVisible = options.subject === 'No person (product)' || options.visualType.toLowerCase().includes('3d');
+  const isMaterialFinishVisible = options.subject === 'No person (product)' || options.visualType.toLowerCase().includes('3d') || options.visualType.includes('Art');
   
-  const isCulturalHeritageVisible = !['Domestic Pet', 'Wild Animal', 'Bird', 'Marine', 'Macro', 'Still life', 'No person', 'Background'].some(key => options.subject.includes(key));
+  const isCulturalHeritageVisible = !['Domestic Pet', 'Wild Animal', 'Bird', 'Marine', 'Macro', 'Still life', 'No person', 'Background', 'Abstract'].some(key => options.subject.includes(key));
 
   const currentQuantityOptions = useSystemKey ? SYSTEM_QUANTITY_OPTIONS : PERSONAL_QUANTITY_OPTIONS;
 
@@ -532,9 +600,27 @@ export default function App() {
                   <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Identity & Character</h3>
                 </header>
                 <div className="space-y-5">
-                   <CustomDropdown label="Primary Actor" value={options.subject} options={OPTIONS.subject} onChange={(val) => setOptions({...options, subject: val})} icon={User} />
+                   <CustomDropdown 
+                      label="Primary Actor" 
+                      value={options.subject} 
+                      options={OPTIONS.subject} 
+                      onChange={(val) => setOptions({...options, subject: val})} 
+                      icon={User} 
+                      canToggle={true}
+                      isActive={options.activeFields?.subject}
+                      onToggle={(val) => toggleField('subject', val)}
+                   />
                    {isCulturalHeritageVisible && (
-                      <CustomDropdown label="Cultural Context" value={options.characterBackground} options={OPTIONS.characterBackground} onChange={(val) => setOptions({...options, characterBackground: val})} icon={Globe} />
+                      <CustomDropdown 
+                        label="Cultural Context" 
+                        value={options.characterBackground} 
+                        options={OPTIONS.characterBackground} 
+                        onChange={(val) => setOptions({...options, characterBackground: val})} 
+                        icon={Globe}
+                        canToggle={true}
+                        isActive={options.activeFields?.characterBackground}
+                        onToggle={(val) => toggleField('characterBackground', val)}
+                      />
                    )}
                 </div>
               </section>
@@ -545,10 +631,37 @@ export default function App() {
                   <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">World & Style</h3>
                 </header>
                 <div className="space-y-5">
-                   <CustomDropdown label="Visual Style" value={options.visualType} options={OPTIONS.visualType} onChange={(val) => setOptions({...options, visualType: val})} icon={Layers} />
-                   <CustomDropdown label="Environment" value={options.environment} options={OPTIONS.environment} onChange={(val) => setOptions({...options, environment: val})} icon={Box} />
+                   <CustomDropdown 
+                      label="Visual Style" 
+                      value={options.visualType} 
+                      options={OPTIONS.visualType} 
+                      onChange={(val) => setOptions({...options, visualType: val})} 
+                      icon={Layers}
+                      canToggle={true}
+                      isActive={options.activeFields?.visualType}
+                      onToggle={(val) => toggleField('visualType', val)}
+                   />
+                   <CustomDropdown 
+                      label="Environment" 
+                      value={options.environment} 
+                      options={OPTIONS.environment} 
+                      onChange={(val) => setOptions({...options, environment: val})} 
+                      icon={Box}
+                      canToggle={true}
+                      isActive={options.activeFields?.environment}
+                      onToggle={(val) => toggleField('environment', val)}
+                   />
                    {isMaterialFinishVisible && (
-                      <CustomDropdown label="Material Finish" value={options.materialStyle} options={OPTIONS.materialStyle} onChange={(val) => setOptions({...options, materialStyle: val})} icon={Paintbrush} />
+                      <CustomDropdown 
+                        label="Material Finish" 
+                        value={options.materialStyle} 
+                        options={OPTIONS.materialStyle} 
+                        onChange={(val) => setOptions({...options, materialStyle: val})} 
+                        icon={Paintbrush}
+                        canToggle={true}
+                        isActive={options.activeFields?.materialStyle}
+                        onToggle={(val) => toggleField('materialStyle', val)}
+                      />
                    )}
                 </div>
               </section>
@@ -559,11 +672,56 @@ export default function App() {
                   <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Optics & Lighting</h3>
                 </header>
                 <div className="space-y-5">
-                   <CustomDropdown label="Shot Framing" value={options.framing} options={OPTIONS.framing} onChange={(val) => setOptions({...options, framing: val})} icon={Maximize} />
-                   <CustomDropdown label="Camera Elevation" value={options.cameraAngle} options={OPTIONS.cameraAngle} onChange={(val) => setOptions({...options, cameraAngle: val})} icon={Camera} />
-                   <CustomDropdown label="Subject Placement" value={options.subjectPosition} options={OPTIONS.subjectPosition} onChange={(val) => setOptions({...options, subjectPosition: val})} icon={Layout} />
-                   <CustomDropdown label="Atmosphere" value={options.lighting} options={OPTIONS.lighting} onChange={(val) => setOptions({...options, lighting: val})} icon={Sparkles} />
-                   <CustomDropdown label="Shadows" value={options.shadowStyle} options={OPTIONS.shadowStyle} onChange={(val) => setOptions({...options, shadowStyle: val})} icon={Moon} />
+                   <CustomDropdown 
+                      label="Shot Framing" 
+                      value={options.framing} 
+                      options={OPTIONS.framing} 
+                      onChange={(val) => setOptions({...options, framing: val})} 
+                      icon={Maximize}
+                      canToggle={true}
+                      isActive={options.activeFields?.framing}
+                      onToggle={(val) => toggleField('framing', val)}
+                   />
+                   <CustomDropdown 
+                      label="Camera Elevation" 
+                      value={options.cameraAngle} 
+                      options={OPTIONS.cameraAngle} 
+                      onChange={(val) => setOptions({...options, cameraAngle: val})} 
+                      icon={Camera}
+                      canToggle={true}
+                      isActive={options.activeFields?.cameraAngle}
+                      onToggle={(val) => toggleField('cameraAngle', val)}
+                   />
+                   <CustomDropdown 
+                      label="Subject Placement" 
+                      value={options.subjectPosition} 
+                      options={OPTIONS.subjectPosition} 
+                      onChange={(val) => setOptions({...options, subjectPosition: val})} 
+                      icon={Layout}
+                      canToggle={true}
+                      isActive={options.activeFields?.subjectPosition}
+                      onToggle={(val) => toggleField('subjectPosition', val)}
+                   />
+                   <CustomDropdown 
+                      label="Atmosphere" 
+                      value={options.lighting} 
+                      options={OPTIONS.lighting} 
+                      onChange={(val) => setOptions({...options, lighting: val})} 
+                      icon={Sparkles}
+                      canToggle={true}
+                      isActive={options.activeFields?.lighting}
+                      onToggle={(val) => toggleField('lighting', val)}
+                   />
+                   <CustomDropdown 
+                      label="Shadows" 
+                      value={options.shadowStyle} 
+                      options={OPTIONS.shadowStyle} 
+                      onChange={(val) => setOptions({...options, shadowStyle: val})} 
+                      icon={Moon}
+                      canToggle={true}
+                      isActive={options.activeFields?.shadowStyle}
+                      onToggle={(val) => toggleField('shadowStyle', val)}
+                   />
                 </div>
               </section>
 
@@ -573,7 +731,13 @@ export default function App() {
                   <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Output Parameters</h3>
                 </header>
                 <div className="space-y-5">
-                   <CustomDropdown label="Batch Quantity" value={options.quantity} options={currentQuantityOptions} onChange={(val) => setOptions({...options, quantity: val})} icon={Settings2} />
+                   <CustomDropdown 
+                      label="Batch Quantity" 
+                      value={options.quantity} 
+                      options={currentQuantityOptions} 
+                      onChange={(val) => setOptions({...options, quantity: val})} 
+                      icon={Settings2} 
+                   />
                 </div>
               </section>
             </div>
@@ -741,7 +905,7 @@ export default function App() {
                   </div>
                 </div>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="w-full py-4 bg-slate-950 dark:bg-white text-white dark:text-slate-900 rounded-full font-black uppercase tracking-widest text-xs shadow-lg active:scale-[0.98] transition-all">Save Settings</button>
+              <button onClick={() => setIsModalOpen(false)} className="w-full py-4 bg-slate-950 dark:bg-white text-white dark:text-slate-950 rounded-full font-black uppercase tracking-widest text-xs shadow-lg active:scale-[0.98] transition-all">Save Settings</button>
            </div>
         </div>
       )}
