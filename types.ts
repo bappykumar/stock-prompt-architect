@@ -14,6 +14,7 @@ export interface PromptOptions {
   mockup: string;
   visual3DStyle: string;
   materialStyle: string;
+  qualityCamera: string;
   quantity: number;
   useExtraKeywords: boolean;
   extraKeywords: string;

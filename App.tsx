@@ -6,7 +6,7 @@ import {
   Globe, Shield, Terminal, Calendar, 
   Layers, Camera, Box, Maximize, User, Moon, Sun,
   Layout, Fingerprint, Focus, Settings2, Download, MessageSquareCode, Send, AlertCircle, X, Cpu, Paintbrush,
-  ChevronUp, Key, Lock, Info, Settings, ToggleLeft, ToggleRight, Activity, Power
+  ChevronUp, Key, Lock, Info, Settings, ToggleLeft, ToggleRight, Activity, Power, Video
 } from 'lucide-react';
 import { PromptOptions, GeneratedPrompt, PromptBatch, HistoricalPrompt } from './types';
 import { generateStockPrompts } from './services/geminiService';
@@ -43,6 +43,7 @@ const DEFAULT_OPTIONS: PromptOptions = {
   mockup: 'No mockup',
   visual3DStyle: 'Smooth & rounded',
   materialStyle: 'Realistic',
+  qualityCamera: 'Default / Auto',
   quantity: 3,
   useExtraKeywords: false,
   extraKeywords: '',
@@ -62,13 +63,15 @@ const DEFAULT_OPTIONS: PromptOptions = {
     subjectPosition: true,
     shadowStyle: true,
     materialStyle: true,
-    visual3DStyle: true
+    visual3DStyle: true,
+    qualityCamera: true
   }
 };
 
 const OPTIONS = {
   subject: [
     { value: 'Business professional', label: 'Business Professional' },
+    { value: 'E-commerce Fashion Model', label: 'E-commerce Fashion Model' },
     { value: 'Casual person', label: 'Casual Person' },
     { value: 'Creative person', label: 'Creative Person' },
     { value: 'Healthcare professional', label: 'Healthcare Professional' },
@@ -77,20 +80,17 @@ const OPTIONS = {
     { value: 'Fitness enthusiast', label: 'Fitness Enthusiast' },
     { value: 'Tech developer', label: 'Tech Developer' },
     { value: 'Manual laborer', label: 'Manual Laborer' },
+    { value: 'Futuristic Cyborg / Android', label: 'Futuristic Cyborg / Android' },
+    { value: 'Content Creator / Influencer', label: 'Content Creator / Influencer' },
     
-    // Abstract Subjects
-    { value: 'Abstract Geometric Structure', label: 'Abstract Geometric Structure' },
-    { value: 'Parametric Fluid Shapes', label: 'Parametric Fluid Shapes' },
-
-    // Relationships & Groups
+    // Groups
     { value: 'Romantic Couple', label: 'Romantic Couple' },
     { value: 'Group of Friends', label: 'Group of Friends' },
     { value: 'Business Team', label: 'Business Team' },
     { value: 'Parent & Child', label: 'Parent & Child' },
     { value: 'Family group', label: 'Family Group' },
-    { value: 'Elderly Couple', label: 'Elderly Couple' },
 
-    // Specific Professions
+    // Professions
     { value: 'Chef / Kitchen Staff', label: 'Chef / Kitchen Staff' },
     { value: 'Construction Worker', label: 'Construction Worker' },
     { value: 'Doctor / Medical Team', label: 'Doctor / Medical Team' },
@@ -122,17 +122,25 @@ const OPTIONS = {
   ],
   visualType: [
     { value: 'Standard photo', label: 'Standard Photo' },
+    { value: 'Ultra Realistic', label: 'Ultra Realistic' },
+    { value: 'Anime Style', label: 'Anime Style' },
+    { value: 'Cinematic', label: 'Cinematic' },
+    { value: 'Oil Painting', label: 'Oil Painting' },
+    { value: '3D Render', label: '3D Render' },
+    { value: 'Hyper Detailed', label: 'Hyper Detailed' },
+    { value: 'Cinematic Film (Kodak Portra)', label: 'Cinematic Film (Kodak Style)' },
+    { value: 'Minimalist Studio Photo', label: 'Minimalist Studio Photo' },
+    { value: 'National Geographic Wildstyle', label: 'National Geographic Wildstyle' },
+    { value: 'Unreal Engine 5 Render', label: 'Unreal Engine 5 Render' },
     { value: '3D illustration', label: '3D Illustration' },
-    { value: '3D icon', label: '3D Icon' },
-    { value: 'Abstract Fractal', label: 'Abstract Fractal (Math Art)' },
-    { value: 'Parametric Art', label: 'Parametric Art (Flowing Curves)' },
     { value: 'Isometric 3D', label: 'Isometric 3D' },
     { value: 'Claymorphism', label: 'Claymorphism' },
+    { value: 'High-Fashion Editorial', label: 'High-Fashion Editorial' },
     { value: 'Minimalist Vector', label: 'Minimalist Vector' },
     { value: 'Flat Illustration', label: 'Flat Illustration' },
     { value: 'Paper Cut Art', label: 'Paper Cut Art' },
     { value: 'Line Art', label: 'Line Art / Sketch' },
-    { value: 'Double Exposure', label: 'Double Exposure' }
+    { value: 'Pencil Sketch / Charcoal', label: 'Pencil Sketch / Charcoal' }
   ],
   materialStyle: [
     { value: 'Realistic', label: 'Realistic' },
@@ -151,11 +159,27 @@ const OPTIONS = {
     { value: 'Pitch Black / Void', label: 'Pitch Black / Void' },
     { value: 'Modern Office', label: 'Modern Office' },
     { value: 'Home Interior', label: 'Home Interior' },
+    { value: 'Luxury Modern Penthouse', label: 'Luxury Modern Penthouse' },
+    { value: 'Hyper-futuristic Neon City', label: 'Hyper-futuristic Neon City' },
+    { value: 'Zen Minimalist Room', label: 'Zen Minimalist Room' },
     { value: 'Nature / Outdoor', label: 'Nature / Outdoor' },
+    { value: 'Tropical Island Paradise', label: 'Tropical Island Paradise' },
+    { value: 'Misty Ancient Forest', label: 'Misty Ancient Forest' },
     { value: 'City Street', label: 'City Street' },
     { value: 'Hospital / Clinic', label: 'Hospital / Clinic' },
     { value: 'Cafe / Restaurant', label: 'Cafe / Restaurant' },
-    { value: 'Industrial / Lab', label: 'Industrial / Lab' }
+    { value: 'Industrial Loft Workshop', label: 'Industrial Loft Workshop' },
+    { value: 'Academic Library / Archive', label: 'Academic Library / Archive' },
+    { value: 'Scientific Research Lab', label: 'Scientific Research Lab' }
+  ],
+  qualityCamera: [
+    { value: 'Default / Auto', label: 'Default / Auto' },
+    { value: '4K Resolution Detail', label: '4K Detail' },
+    { value: '8K Masterpiece', label: '8K Masterpiece' },
+    { value: 'Ultra Detailed Texture', label: 'Ultra Detailed' },
+    { value: 'Shallow Depth of Field (Bokeh)', label: 'Shallow Depth of Field' },
+    { value: 'Professional DSLR Quality', label: 'DSLR Quality' },
+    { value: 'Sharp Focus / Macro Detail', label: 'Sharp Focus' }
   ],
   framing: [
     { value: 'Portrait', label: 'Portrait' },
@@ -329,7 +353,6 @@ export default function App() {
   const [options, setOptions] = useState<PromptOptions>(() => {
     const saved = sessionStorage.getItem('prompt_options');
     const parsed = saved ? JSON.parse(saved) : DEFAULT_OPTIONS;
-    // Ensure activeFields exists for backward compatibility
     if (!parsed.activeFields) {
       parsed.activeFields = DEFAULT_OPTIONS.activeFields;
     }
@@ -390,28 +413,17 @@ export default function App() {
   const toggleSystemKey = (val: boolean) => {
     setUseSystemKey(val);
     localStorage.setItem('use_system_api_key', String(val));
-    
     if (!val) {
-      setOptions(prev => ({ 
-        ...prev, 
-        model: 'gemini-3-flash-preview'
-      }));
+      setOptions(prev => ({ ...prev, model: 'gemini-3-flash-preview' }));
     } else {
-      setOptions(prev => ({ 
-        ...prev, 
-        model: 'gemini-3-pro-preview',
-        quantity: prev.quantity > 5 ? 5 : prev.quantity 
-      }));
+      setOptions(prev => ({ ...prev, model: 'gemini-3-pro-preview', quantity: prev.quantity > 5 ? 5 : prev.quantity }));
     }
   };
 
   const toggleField = (field: string, isActive: boolean) => {
     setOptions(prev => ({
       ...prev,
-      activeFields: {
-        ...prev.activeFields,
-        [field]: isActive
-      }
+      activeFields: { ...prev.activeFields, [field]: isActive }
     }));
   };
 
@@ -482,10 +494,8 @@ export default function App() {
     setTimeout(() => setIsAllCopied(false), 2000);
   };
 
-  const isMaterialFinishVisible = options.subject === 'No person (product)' || options.visualType.toLowerCase().includes('3d') || options.visualType.includes('Art');
-  
-  const isCulturalHeritageVisible = !['Domestic Pet', 'Wild Animal', 'Bird', 'Marine', 'Macro', 'Still life', 'No person', 'Background', 'Abstract'].some(key => options.subject.includes(key));
-
+  const isMaterialFinishVisible = options.subject === 'No person (product)' || options.visualType.toLowerCase().includes('3d');
+  const isCulturalHeritageVisible = !['Domestic Pet', 'Wild Animal', 'Bird', 'Marine', 'Macro', 'Still life', 'No person', 'Background'].some(key => options.subject.includes(key));
   const currentQuantityOptions = useSystemKey ? SYSTEM_QUANTITY_OPTIONS : PERSONAL_QUANTITY_OPTIONS;
 
   return (
@@ -561,7 +571,7 @@ export default function App() {
                   <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center text-slate-400">
                     <Calendar size={16} />
                   </div>
-                  <button onClick={() => setOptions({...options, useCalendar: !options.useCalendar})} className={`w-11 h-6 rounded-full relative transition-colors duration-200 ease-in-out focus:outline-none ${options.useCalendar ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-700'}`}>
+                  <button onClick={() => setOptions({...options, useCalendar: !options.useCalendar})} className={`w-11 h-6 rounded-full relative transition-colors duration-200 ease-in-out focus:outline-none ${options.useCalendar ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-700'}`}>
                     <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full shadow-sm transition-transform duration-200 ease-in-out ${options.useCalendar ? 'translate-x-5' : 'translate-x-0'}`} />
                   </button>
                 </div>
@@ -569,22 +579,10 @@ export default function App() {
                 <p className="text-[10px] text-slate-500 dark:text-slate-500 mt-1 leading-relaxed">Add month and holiday specific context.</p>
                 {options.useCalendar && (
                   <div className="mt-4 space-y-3">
-                    <select 
-                      value={options.calendarMonth} 
-                      onChange={e => setOptions({
-                        ...options, 
-                        calendarMonth: e.target.value,
-                        calendarEvent: EVENTS_BY_MONTH[e.target.value][0]
-                      })} 
-                      className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-[12px] outline-none"
-                    >
+                    <select value={options.calendarMonth} onChange={e => setOptions({...options, calendarMonth: e.target.value, calendarEvent: EVENTS_BY_MONTH[e.target.value][0]})} className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-[12px] outline-none">
                       {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
                     </select>
-                    <select 
-                      value={options.calendarEvent} 
-                      onChange={e => setOptions({...options, calendarEvent: e.target.value})} 
-                      className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-[12px] outline-none"
-                    >
+                    <select value={options.calendarEvent} onChange={e => setOptions({...options, calendarEvent: e.target.value})} className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-[12px] outline-none">
                       {EVENTS_BY_MONTH[options.calendarMonth].map(e => <option key={e} value={e}>{e}</option>)}
                     </select>
                   </div>
@@ -600,27 +598,9 @@ export default function App() {
                   <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Identity & Character</h3>
                 </header>
                 <div className="space-y-5">
-                   <CustomDropdown 
-                      label="Primary Actor" 
-                      value={options.subject} 
-                      options={OPTIONS.subject} 
-                      onChange={(val) => setOptions({...options, subject: val})} 
-                      icon={User} 
-                      canToggle={true}
-                      isActive={options.activeFields?.subject}
-                      onToggle={(val) => toggleField('subject', val)}
-                   />
+                   <CustomDropdown label="Primary Actor" value={options.subject} options={OPTIONS.subject} onChange={(val) => setOptions({...options, subject: val})} icon={User} canToggle={true} isActive={options.activeFields?.subject} onToggle={(val) => toggleField('subject', val)} />
                    {isCulturalHeritageVisible && (
-                      <CustomDropdown 
-                        label="Cultural Context" 
-                        value={options.characterBackground} 
-                        options={OPTIONS.characterBackground} 
-                        onChange={(val) => setOptions({...options, characterBackground: val})} 
-                        icon={Globe}
-                        canToggle={true}
-                        isActive={options.activeFields?.characterBackground}
-                        onToggle={(val) => toggleField('characterBackground', val)}
-                      />
+                      <CustomDropdown label="Cultural Context" value={options.characterBackground} options={OPTIONS.characterBackground} onChange={(val) => setOptions({...options, characterBackground: val})} icon={Globe} canToggle={true} isActive={options.activeFields?.characterBackground} onToggle={(val) => toggleField('characterBackground', val)} />
                    )}
                 </div>
               </section>
@@ -631,37 +611,10 @@ export default function App() {
                   <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">World & Style</h3>
                 </header>
                 <div className="space-y-5">
-                   <CustomDropdown 
-                      label="Visual Style" 
-                      value={options.visualType} 
-                      options={OPTIONS.visualType} 
-                      onChange={(val) => setOptions({...options, visualType: val})} 
-                      icon={Layers}
-                      canToggle={true}
-                      isActive={options.activeFields?.visualType}
-                      onToggle={(val) => toggleField('visualType', val)}
-                   />
-                   <CustomDropdown 
-                      label="Environment" 
-                      value={options.environment} 
-                      options={OPTIONS.environment} 
-                      onChange={(val) => setOptions({...options, environment: val})} 
-                      icon={Box}
-                      canToggle={true}
-                      isActive={options.activeFields?.environment}
-                      onToggle={(val) => toggleField('environment', val)}
-                   />
+                   <CustomDropdown label="Visual Style" value={options.visualType} options={OPTIONS.visualType} onChange={(val) => setOptions({...options, visualType: val})} icon={Layers} canToggle={true} isActive={options.activeFields?.visualType} onToggle={(val) => toggleField('visualType', val)} />
+                   <CustomDropdown label="Environment" value={options.environment} options={OPTIONS.environment} onChange={(val) => setOptions({...options, environment: val})} icon={Box} canToggle={true} isActive={options.activeFields?.environment} onToggle={(val) => toggleField('environment', val)} />
                    {isMaterialFinishVisible && (
-                      <CustomDropdown 
-                        label="Material Finish" 
-                        value={options.materialStyle} 
-                        options={OPTIONS.materialStyle} 
-                        onChange={(val) => setOptions({...options, materialStyle: val})} 
-                        icon={Paintbrush}
-                        canToggle={true}
-                        isActive={options.activeFields?.materialStyle}
-                        onToggle={(val) => toggleField('materialStyle', val)}
-                      />
+                      <CustomDropdown label="Material Finish" value={options.materialStyle} options={OPTIONS.materialStyle} onChange={(val) => setOptions({...options, materialStyle: val})} icon={Paintbrush} canToggle={true} isActive={options.activeFields?.materialStyle} onToggle={(val) => toggleField('materialStyle', val)} />
                    )}
                 </div>
               </section>
@@ -669,59 +622,15 @@ export default function App() {
               <section className="space-y-6">
                 <header className="flex items-center gap-2 px-1">
                   <div className="w-1 h-3.5 bg-blue-500 rounded-full" />
-                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Optics & Lighting</h3>
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Optics & Technicals</h3>
                 </header>
                 <div className="space-y-5">
-                   <CustomDropdown 
-                      label="Shot Framing" 
-                      value={options.framing} 
-                      options={OPTIONS.framing} 
-                      onChange={(val) => setOptions({...options, framing: val})} 
-                      icon={Maximize}
-                      canToggle={true}
-                      isActive={options.activeFields?.framing}
-                      onToggle={(val) => toggleField('framing', val)}
-                   />
-                   <CustomDropdown 
-                      label="Camera Elevation" 
-                      value={options.cameraAngle} 
-                      options={OPTIONS.cameraAngle} 
-                      onChange={(val) => setOptions({...options, cameraAngle: val})} 
-                      icon={Camera}
-                      canToggle={true}
-                      isActive={options.activeFields?.cameraAngle}
-                      onToggle={(val) => toggleField('cameraAngle', val)}
-                   />
-                   <CustomDropdown 
-                      label="Subject Placement" 
-                      value={options.subjectPosition} 
-                      options={OPTIONS.subjectPosition} 
-                      onChange={(val) => setOptions({...options, subjectPosition: val})} 
-                      icon={Layout}
-                      canToggle={true}
-                      isActive={options.activeFields?.subjectPosition}
-                      onToggle={(val) => toggleField('subjectPosition', val)}
-                   />
-                   <CustomDropdown 
-                      label="Atmosphere" 
-                      value={options.lighting} 
-                      options={OPTIONS.lighting} 
-                      onChange={(val) => setOptions({...options, lighting: val})} 
-                      icon={Sparkles}
-                      canToggle={true}
-                      isActive={options.activeFields?.lighting}
-                      onToggle={(val) => toggleField('lighting', val)}
-                   />
-                   <CustomDropdown 
-                      label="Shadows" 
-                      value={options.shadowStyle} 
-                      options={OPTIONS.shadowStyle} 
-                      onChange={(val) => setOptions({...options, shadowStyle: val})} 
-                      icon={Moon}
-                      canToggle={true}
-                      isActive={options.activeFields?.shadowStyle}
-                      onToggle={(val) => toggleField('shadowStyle', val)}
-                   />
+                   <CustomDropdown label="Quality & Camera" value={options.qualityCamera} options={OPTIONS.qualityCamera} onChange={(val) => setOptions({...options, qualityCamera: val})} icon={Video} canToggle={true} isActive={options.activeFields?.qualityCamera} onToggle={(val) => toggleField('qualityCamera', val)} />
+                   <CustomDropdown label="Shot Framing" value={options.framing} options={OPTIONS.framing} onChange={(val) => setOptions({...options, framing: val})} icon={Maximize} canToggle={true} isActive={options.activeFields?.framing} onToggle={(val) => toggleField('framing', val)} />
+                   <CustomDropdown label="Camera Elevation" value={options.cameraAngle} options={OPTIONS.cameraAngle} onChange={(val) => setOptions({...options, cameraAngle: val})} icon={Camera} canToggle={true} isActive={options.activeFields?.cameraAngle} onToggle={(val) => toggleField('cameraAngle', val)} />
+                   <CustomDropdown label="Subject Placement" value={options.subjectPosition} options={OPTIONS.subjectPosition} onChange={(val) => setOptions({...options, subjectPosition: val})} icon={Layout} canToggle={true} isActive={options.activeFields?.subjectPosition} onToggle={(val) => toggleField('subjectPosition', val)} />
+                   <CustomDropdown label="Atmosphere" value={options.lighting} options={OPTIONS.lighting} onChange={(val) => setOptions({...options, lighting: val})} icon={Sparkles} canToggle={true} isActive={options.activeFields?.lighting} onToggle={(val) => toggleField('lighting', val)} />
+                   <CustomDropdown label="Shadows" value={options.shadowStyle} options={OPTIONS.shadowStyle} onChange={(val) => setOptions({...options, shadowStyle: val})} icon={Moon} canToggle={true} isActive={options.activeFields?.shadowStyle} onToggle={(val) => toggleField('shadowStyle', val)} />
                 </div>
               </section>
 
@@ -731,13 +640,7 @@ export default function App() {
                   <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Output Parameters</h3>
                 </header>
                 <div className="space-y-5">
-                   <CustomDropdown 
-                      label="Batch Quantity" 
-                      value={options.quantity} 
-                      options={currentQuantityOptions} 
-                      onChange={(val) => setOptions({...options, quantity: val})} 
-                      icon={Settings2} 
-                   />
+                   <CustomDropdown label="Batch Quantity" value={options.quantity} options={currentQuantityOptions} onChange={(val) => setOptions({...options, quantity: val})} icon={Settings2} />
                 </div>
               </section>
             </div>
@@ -746,11 +649,7 @@ export default function App() {
 
         {/* Action Button */}
         <div className="shrink-0 p-6 bg-white dark:bg-[#0b1120] border-t border-slate-200 dark:border-slate-800/60 z-50">
-          <button 
-            onClick={handleGenerate} 
-            disabled={isGenerating}
-            className="w-full py-3.5 rounded-full bg-white dark:bg-white text-slate-900 font-black uppercase tracking-widest text-[13px] flex items-center justify-center gap-3 shadow-lg hover:bg-slate-50 active:scale-[0.97] transition-all"
-          >
+          <button onClick={handleGenerate} disabled={isGenerating} className="w-full py-3.5 rounded-full bg-white dark:bg-white text-slate-900 font-black uppercase tracking-widest text-[13px] flex items-center justify-center gap-3 shadow-lg hover:bg-slate-50 active:scale-[0.97] transition-all">
              {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} className="fill-current" />}
              <span>Run Architect</span>
           </button>
@@ -758,18 +657,7 @@ export default function App() {
       </aside>
 
       {/* MAIN AREA */}
-      <main 
-        ref={mainScrollRef} 
-        className="flex-1 overflow-y-auto custom-scrollbar relative bg-slate-50 dark:bg-[#020617] pt-16"
-        style={{
-          backgroundImage: isDarkMode 
-            ? 'radial-gradient(circle, #1e293b 1px, transparent 1px)' 
-            : 'radial-gradient(circle, #e2e8f0 1px, transparent 1px)',
-          backgroundSize: '24px 24px'
-        }}
-      >
-        
-        {/* IN-CONTEXT LOADER: Positioned exactly over the main area (Right of sidebar, below header) */}
+      <main ref={mainScrollRef} className="flex-1 overflow-y-auto custom-scrollbar relative bg-slate-50 dark:bg-[#020617] pt-16" style={{ backgroundImage: isDarkMode ? 'radial-gradient(circle, #1e293b 1px, transparent 1px)' : 'radial-gradient(circle, #e2e8f0 1px, transparent 1px)', backgroundSize: '24px 24px' }}>
         {isGenerating && (
           <div className="fixed top-16 left-[340px] right-0 bottom-0 z-50 flex items-center justify-center bg-white/60 dark:bg-[#020617]/80 backdrop-blur-sm">
             <div className="w-full max-w-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] p-10 flex flex-col items-center gap-8 shadow-2xl">
@@ -824,7 +712,6 @@ export default function App() {
               </div>
               <h2 className="text-[32px] font-black uppercase tracking-tightest leading-tight mb-4">Ready to Architect</h2>
               <p className="text-[14px] font-medium text-slate-500 dark:text-slate-400 max-w-sm leading-relaxed mb-16">Configure your parameters in the sidebar to build high-performance commercial stock prompts.</p>
-              
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-2xl">
                 <div className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 p-8 rounded-[28px] text-left space-y-4 shadow-sm hover:shadow-md transition-shadow">
                   <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500"><Zap size={20} className="fill-current" /></div>
@@ -840,7 +727,6 @@ export default function App() {
             </div>
           )}
           
-          {/* FOOTER */}
           <footer className="mt-16 pt-8 border-t border-slate-200 dark:border-slate-800/60 flex items-center justify-between gap-10">
             <div className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30 flex items-center gap-2">
               <Shield size={12} />
@@ -852,18 +738,11 @@ export default function App() {
             </a>
           </footer>
         </div>
-
-        {/* Scroll To Top Button */}
-        <button
-          onClick={scrollToTop}
-          className={`fixed bottom-10 right-10 z-[90] p-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full shadow-2xl transition-all duration-500 ease-out transform ${showScrollTop ? 'translate-y-0 opacity-100 rotate-0' : 'translate-y-20 opacity-0 rotate-45 pointer-events-none'}`}
-        >
+        <button onClick={scrollToTop} className={`fixed bottom-10 right-10 z-[90] p-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full shadow-2xl transition-all duration-500 ease-out transform ${showScrollTop ? 'translate-y-0 opacity-100 rotate-0' : 'translate-y-20 opacity-0 rotate-45 pointer-events-none'}`}>
           <ChevronUp size={24} strokeWidth={3} />
         </button>
-
       </main>
 
-      {/* CONFIG MODAL */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[2500] flex items-center justify-center p-6 bg-black/50 backdrop-blur-md">
            <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-[32px] p-8 space-y-8 shadow-2xl relative">
