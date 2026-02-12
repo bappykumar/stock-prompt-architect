@@ -36,14 +36,14 @@ export const generateStockPrompts = async (
     };
 
     let subjectGuidance = "";
-    if (isFieldActive('subject')) {
-      subjectGuidance = `- Subject: ${options.subject} ${isFieldActive('characterBackground') ? `(${options.characterBackground} heritage)` : ''}`;
+    if (isFieldActive('subject') && options.subject !== 'Default / Auto') {
+      subjectGuidance = `- Subject: ${options.subject} ${isFieldActive('characterBackground') && options.characterBackground !== 'Default / Auto' ? `(${options.characterBackground} heritage)` : ''}`;
     } else {
       subjectGuidance = `- Subject: AI choice (Creative freedom).`;
     }
 
     let materialGuidance = "";
-    if (isFieldActive('materialStyle')) {
+    if (isFieldActive('materialStyle') && options.materialStyle !== 'Default / Auto') {
        materialGuidance = `Material Finish: ${options.materialStyle}. `;
        if (options.visualType.includes('3D') || options.visualType === 'Claymorphism') {
          materialGuidance += "Technical: PBR shaders, ambient occlusion, realistic ray-tracing. ";
@@ -51,7 +51,7 @@ export const generateStockPrompts = async (
     }
 
     let visualTypeGuidance = "";
-    if (isFieldActive('visualType')) {
+    if (isFieldActive('visualType') && options.visualType !== 'Default / Auto') {
       switch (options.visualType) {
         case 'Ultra Realistic':
           visualTypeGuidance = `Style: Hyper-realistic 8K photography, physical accuracy, realistic textures, path tracing style, commercially flawless.`;
@@ -124,9 +124,9 @@ export const generateStockPrompts = async (
     }
 
     const viewParams = [];
-    if (isFieldActive('framing')) viewParams.push(options.framing);
-    if (isFieldActive('subjectPosition')) viewParams.push(options.subjectPosition);
-    if (isFieldActive('cameraAngle')) viewParams.push(options.cameraAngle);
+    if (isFieldActive('framing') && options.framing !== 'Default / Auto') viewParams.push(options.framing);
+    if (isFieldActive('subjectPosition') && options.subjectPosition !== 'Default / Auto') viewParams.push(options.subjectPosition);
+    if (isFieldActive('cameraAngle') && options.cameraAngle !== 'Default / Auto') viewParams.push(options.cameraAngle);
     const viewGuidance = viewParams.length > 0 ? `- View: ${viewParams.join(', ')}` : '';
 
     // Robust Uniqueness Mechanism
@@ -155,9 +155,9 @@ ${subjectGuidance}
 - Style: ${visualTypeGuidance}
 ${technicalGuidance}
 - Scene: ${backgroundGuidance}
-${isFieldActive('lighting') ? `- Lighting: ${options.lighting}` : ''}
+${isFieldActive('lighting') && options.lighting !== 'Default / Auto' ? `- Lighting: ${options.lighting}` : ''}
 ${viewGuidance}
-${isFieldActive('shadowStyle') ? `- Shadows: ${options.shadowStyle}` : ''}
+${isFieldActive('shadowStyle') && options.shadowStyle !== 'Default / Auto' ? `- Shadows: ${options.shadowStyle}` : ''}
 ${options.useCalendar ? `- Event: ${options.calendarMonth} ${options.calendarEvent}` : ''}
 ${options.useExtraKeywords ? `- User Refinement: ${options.extraKeywords}` : ''}
 

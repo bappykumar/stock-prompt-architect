@@ -29,20 +29,20 @@ const EVENTS_BY_MONTH: Record<string, string[]> = {
 };
 
 const DEFAULT_OPTIONS: PromptOptions = {
-  subject: 'Business professional',
-  characterBackground: 'Global / Neutral',
+  subject: 'Default / Auto',
+  characterBackground: 'Default / Auto',
   useCase: 'Stock image',
-  visualType: 'Standard photo',
+  visualType: 'Default / Auto',
   format: 'Realistic photo',
   environment: 'Default / Auto',
-  lighting: 'Natural daylight',
-  framing: 'Portrait',
-  cameraAngle: 'Eye Level',
-  subjectPosition: 'Centered',
-  shadowStyle: 'Natural Shadow',
+  lighting: 'Default / Auto',
+  framing: 'Default / Auto',
+  cameraAngle: 'Default / Auto',
+  subjectPosition: 'Default / Auto',
+  shadowStyle: 'Default / Auto',
   mockup: 'No mockup',
   visual3DStyle: 'Smooth & rounded',
-  materialStyle: 'Realistic',
+  materialStyle: 'Default / Auto',
   qualityCamera: 'Default / Auto',
   quantity: 3,
   useExtraKeywords: false,
@@ -70,6 +70,7 @@ const DEFAULT_OPTIONS: PromptOptions = {
 
 const OPTIONS = {
   subject: [
+    { value: 'Default / Auto', label: 'Default / Auto' },
     { value: 'Business professional', label: 'Business Professional' },
     { value: 'E-commerce Fashion Model', label: 'E-commerce Fashion Model' },
     { value: 'Casual person', label: 'Casual Person' },
@@ -111,6 +112,7 @@ const OPTIONS = {
     { value: 'Background / Landscape only', label: 'Background / Landscape Only' }
   ],
   characterBackground: [
+    { value: 'Default / Auto', label: 'Default / Auto' },
     { value: 'Global / Neutral', label: 'Global / Neutral' },
     { value: 'South Asian', label: 'South Asian' },
     { value: 'East Asian', label: 'East Asian' },
@@ -121,6 +123,7 @@ const OPTIONS = {
     { value: 'Latin American', label: 'Latin American' }
   ],
   visualType: [
+    { value: 'Default / Auto', label: 'Default / Auto' },
     { value: 'Standard photo', label: 'Standard Photo' },
     { value: 'Ultra Realistic', label: 'Ultra Realistic' },
     { value: 'Anime Style', label: 'Anime Style' },
@@ -143,14 +146,14 @@ const OPTIONS = {
     { value: 'Pencil Sketch / Charcoal', label: 'Pencil Sketch / Charcoal' }
   ],
   materialStyle: [
+    { value: 'Default / Auto', label: 'Default / Auto' },
     { value: 'Realistic', label: 'Realistic' },
     { value: 'Glossy / Shiny', label: 'Glossy / Shiny' },
     { value: 'Glassmorphism', label: 'Glassmorphism (Glassy)' },
     { value: 'Metallic / Chrome', label: 'Metallic / Chrome' },
     { value: 'Matte / Soft', label: 'Matte / Soft' },
     { value: 'Clay / Pastel', label: 'Clay / Plastic' },
-    { value: 'Frosted Glass', label: 'Frosted Glass' },
-    { value: 'Random / Auto', label: 'Random / Auto' }
+    { value: 'Frosted Glass', label: 'Frosted Glass' }
   ],
   environment: [
     { value: 'Default / Auto', label: 'Default / Auto' },
@@ -182,27 +185,28 @@ const OPTIONS = {
     { value: 'Sharp Focus / Macro Detail', label: 'Sharp Focus' }
   ],
   framing: [
+    { value: 'Default / Auto', label: 'Default / Auto' },
     { value: 'Portrait', label: 'Portrait' },
     { value: 'Mid shot (waist-up)', label: 'Mid Shot (waist-up)' },
-    { value: 'Full shot (full body)', label: 'Full Shot (full body)' },
-    { value: 'None / Not needed', label: 'Default / Auto' }
+    { value: 'Full shot (full body)', label: 'Full Shot (full body)' }
   ],
   cameraAngle: [
+    { value: 'Default / Auto', label: 'Default / Auto' },
     { value: 'Eye Level', label: 'Eye Level' },
     { value: 'Top View / Flat Lay', label: 'Top View / Flat Lay' },
     { value: 'High Angle', label: 'High Angle' },
     { value: 'Low Angle', label: 'Low Angle' },
     { value: 'Bird\'s Eye View', label: 'Bird\'s Eye View' },
-    { value: 'Side View', label: 'Side View' },
-    { value: 'None / Auto', label: 'Default / Auto' }
+    { value: 'Side View', label: 'Side View' }
   ],
   subjectPosition: [
+    { value: 'Default / Auto', label: 'Default / Auto' },
     { value: 'Centered', label: 'Centered' },
     { value: 'Left aligned', label: 'Left Aligned' },
-    { value: 'Right aligned', label: 'Right Aligned' },
-    { value: 'None / Not needed', label: 'Default / Auto' }
+    { value: 'Right aligned', label: 'Right Aligned' }
   ],
   lighting: [
+    { value: 'Default / Auto', label: 'Default / Auto' },
     { value: 'Natural daylight', label: 'Natural Daylight' },
     { value: 'Soft studio', label: 'Soft Studio' },
     { value: 'Warm indoor', label: 'Warm Indoor' },
@@ -210,6 +214,7 @@ const OPTIONS = {
     { value: 'Neon Glow', label: 'Neon / Cyber Glow' }
   ],
   shadowStyle: [
+    { value: 'Default / Auto', label: 'Default / Auto' },
     { value: 'Natural Shadow', label: 'Natural Shadow' },
     { value: 'No Shadow / Flat', label: 'Flat / No Shadow' },
     { value: 'Soft Studio Shadow', label: 'Soft Studio Shadow' },
