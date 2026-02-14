@@ -28,7 +28,8 @@ const EVENTS_BY_MONTH: Record<string, string[]> = {
   "December": ["Christmas", "Hanukkah", "New Year’s Eve", "Winter Holidays", "None"]
 };
 
-const DEFAULT_OPTIONS: PromptOptions = {
+// Function to return a guaranteed fresh copy of default settings
+const getFreshDefaultOptions = (): PromptOptions => ({
   subject: 'Default / Auto',
   characterBackground: 'Default / Auto',
   useCase: 'Stock image',
@@ -66,7 +67,9 @@ const DEFAULT_OPTIONS: PromptOptions = {
     visual3DStyle: true,
     qualityCamera: true
   }
-};
+});
+
+const DEFAULT_OPTIONS = getFreshDefaultOptions();
 
 const OPTIONS = {
   subject: [
@@ -83,25 +86,17 @@ const OPTIONS = {
     { value: 'Manual laborer', label: 'Manual Laborer' },
     { value: 'Futuristic Cyborg / Android', label: 'Futuristic Cyborg / Android' },
     { value: 'Content Creator / Influencer', label: 'Content Creator / Influencer' },
-    
-    // Groups
     { value: 'Romantic Couple', label: 'Romantic Couple' },
     { value: 'Group of Friends', label: 'Group of Friends' },
     { value: 'Business Team', label: 'Business Team' },
     { value: 'Parent & Child', label: 'Parent & Child' },
     { value: 'Family group', label: 'Family Group' },
-
-    // Professions
     { value: 'Chef / Kitchen Staff', label: 'Chef / Kitchen Staff' },
     { value: 'Construction Worker', label: 'Construction Worker' },
     { value: 'Doctor / Medical Team', label: 'Doctor / Medical Team' },
     { value: 'Delivery Person', label: 'Delivery Person' },
-
-    // Age Specific
     { value: 'Baby / Toddler', label: 'Baby / Toddler' },
     { value: 'Teenager / Gen Z', label: 'Teenager / Gen Z' },
-
-    // Non-Human
     { value: 'Domestic Pet (Cat, Dog, etc.)', label: 'Domestic Pet (Cat, Dog)' },
     { value: 'Wild Animal (Tiger, Lion, etc.)', label: 'Wild Animal' },
     { value: 'Bird / Avian life', label: 'Bird / Avian Life' },
@@ -355,6 +350,8 @@ const CustomDropdown = ({
 };
 
 export default function App() {
+  const [resetKey, setResetKey] = useState(0);
+
   const [options, setOptions] = useState<PromptOptions>(() => {
     const saved = sessionStorage.getItem('prompt_options');
     const parsed = saved ? JSON.parse(saved) : DEFAULT_OPTIONS;
@@ -432,6 +429,29 @@ export default function App() {
     }));
   };
 
+  const scrollToTop = useCallback(() => {
+    mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  // DIRECT RESET ACTION
+  const resetWorkspace = useCallback(() => {
+    if (window.confirm("Are you sure you want to reset the entire workspace? All history and settings will be reverted to default.")) {
+      // 1. CLEAR PERSISTENCE
+      sessionStorage.removeItem('prompt_options');
+      sessionStorage.removeItem('prompt_session_history');
+      localStorage.setItem('use_system_api_key', 'false');
+      
+      // 2. TRIGGER RE-MOUNT OF APP
+      // This forces the component tree to unmount and remount. 
+      // Upon remounting, useState initializers will run again.
+      // Since sessionStorage is cleared, they will pick up DEFAULT_OPTIONS.
+      setResetKey(prev => prev + 1);
+      
+      // 3. UI FEEDBACK
+      scrollToTop();
+    }
+  }, [scrollToTop]);
+
   useEffect(() => {
     const scrollContainer = mainScrollRef.current;
     if (!scrollContainer) return;
@@ -439,8 +459,6 @@ export default function App() {
     scrollContainer.addEventListener('scroll', handleScroll);
     return () => scrollContainer.removeEventListener('scroll', handleScroll);
   }, []);
-
-  const scrollToTop = () => mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
 
   const handleGenerate = useCallback(async () => {
     if (!apiKey && !useSystemKey) {
@@ -504,9 +522,8 @@ export default function App() {
   const currentQuantityOptions = useSystemKey ? SYSTEM_QUANTITY_OPTIONS : PERSONAL_QUANTITY_OPTIONS;
 
   return (
-    <div className={`flex h-screen overflow-hidden font-sans transition-colors duration-500 ${isDarkMode ? 'dark bg-[#0b1120] text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
+    <div key={resetKey} className={`flex h-screen overflow-hidden font-sans transition-colors duration-500 ${isDarkMode ? 'dark bg-[#0b1120] text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
       
-      {/* HEADER */}
       <header className="fixed top-0 left-0 right-0 h-16 bg-white dark:bg-[#0b1120] border-b border-slate-200 dark:border-slate-800/60 z-[100] flex items-center justify-between px-8">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-white dark:bg-white text-slate-900 rounded-xl flex items-center justify-center shadow-md">
@@ -528,8 +545,14 @@ export default function App() {
           <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
             {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
           </button>
-          <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-800 text-red-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-             <Settings size={14} className="text-red-500" />
+          
+          <button onClick={resetWorkspace} className="flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-red-500 hover:border-red-500/30 transition-all active:scale-[0.95]">
+             <Trash2 size={14} />
+             <span>Reset</span>
+          </button>
+          
+          <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+             <Settings size={14} />
              <span>Config</span>
           </button>
           
@@ -548,7 +571,6 @@ export default function App() {
         </div>
       </header>
 
-      {/* SIDEBAR */}
       <aside className="w-[340px] border-r border-slate-200 dark:border-slate-800/60 bg-white dark:bg-[#0b1120] flex flex-col shrink-0 relative z-40 h-full overflow-hidden">
         <div className="flex-1 overflow-y-auto custom-scrollbar pt-16 px-6">
           <div className="py-8 flex flex-col gap-10 pb-32">
