@@ -35,91 +35,61 @@ export const generateStockPrompts = async (
       required: ["prompts"]
     };
 
+    // --- GUIDANCE BLOCK START ---
     let subjectGuidance = "";
     if (isFieldActive('subject') && options.subject !== 'Default / Auto') {
-      subjectGuidance = `- Subject: ${options.subject} ${isFieldActive('characterBackground') && options.characterBackground !== 'Default / Auto' ? `(${options.characterBackground} heritage)` : ''}`;
+      subjectGuidance = `- Primary Focus: ${options.subject} ${isFieldActive('characterBackground') && options.characterBackground !== 'Default / Auto' ? `of ${options.characterBackground} heritage` : ''}`;
     } else {
-      subjectGuidance = `- Subject: AI choice (Creative freedom).`;
-    }
-
-    let materialGuidance = "";
-    if (isFieldActive('materialStyle') && options.materialStyle !== 'Default / Auto') {
-       materialGuidance = `Material Finish: ${options.materialStyle}. `;
-       if (options.visualType.includes('3D') || options.visualType === 'Claymorphism') {
-         materialGuidance += "Technical: PBR shaders, ambient occlusion, realistic ray-tracing. ";
-       }
+      subjectGuidance = `- Primary Focus: High-demand commercial subjects (diverse professionals, authentic family moments, or trending lifestyle concepts).`;
     }
 
     let visualTypeGuidance = "";
     if (isFieldActive('visualType') && options.visualType !== 'Default / Auto') {
       switch (options.visualType) {
         case 'Ultra Realistic':
-          visualTypeGuidance = `Style: Hyper-realistic 8K photography, physical accuracy, realistic textures, path tracing style, commercially flawless.`;
+          visualTypeGuidance = `Style: Photorealistic 8K, physically-based rendering, microscopic texture detail, flawless skin/surface rendering.`;
           break;
         case 'Anime Style':
-          visualTypeGuidance = `Style: High-quality modern anime art, cell shading, vibrant expressive features, clean line work, professional illustration.`;
+          visualTypeGuidance = `Style: Modern high-tier digital anime art, vibrant palette, professional cel-shading, dynamic composition.`;
           break;
         case 'Cinematic':
-          visualTypeGuidance = `Style: Masterpiece cinematic visual, anamorphic lens flares, high contrast storytelling lighting, movie still aesthetic.`;
+          visualTypeGuidance = `Style: Epic cinematic visual, volumetric lighting, high dynamic range, mood-driven storytelling palette.`;
           break;
         case 'Oil Painting':
-          visualTypeGuidance = `Style: Classic oil on canvas painting, visible thick brush strokes, impasto technique, rich pigments, museum quality.`;
+          visualTypeGuidance = `Style: Masterful oil on canvas, visible impasto textures, rich pigments, traditional fine art technique.`;
           break;
         case '3D Render':
-          visualTypeGuidance = `Style: Premium 3D render, Octane Render style, global illumination, sophisticated light bouncing, high-end production look.`;
+          visualTypeGuidance = `Style: High-end 3D CGI render, global illumination, ray-traced reflections, premium production quality.`;
           break;
         case 'Hyper Detailed':
-          visualTypeGuidance = `Style: Extreme detail macro photography, hyper-focused textures, intricate micro-patterns visible, sharpest possible clarity.`;
-          break;
-        case '3D illustration':
-          visualTypeGuidance = `Style: High-end 3D render, ${options.visual3DStyle} shapes, ${materialGuidance} vibrant palette.`;
-          break;
-        case 'Cinematic Film (Kodak Portra)':
-          visualTypeGuidance = `Style: High-end cinematic photography on 35mm film, rich skin tones, subtle film grain.`;
-          break;
-        case 'National Geographic Wildstyle':
-          visualTypeGuidance = `Style: Professional documentary photography, high dynamic range, raw and authentic capture.`;
-          break;
-        case 'Unreal Engine 5 Render':
-          visualTypeGuidance = `Style: State-of-the-art 3D render, ray-tracing, extreme detail, hyper-realistic lighting.`;
-          break;
-        case 'High-Fashion Editorial':
-          visualTypeGuidance = `Style: High-fashion magazine editorial look, dramatic lighting, expensive aesthetic.`;
-          break;
-        case 'Isometric 3D':
-          visualTypeGuidance = `Style: High-end Isometric 3D render, 45-degree perspective, clean geometric alignment.`;
-          break;
-        case 'Claymorphism':
-          visualTypeGuidance = `Style: Trendy Claymorphism, soft rounded matte surfaces, plastic/clay texture.`;
-          break;
-        case 'Flat Illustration':
-          visualTypeGuidance = `Style: Modern flat 2D vector illustration, corporate Memphis aesthetic, clean lines.`;
-          break;
-        case 'Paper Cut Art':
-          visualTypeGuidance = `Style: Intricate paper-cut craft art, layered paper textures, soft drop shadows.`;
-          break;
-        case 'Minimalist Studio Photo':
-          visualTypeGuidance = `Style: Clean minimalist studio photography, soft lighting, professional portrait quality.`;
-          break;
-        case 'Line Art':
-          visualTypeGuidance = `Style: Minimalist continuous line art, clean strokes, sophisticated professional sketch.`;
+          visualTypeGuidance = `Style: Macro-level extreme detail, focus stacking, intricate micro-patterns, maximum clarity.`;
           break;
         default:
-          visualTypeGuidance = `Style: High-end commercial stock photography, prime lens bokeh, authentic textures.`;
+          visualTypeGuidance = `Style: Professional commercial stock aesthetic, clean, polished, and authentic.`;
       }
     } else {
-      visualTypeGuidance = "Style: Premium commercial stock imagery, high quality.";
+      visualTypeGuidance = "Style: High-end production-grade stock imagery with industry-standard aesthetic appeal.";
     }
 
     let technicalGuidance = "";
     if (isFieldActive('qualityCamera') && options.qualityCamera !== 'Default / Auto') {
-      technicalGuidance = `- Technical Specs: ${options.qualityCamera}. Ensure absolute clarity, sharp textures, and premium camera rendering.`;
+      if (options.qualityCamera === 'Professional DSLR Quality') {
+        technicalGuidance = `- Technical Specs: Shot on professional full-frame DSLR (e.g., Canon EOS R5 or Sony A7R V). 
+          MUST vary lens selection (e.g., 35mm f/1.4 for wide, 50mm f/1.2 for natural, 85mm f/1.4 for portraits, 24-70mm f/2.8 for versatile). 
+          Include specific metadata: shutter speed, aperture, and ISO (e.g., f/1.8, 1/500s, ISO 100).`;
+      } else if (options.qualityCamera === 'Sharp Focus / Macro Detail') {
+        technicalGuidance = `- Technical Specs: Macro lens (90mm or 100mm), f/2.8 or f/4 for detail, extreme focus on textures, ring-light illumination.`;
+      } else {
+        technicalGuidance = `- Technical Specs: ${options.qualityCamera}, high-end optics, professional digital sensor output.`;
+      }
+    } else {
+      technicalGuidance = `- Technical Specs: High-resolution sharp focus, professional camera rendering settings.`;
     }
 
     let backgroundGuidance = "";
     if (isFieldActive('environment')) {
       backgroundGuidance = options.environment === 'Default / Auto' 
-        ? "Setting: Aesthetically pleasing context matching the subject."
+        ? "Setting: High-quality relevant context that enhances the subject's commercial value."
         : `Setting: Realistic ${options.environment}.`;
     }
 
@@ -127,49 +97,50 @@ export const generateStockPrompts = async (
     if (isFieldActive('framing') && options.framing !== 'Default / Auto') viewParams.push(options.framing);
     if (isFieldActive('subjectPosition') && options.subjectPosition !== 'Default / Auto') viewParams.push(options.subjectPosition);
     if (isFieldActive('cameraAngle') && options.cameraAngle !== 'Default / Auto') viewParams.push(options.cameraAngle);
-    const viewGuidance = viewParams.length > 0 ? `- View: ${viewParams.join(', ')}` : '';
+    const viewGuidance = viewParams.length > 0 ? `- Composition: ${viewParams.join(', ')}` : '';
 
-    // Robust Uniqueness Mechanism
+    // --- UNIQUENESS & HISTORY BLOCK ---
     const recentPrompts = sessionHistory.slice(0, 100).map(h => h.text);
     let uniquenessInstruction = "";
     if (recentPrompts.length > 0) {
       uniquenessInstruction = `
-STRICT UNIQUENESS PROTOCOL:
-You MUST NOT generate anything similar to the following recent prompt concepts. 
-Analyze these for their core "Idea", "Action", "Interaction", and "Phrasing" and ENSURE 100% VARIANCE:
-${recentPrompts.map((p, i) => `${i+1}. ${p.substring(0, 150)}...`).join('\n')}
+STRICT NEGATIVE REFERENCE PROTOCOL (DO NOT REPEAT):
+You MUST review the following recent concepts and ENSURE absolute conceptual divergence.
+Do not repeat these scenarios, actions, or specific phrasing structures:
+${recentPrompts.map((p, i) => `${i+1}. ${p.substring(0, 120)}...`).join('\n')}
 
-MANDATORY DIFFERENTIATION:
-- If previous prompts used "standing", use "sitting", "interacting", or "motion".
-- Change the narrative focal point.
-- Avoid repeating adjective clusters used in history.
-- Ensure each of the ${options.quantity} prompts in THIS batch are conceptually distinct from each other.
+DIVERGENCE REQUIREMENTS:
+1. CONCEPTUAL JUMP: If the history contains "working at a desk", generate "outdoor collaboration", "standing at a window", or "creative workshop".
+2. ACTION VARIETY: Vary the kinetic energy (stillness, candid movement, intense focus, laughter).
+3. PHRASING REBOOT: Avoid starting prompts with the same grammatical structure or adjective clusters.
+4. UNIQUE BATTERY: Ensure the ${options.quantity} prompts in this specific batch are distinct from each other in composition and narrative.
 `;
     }
 
     const systemPrompt = `Expert Stock Prompt Architect Task.
-Generate ${options.quantity} unique, high-conversion prompts for Adobe Stock/Freepik.
+Generate ${options.quantity} truly unique, high-conversion prompts for Adobe Stock and Freepik. 
+Each prompt must be a masterpiece of descriptive detail, targeting the premium commercial market.
 
-Target Metadata:
+ARCHITECTURAL LOGIC:
 ${subjectGuidance}
-- Style: ${visualTypeGuidance}
+- Aesthetic Direction: ${visualTypeGuidance}
 ${technicalGuidance}
-- Scene: ${backgroundGuidance}
-${isFieldActive('lighting') && options.lighting !== 'Default / Auto' ? `- Lighting: ${options.lighting}` : ''}
+- Environment: ${backgroundGuidance}
+${isFieldActive('lighting') && options.lighting !== 'Default / Auto' ? `- Lighting Strategy: ${options.lighting}` : '- Lighting Strategy: High-end professional lighting (natural soft-box, dramatic rim light, or golden hour).'}
 ${viewGuidance}
-${isFieldActive('shadowStyle') && options.shadowStyle !== 'Default / Auto' ? `- Shadows: ${options.shadowStyle}` : ''}
-${options.useCalendar ? `- Event: ${options.calendarMonth} ${options.calendarEvent}` : ''}
+${isFieldActive('shadowStyle') && options.shadowStyle !== 'Default / Auto' ? `- Shadow Dynamics: ${options.shadowStyle}` : ''}
+${options.useCalendar ? `- Seasonal/Event Context: ${options.calendarMonth} ${options.calendarEvent}` : ''}
 ${options.useExtraKeywords ? `- User Refinement: ${options.extraKeywords}` : ''}
 
-COMMERCIAL SAFETY:
-1. NO TEXT/TYPOGRAPHY.
-2. NO TRADEMARKS.
-3. NO SPECIFIC YEARS.
-4. GENERIC DESIGN.
+QUALITY BENCHMARKS:
+1. SUPREME DETAIL: Describe textures (grain of wood, pores of skin, weave of fabric) and atmosphere (haze, clarity, warmth).
+2. CAMERA PRECISION: For Realistic/DSLR styles, provide specific lens focal lengths (35mm, 50mm, 85mm) and aperture settings (f/1.4, f/2.8, f/8) that make sense for the shot.
+3. NARRATIVE DEPTH: Instead of a "man working", describe a "focused architect sketching on a blueprint, evening city lights blurred in the background".
+4. STOCK READINESS: Ensure high-end commercial appeal with no trademarked items or text.
 
 ${uniquenessInstruction}
 
-Return JSON per schema.`;
+Return ONLY a valid JSON object matching the provided schema. Each prompt should be a single, long, evocative paragraph.`;
 
     const response = await ai.models.generateContent({
       model: options.model, 
@@ -177,7 +148,7 @@ Return JSON per schema.`;
       config: {
         responseMimeType: "application/json",
         responseSchema: schema,
-        temperature: 1.0, // Higher temperature for more creative variance
+        temperature: 1.0, // Maximum variance for uniqueness
       }
     });
 
