@@ -350,8 +350,6 @@ const CustomDropdown = ({
 };
 
 export default function App() {
-  const [resetKey, setResetKey] = useState(0);
-
   const [options, setOptions] = useState<PromptOptions>(() => {
     const saved = sessionStorage.getItem('prompt_options');
     const parsed = saved ? JSON.parse(saved) : DEFAULT_OPTIONS;
@@ -433,24 +431,17 @@ export default function App() {
     mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  // DIRECT RESET ACTION
   const resetWorkspace = useCallback(() => {
-    if (window.confirm("Are you sure you want to reset the entire workspace? All history and settings will be reverted to default.")) {
+    if (window.confirm("Are you sure you want to reset the entire workspace? This will clear all history and restore default settings. The page will reload.")) {
       // 1. CLEAR PERSISTENCE
       sessionStorage.removeItem('prompt_options');
       sessionStorage.removeItem('prompt_session_history');
       localStorage.setItem('use_system_api_key', 'false');
       
-      // 2. TRIGGER RE-MOUNT OF APP
-      // This forces the component tree to unmount and remount. 
-      // Upon remounting, useState initializers will run again.
-      // Since sessionStorage is cleared, they will pick up DEFAULT_OPTIONS.
-      setResetKey(prev => prev + 1);
-      
-      // 3. UI FEEDBACK
-      scrollToTop();
+      // 2. FORCE RELOAD
+      window.location.reload();
     }
-  }, [scrollToTop]);
+  }, []);
 
   useEffect(() => {
     const scrollContainer = mainScrollRef.current;
@@ -522,7 +513,7 @@ export default function App() {
   const currentQuantityOptions = useSystemKey ? SYSTEM_QUANTITY_OPTIONS : PERSONAL_QUANTITY_OPTIONS;
 
   return (
-    <div key={resetKey} className={`flex h-screen overflow-hidden font-sans transition-colors duration-500 ${isDarkMode ? 'dark bg-[#0b1120] text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
+    <div className={`flex h-screen overflow-hidden font-sans transition-colors duration-500 ${isDarkMode ? 'dark bg-[#0b1120] text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
       
       <header className="fixed top-0 left-0 right-0 h-16 bg-white dark:bg-[#0b1120] border-b border-slate-200 dark:border-slate-800/60 z-[100] flex items-center justify-between px-8">
         <div className="flex items-center gap-3">
