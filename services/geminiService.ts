@@ -35,112 +35,154 @@ export const generateStockPrompts = async (
       required: ["prompts"]
     };
 
-    // --- GUIDANCE BLOCK START ---
+    // --- CONTEXT AWARE LOGIC ---
+    
+    // 1. Define Visual Categories
+    const threeDStyles = [
+      '3D Render', 'Unreal Engine 5 Render', '3D illustration', 
+      'Isometric 3D', 'Claymorphism'
+    ];
+    
+    const artisticStyles = [
+      'Anime Style', 'Oil Painting', 'Minimalist Vector', 'Flat Illustration', 
+      'Paper Cut Art', 'Line Art', 'Pencil Sketch / Charcoal'
+    ];
+    
+    const is3D = threeDStyles.includes(options.visualType);
+    const isArtistic = artisticStyles.includes(options.visualType);
+    // If not 3D and not Artistic, we assume Photorealistic (includes Default/Auto, Standard Photo, Cinematic, etc.)
+    const isPhotorealistic = !is3D && !isArtistic; 
+
+    // 2. Determine Subject Context
     let subjectGuidance = "";
     if (isFieldActive('subject') && options.subject !== 'Default / Auto') {
-      subjectGuidance = `- Primary Focus: ${options.subject} ${isFieldActive('characterBackground') && options.characterBackground !== 'Default / Auto' ? `of ${options.characterBackground} heritage` : ''}`;
+      subjectGuidance = `- SUBJECT CORE: ${options.subject} ${isFieldActive('characterBackground') && options.characterBackground !== 'Default / Auto' ? `(${options.characterBackground} ethnicity)` : ''}`;
     } else {
-      subjectGuidance = `- Primary Focus: High-demand commercial subjects (diverse professionals, authentic family moments, or trending lifestyle concepts).`;
+      subjectGuidance = `- SUBJECT CORE: High-value commercial stock subject (lifestyle, business, or concept).`;
     }
 
-    let visualTypeGuidance = "";
-    if (isFieldActive('visualType') && options.visualType !== 'Default / Auto') {
-      switch (options.visualType) {
-        case 'Ultra Realistic':
-          visualTypeGuidance = `Style: Photorealistic 8K, physically-based rendering, microscopic texture detail, flawless skin/surface rendering.`;
-          break;
-        case 'Anime Style':
-          visualTypeGuidance = `Style: Modern high-tier digital anime art, vibrant palette, professional cel-shading, dynamic composition.`;
-          break;
-        case 'Cinematic':
-          visualTypeGuidance = `Style: Epic cinematic visual, volumetric lighting, high dynamic range, mood-driven storytelling palette.`;
-          break;
-        case 'Oil Painting':
-          visualTypeGuidance = `Style: Masterful oil on canvas, visible impasto textures, rich pigments, traditional fine art technique.`;
-          break;
-        case '3D Render':
-          visualTypeGuidance = `Style: High-end 3D CGI render, global illumination, ray-traced reflections, premium production quality.`;
-          break;
-        case 'Hyper Detailed':
-          visualTypeGuidance = `Style: Macro-level extreme detail, focus stacking, intricate micro-patterns, maximum clarity.`;
-          break;
-        default:
-          visualTypeGuidance = `Style: Professional commercial stock aesthetic, clean, polished, and authentic.`;
+    // 3. Construct Technical Specifications based on Medium
+    let mediumProtocol = "";
+    const qualitySetting = isFieldActive('qualityCamera') ? options.qualityCamera : 'Default / Auto';
+    
+    if (is3D) {
+      // --- 3D RENDER PROTOCOL ---
+      mediumProtocol = `
+      MEDIUM: 3D CGI / RENDER
+      - STRICT RULE: DO NOT use terms like "Photograph", "Shot on", "Camera", "Lens", "ISO", "Shutter".
+      - KEYWORDS: Use "Rendered", "3D Visualization", "CGI", "Global Illumination", "Ray Tracing", "Octane Render", "Unreal Engine 5".
+      - VISUAL STYLE: ${options.visualType}.
+      - QUALITY TRANSLATION:
+        * If user requested "DSLR Quality" -> Interpret as "Hyper-realistic Physically Based Rendering (PBR) with accurate light transport".
+        * If user requested "Bokeh" -> Interpret as "Virtual depth of field effect".
+        * If user requested "4K/8K" -> Interpret as "8K resolution texture maps, high-poly geometry".
+      `;
+    } else if (isArtistic) {
+      // --- ARTISTIC PROTOCOL ---
+      mediumProtocol = `
+      MEDIUM: DIGITAL / TRADITIONAL ART
+      - STRICT RULE: DO NOT use terms like "Photograph", "Shot on", "Render", "3D", "ISO", "Lens".
+      - KEYWORDS: Use "Illustration", "Artwork", "Drawing", "Painting", "Vector", "Composition", "Digital Art".
+      - VISUAL STYLE: ${options.visualType}.
+      - QUALITY TRANSLATION:
+        * If user requested "DSLR Quality" -> Interpret as "Masterpiece quality, high-fidelity details, perfect stroke dynamics".
+        * If user requested "Sharp Focus" -> Interpret as "Clean lines, precise edges, vector-sharp".
+      `;
+    } else {
+      // --- PHOTOGRAPHY PROTOCOL ---
+      // This applies for 'Default / Auto', 'Standard photo', 'Cinematic', etc.
+      let cameraGear = "Professional Full-Frame Camera (Canon EOS R5 or Sony A7R V)";
+      let cameraSettings = "f/2.8, ISO 100, 1/250s";
+      
+      // Dynamic Camera Settings based on user input
+      if (qualitySetting === 'Professional DSLR Quality') {
+        cameraGear = "High-End DSLR (Canon EOS R5)";
+        cameraSettings = "Prime lens quality, f/1.8 aperture for depth";
+      } else if (qualitySetting === 'Shallow Depth of Field (Bokeh)') {
+        cameraGear = "Portrait Lens (85mm f/1.2)";
+        cameraSettings = "Wide aperture f/1.2, creamy bokeh background";
+      } else if (qualitySetting === 'Sharp Focus / Macro Detail') {
+        cameraGear = "Macro Lens (100mm)";
+        cameraSettings = "f/8 for edge-to-edge sharpness, extreme detail";
+      } else if (qualitySetting === 'Cinematic Film') {
+        cameraGear = "Cinema Camera (Arri Alexa)";
+        cameraSettings = "Anamorphic lens, cinematic color grading";
       }
-    } else {
-      visualTypeGuidance = "Style: High-end production-grade stock imagery with industry-standard aesthetic appeal.";
+
+      mediumProtocol = `
+      MEDIUM: REALISTIC STOCK PHOTOGRAPHY
+      - STRICT RULE: MUST use camera terminology. Start prompts with "Photograph of..." or "Shot on...".
+      - CAMERA GEAR: ${cameraGear}.
+      - SETTINGS: ${cameraSettings}.
+      - VISUAL STYLE: ${options.visualType === 'Default / Auto' ? 'High-end commercial stock photography' : options.visualType}.
+      `;
     }
 
-    let technicalGuidance = "";
-    if (isFieldActive('qualityCamera') && options.qualityCamera !== 'Default / Auto') {
-      if (options.qualityCamera === 'Professional DSLR Quality') {
-        technicalGuidance = `- Technical Specs: Shot on professional full-frame DSLR (e.g., Canon EOS R5 or Sony A7R V). 
-          MUST vary lens selection (e.g., 35mm f/1.4 for wide, 50mm f/1.2 for natural, 85mm f/1.4 for portraits, 24-70mm f/2.8 for versatile). 
-          Include specific metadata: shutter speed, aperture, and ISO (e.g., f/1.8, 1/500s, ISO 100).`;
-      } else if (options.qualityCamera === 'Sharp Focus / Macro Detail') {
-        technicalGuidance = `- Technical Specs: Macro lens (90mm or 100mm), f/2.8 or f/4 for detail, extreme focus on textures, ring-light illumination.`;
-      } else {
-        technicalGuidance = `- Technical Specs: ${options.qualityCamera}, high-end optics, professional digital sensor output.`;
-      }
-    } else {
-      technicalGuidance = `- Technical Specs: High-resolution sharp focus, professional camera rendering settings.`;
-    }
-
-    let backgroundGuidance = "";
+    // 4. Environmental & Lighting Context
+    let environmentGuidance = "";
     if (isFieldActive('environment')) {
-      backgroundGuidance = options.environment === 'Default / Auto' 
-        ? "Setting: High-quality relevant context that enhances the subject's commercial value."
-        : `Setting: Realistic ${options.environment}.`;
+      environmentGuidance = options.environment === 'Default / Auto' 
+        ? "- SETTING: Contextually relevant background that enhances the subject's commercial appeal."
+        : `- SETTING: ${options.environment}.`;
     }
 
+    let lightingGuidance = "";
+    if (isFieldActive('lighting')) {
+       lightingGuidance = options.lighting === 'Default / Auto'
+       ? "- LIGHTING: Professional commercial lighting (Softbox/Studio or Golden Hour depending on context)."
+       : `- LIGHTING: ${options.lighting}.`;
+    }
+
+    // 5. Composition Details
     const viewParams = [];
     if (isFieldActive('framing') && options.framing !== 'Default / Auto') viewParams.push(options.framing);
     if (isFieldActive('subjectPosition') && options.subjectPosition !== 'Default / Auto') viewParams.push(options.subjectPosition);
     if (isFieldActive('cameraAngle') && options.cameraAngle !== 'Default / Auto') viewParams.push(options.cameraAngle);
-    const viewGuidance = viewParams.length > 0 ? `- Composition: ${viewParams.join(', ')}` : '';
+    const compositionGuidance = viewParams.length > 0 ? `- COMPOSITION: ${viewParams.join(', ')}` : '';
 
     // --- UNIQUENESS & HISTORY BLOCK ---
     const recentPrompts = sessionHistory.slice(0, 100).map(h => h.text);
     let uniquenessInstruction = "";
     if (recentPrompts.length > 0) {
       uniquenessInstruction = `
-STRICT NEGATIVE REFERENCE PROTOCOL (DO NOT REPEAT):
-You MUST review the following recent concepts and ENSURE absolute conceptual divergence.
-Do not repeat these scenarios, actions, or specific phrasing structures:
-${recentPrompts.map((p, i) => `${i+1}. ${p.substring(0, 120)}...`).join('\n')}
-
-DIVERGENCE REQUIREMENTS:
-1. CONCEPTUAL JUMP: If the history contains "working at a desk", generate "outdoor collaboration", "standing at a window", or "creative workshop".
-2. ACTION VARIETY: Vary the kinetic energy (stillness, candid movement, intense focus, laughter).
-3. PHRASING REBOOT: Avoid starting prompts with the same grammatical structure or adjective clusters.
-4. UNIQUE BATTERY: Ensure the ${options.quantity} prompts in this specific batch are distinct from each other in composition and narrative.
-`;
+      DIVERGENCE PROTOCOL:
+      You must avoid repeating these recent concepts:
+      ${recentPrompts.map((p, i) => `[${i+1}] ${p.substring(0, 80)}...`).join(' | ')}
+      
+      INSTRUCTION:
+      - Change the scenario, action, and clothing significantly from the list above.
+      - Ensure this batch of ${options.quantity} prompts are distinct from one another.
+      `;
     }
 
-    const systemPrompt = `Expert Stock Prompt Architect Task.
-Generate ${options.quantity} truly unique, high-conversion prompts for Adobe Stock and Freepik. 
-Each prompt must be a masterpiece of descriptive detail, targeting the premium commercial market.
+    const systemPrompt = `
+    ROLE: Expert Stock Prompt Architect.
+    TASK: Generate ${options.quantity} premium, high-conversion prompts for Adobe Stock/Freepik.
+    
+    ${subjectGuidance}
+    ${mediumProtocol}
+    ${environmentGuidance}
+    ${lightingGuidance}
+    ${compositionGuidance}
+    ${isFieldActive('shadowStyle') && options.shadowStyle !== 'Default / Auto' ? `- SHADOWS: ${options.shadowStyle}` : ''}
+    ${options.useCalendar ? `- SEASONALITY: ${options.calendarMonth} (${options.calendarEvent})` : ''}
+    ${options.useExtraKeywords ? `- CUSTOM KEYWORDS: ${options.extraKeywords}` : ''}
 
-ARCHITECTURAL LOGIC:
-${subjectGuidance}
-- Aesthetic Direction: ${visualTypeGuidance}
-${technicalGuidance}
-- Environment: ${backgroundGuidance}
-${isFieldActive('lighting') && options.lighting !== 'Default / Auto' ? `- Lighting Strategy: ${options.lighting}` : '- Lighting Strategy: High-end professional lighting (natural soft-box, dramatic rim light, or golden hour).'}
-${viewGuidance}
-${isFieldActive('shadowStyle') && options.shadowStyle !== 'Default / Auto' ? `- Shadow Dynamics: ${options.shadowStyle}` : ''}
-${options.useCalendar ? `- Seasonal/Event Context: ${options.calendarMonth} ${options.calendarEvent}` : ''}
-${options.useExtraKeywords ? `- User Refinement: ${options.extraKeywords}` : ''}
-
-QUALITY BENCHMARKS:
-1. SUPREME DETAIL: Describe textures (grain of wood, pores of skin, weave of fabric) and atmosphere (haze, clarity, warmth).
-2. CAMERA PRECISION: For Realistic/DSLR styles, provide specific lens focal lengths (35mm, 50mm, 85mm) and aperture settings (f/1.4, f/2.8, f/8) that make sense for the shot.
-3. NARRATIVE DEPTH: Instead of a "man working", describe a "focused architect sketching on a blueprint, evening city lights blurred in the background".
-4. STOCK READINESS: Ensure high-end commercial appeal with no trademarked items or text.
-
-${uniquenessInstruction}
-
-Return ONLY a valid JSON object matching the provided schema. Each prompt should be a single, long, evocative paragraph.`;
+    COMMERCIAL SAFETY & CLEANLINESS PROTOCOL:
+    - ABOLISH TEXT & LOGOS: The prompt MUST explicitly describe objects as "unbranded", "blank", "generic", or "plain" to prevent AI from generating text.
+    - PACKAGING: If describing containers, boxes, or bottles, use "blank label", "no text", "minimalist unbranded design".
+    - SCREENS: If describing devices (phones, laptops), specify "blank screen", "black screen", or "abstract wallpaper".
+    - CLOTHING: Specify "plain clothing", "no patterns", "unbranded attire".
+    - EXCLUSION: Do not include words like "sign", "label", "poster", "brand", "logo" unless modifying them with "blank" (e.g. "blank sign").
+    
+    ${uniquenessInstruction}
+    
+    OUTPUT FORMAT:
+    - Return ONLY a JSON object with a "prompts" array.
+    - Each prompt must be a single, fluid, highly descriptive paragraph (40-60 words).
+    - Focus on visual description, texture, lighting, and mood.
+    - ENSURE CONTENT IS 100% COMMERCIAL SAFE (No IP, No Text, No Logos).
+    `;
 
     const response = await ai.models.generateContent({
       model: options.model, 
@@ -148,7 +190,7 @@ Return ONLY a valid JSON object matching the provided schema. Each prompt should
       config: {
         responseMimeType: "application/json",
         responseSchema: schema,
-        temperature: 1.0, // Maximum variance for uniqueness
+        temperature: 0.95,
       }
     });
 
