@@ -686,16 +686,16 @@ export default function App() {
       {/* MAIN AREA */}
       <main ref={mainScrollRef} className="flex-1 overflow-y-auto custom-scrollbar relative bg-slate-50 dark:bg-[#020617] pt-16" style={{ backgroundImage: isDarkMode ? 'radial-gradient(circle, #1e293b 1px, transparent 1px)' : 'radial-gradient(circle, #e2e8f0 1px, transparent 1px)', backgroundSize: '24px 24px' }}>
         {isGenerating && (
-          <div className="fixed top-16 left-[340px] right-0 bottom-0 z-50 flex items-center justify-center bg-white/60 dark:bg-[#020617]/80 backdrop-blur-sm">
-            <div className="w-full max-w-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] p-10 flex flex-col items-center gap-8 shadow-2xl">
-              <div className="relative w-16 h-16">
+          <div className="fixed left-[340px] right-0 bottom-12 z-50 flex justify-center pointer-events-none">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 flex items-center gap-5 shadow-2xl pointer-events-auto">
+              <div className="relative w-10 h-10 shrink-0">
                 <div className="absolute inset-0 border-[3px] border-slate-100 dark:border-slate-800 rounded-full"></div>
                 <div className="absolute inset-0 border-[3px] border-transparent border-t-blue-500 rounded-full animate-spin"></div>
-                <div className="absolute inset-0 flex items-center justify-center text-blue-500"><Zap size={24} /></div>
+                <div className="absolute inset-0 flex items-center justify-center text-blue-500"><Zap size={16} /></div>
               </div>
-              <div className="text-center space-y-2">
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">{LOADING_STEPS[loadingStepIdx]}</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-widest">Architect is processing...</p>
+              <div className="flex flex-col min-w-[200px]">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">{LOADING_STEPS[loadingStepIdx]}</h3>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest">Architect is processing...</p>
               </div>
             </div>
           </div>
