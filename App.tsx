@@ -549,29 +549,27 @@ export default function App() {
 
         <div className="flex items-center gap-3">
           {batches.length > 0 && (
-            <div className="hidden md:flex items-center mr-6">
-              <div className="flex items-center h-10 bg-slate-100 dark:bg-slate-800/80 rounded-full px-1.5 border border-slate-200 dark:border-slate-700/50 shadow-sm backdrop-blur-md">
+            <div className="hidden md:flex items-center mr-4">
+              <div className="flex items-center h-9 px-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-sm">
                 
                 {/* Total Segment */}
-                <div className="flex items-center gap-3 px-3 h-full">
-                  <div className="flex items-center justify-center w-5 h-5 rounded-full bg-white dark:bg-slate-700 shadow-sm text-slate-400 dark:text-slate-300">
-                    <Layers size={10} strokeWidth={2.5} />
-                  </div>
-                  <div className="flex flex-col justify-center h-full">
-                    <span className="text-[8px] font-bold uppercase text-slate-400 tracking-wider leading-none mb-0.5">Generated</span>
-                    <span className="text-[11px] font-black text-slate-900 dark:text-white font-mono leading-none">{stats.total}</span>
+                <div className="flex items-center gap-2 px-3 h-full">
+                  <Layers size={13} className="text-slate-400" />
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-[13px] font-black text-slate-900 dark:text-white font-mono">{stats.total}</span>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Generated</span>
                   </div>
                 </div>
 
                 {/* Divider */}
-                <div className="w-px h-4 bg-slate-300 dark:bg-slate-700 mx-1" />
+                <div className="w-px h-3 bg-slate-200 dark:bg-slate-700" />
 
                 {/* Pending Segment */}
-                <div className="flex items-center gap-3 px-3 h-full">
-                  <div className={`w-2 h-2 rounded-full ${stats.pending > 0 ? 'bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.6)] animate-pulse' : 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]'}`} />
-                  <div className="flex flex-col justify-center h-full">
-                    <span className="text-[8px] font-bold uppercase text-slate-400 tracking-wider leading-none mb-0.5">Pending</span>
-                    <span className={`text-[11px] font-black font-mono leading-none ${stats.pending > 0 ? 'text-slate-700 dark:text-slate-200' : 'text-emerald-500'}`}>{stats.pending}</span>
+                <div className="flex items-center gap-2 px-3 h-full">
+                  <div className={`w-1.5 h-1.5 rounded-full ${stats.pending > 0 ? 'bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.6)] animate-pulse' : 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]'}`} />
+                  <div className="flex items-baseline gap-1.5">
+                    <span className={`text-[13px] font-black font-mono ${stats.pending > 0 ? 'text-slate-900 dark:text-white' : 'text-emerald-500'}`}>{stats.pending}</span>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Pending</span>
                   </div>
                 </div>
 
