@@ -105,6 +105,7 @@ export const generateStockPrompts = async (
       position: getFieldVal('subjectPosition', options.subjectPosition),
       shadows: getFieldVal('shadowStyle', options.shadowStyle),
       style: getFieldVal('visualType', options.visualType),
+      material: getFieldVal('materialStyle', options.materialStyle),
       season: options.useCalendar ? `${options.calendarMonth} (${options.calendarEvent})` : null,
       keywords: options.useExtraKeywords ? options.extraKeywords : null
     };
@@ -121,6 +122,7 @@ export const generateStockPrompts = async (
     - Describe clothing as "plain", "unbranded", "solid color".
     - Describe devices/screens as "blank", "abstract".
     - Describe packaging as "blank label", "generic".
+    - INVISIBLE PRODUCTION GEAR: Do NOT mention or describe studio equipment, cameras, light stands, softboxes, or microphones in the scene. Describe only the *subject* and the *lighting effect*.
     
     ${techSpecsInstructions}
 
@@ -133,6 +135,7 @@ export const generateStockPrompts = async (
        
     2. [WORLD & STYLE]
        - Visual Style (${inputs.style || 'Contextual'}).
+       - Material/Texture (${inputs.material || 'Contextual'}).
        - Environment description (${inputs.environment || 'Contextual'}).
        
     3. [OPTICS & TECHNICAL]
@@ -150,6 +153,7 @@ export const generateStockPrompts = async (
        - Smart Refinement Keywords (${inputs.keywords || 'None'}).
 
     RULES:
+    - STRICT ADHERENCE: You MUST incorporate every non-null Input Parameter provided above. Do not ignore any user selection.
     - OUTPUT FORMAT: Single, flowing, cinematic paragraph (40-60 words).
     - NO bullet points. NO labels (e.g., "Subject: ...").
     - If an Input Parameter is null/empty, invent a contextually appropriate value that fits a "Premium Stock" aesthetic.

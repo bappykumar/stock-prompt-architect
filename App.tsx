@@ -152,6 +152,11 @@ const OPTIONS = {
   ],
   environment: [
     { value: 'Default / Auto', label: 'Default / Auto' },
+    { value: 'Blurred Background (Bokeh)', label: 'Blurred Background (Bokeh)' },
+    { value: 'Outdoor Blurred Background', label: 'Outdoor Blurred Background' },
+    { value: 'City Lights (Blurred)', label: 'City Lights (Blurred)' },
+    { value: 'Studio Blurred Background', label: 'Studio Blurred Background' },
+    { value: 'Nature Blurred Background', label: 'Nature Blurred Background' },
     { value: 'White Background', label: 'White Background' },
     { value: 'Solid Color / Studio', label: 'Solid Color / Studio' },
     { value: 'Pitch Black / Void', label: 'Pitch Black / Void' },
@@ -204,9 +209,13 @@ const OPTIONS = {
     { value: 'Default / Auto', label: 'Default / Auto' },
     { value: 'Natural daylight', label: 'Natural Daylight' },
     { value: 'Soft studio', label: 'Soft Studio' },
+    { value: 'Cinematic Lighting', label: 'Cinematic Lighting' },
+    { value: 'Professional Studio Lighting', label: 'Professional Studio Lighting' },
     { value: 'Warm indoor', label: 'Warm Indoor' },
     { value: 'Golden hour', label: 'Golden Hour' },
-    { value: 'Neon Glow', label: 'Neon / Cyber Glow' }
+    { value: 'Neon Glow', label: 'Neon / Cyber Glow' },
+    { value: 'Rembrandt Lighting', label: 'Rembrandt Lighting' },
+    { value: 'Volumetric Lighting', label: 'Volumetric Lighting' }
   ],
   shadowStyle: [
     { value: 'Default / Auto', label: 'Default / Auto' },
