@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { 
   Sparkles, Check, Copy, ChevronDown, Loader2, 
   ShieldCheck, Command, Trash2, 
@@ -521,6 +521,12 @@ export default function App() {
   const isCulturalHeritageVisible = !['Domestic Pet', 'Wild Animal', 'Bird', 'Marine', 'Macro', 'Still life', 'No person', 'Background'].some(key => options.subject.includes(key));
   const currentQuantityOptions = useSystemKey ? SYSTEM_QUANTITY_OPTIONS : PERSONAL_QUANTITY_OPTIONS;
 
+  const stats = useMemo(() => {
+    const total = batches.reduce((acc, batch) => acc + batch.prompts.length, 0);
+    const copied = batches.flatMap(b => b.prompts).filter(p => p.copied).length;
+    return { total, copied, pending: total - copied };
+  }, [batches]);
+
   return (
     <div className={`flex h-screen overflow-hidden font-sans transition-colors duration-500 ${isDarkMode ? 'dark bg-[#0b1120] text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
       
@@ -542,6 +548,19 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-3">
+          {batches.length > 0 && (
+            <div className="hidden md:flex items-center gap-4 mr-4 border-r border-slate-200 dark:border-slate-800 pr-4">
+              <div className="text-right">
+                <div className="text-[9px] font-bold uppercase text-slate-400 tracking-wider">Generated</div>
+                <div className="text-sm font-black text-slate-900 dark:text-white leading-none">{stats.total}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-[9px] font-bold uppercase text-slate-400 tracking-wider">Remaining</div>
+                <div className={`text-sm font-black leading-none ${stats.pending > 0 ? 'text-blue-500' : 'text-emerald-500'}`}>{stats.pending}</div>
+              </div>
+            </div>
+          )}
+
           <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
             {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
           </button>
