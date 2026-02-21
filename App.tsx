@@ -549,14 +549,27 @@ export default function App() {
 
         <div className="flex items-center gap-3">
           {batches.length > 0 && (
-            <div className="hidden md:flex items-center gap-4 mr-4 border-r border-slate-200 dark:border-slate-800 pr-4">
-              <div className="text-right">
-                <div className="text-[9px] font-bold uppercase text-slate-400 tracking-wider">Generated</div>
-                <div className="text-sm font-black text-slate-900 dark:text-white leading-none">{stats.total}</div>
-              </div>
-              <div className="text-right">
-                <div className="text-[9px] font-bold uppercase text-slate-400 tracking-wider">Remaining</div>
-                <div className={`text-sm font-black leading-none ${stats.pending > 0 ? 'text-blue-500' : 'text-emerald-500'}`}>{stats.pending}</div>
+            <div className="hidden md:flex items-center mr-6">
+              <div className="flex items-center bg-slate-100/50 dark:bg-slate-800/50 rounded-full p-1 border border-slate-200 dark:border-slate-700/50 backdrop-blur-sm">
+                
+                {/* Total Segment */}
+                <div className="flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-800">
+                  <Layers size={13} className="text-slate-400 dark:text-slate-500" />
+                  <div className="flex flex-col leading-none gap-0.5">
+                    <span className="text-[8px] font-bold uppercase text-slate-400 tracking-wider">Generated</span>
+                    <span className="text-[13px] font-black text-slate-900 dark:text-white font-mono">{stats.total}</span>
+                  </div>
+                </div>
+
+                {/* Pending Segment */}
+                <div className="flex items-center gap-2.5 px-4 py-1.5">
+                  <div className={`w-2 h-2 rounded-full ${stats.pending > 0 ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)] animate-pulse' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]'}`} />
+                  <div className="flex flex-col leading-none gap-0.5">
+                    <span className="text-[8px] font-bold uppercase text-slate-400 tracking-wider">Pending</span>
+                    <span className={`text-[13px] font-black font-mono ${stats.pending > 0 ? 'text-slate-700 dark:text-slate-200' : 'text-emerald-500'}`}>{stats.pending}</span>
+                  </div>
+                </div>
+
               </div>
             </div>
           )}
