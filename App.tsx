@@ -119,22 +119,27 @@ const OPTIONS = {
   ],
   visualType: [
     { value: 'Default / Auto', label: 'Default / Auto' },
+    
+    // Photography
     { value: 'Standard photo', label: 'Standard Photo' },
     { value: 'Ultra Realistic', label: 'Ultra Realistic' },
-    { value: 'Anime Style', label: 'Anime Style' },
     { value: 'Cinematic', label: 'Cinematic' },
-    { value: 'Oil Painting', label: 'Oil Painting' },
-    { value: '3D Render', label: '3D Render' },
-    { value: 'Hyper Detailed', label: 'Hyper Detailed' },
     { value: 'Cinematic Film (Kodak Portra)', label: 'Cinematic Film (Kodak Style)' },
     { value: 'Minimalist Studio Photo', label: 'Minimalist Studio Photo' },
     { value: 'National Geographic Wildstyle', label: 'National Geographic Wildstyle' },
+    { value: 'Hyper Detailed', label: 'Hyper Detailed' },
+    
+    // 3D & CGI (Grouped)
+    { value: 'Premium 3D Icon', label: 'Premium 3D Icon' },
+    { value: '3D Render', label: '3D Render (General)' },
     { value: 'Unreal Engine 5 Render', label: 'Unreal Engine 5 Render' },
     { value: '3D illustration', label: '3D Illustration' },
-    { value: 'Premium 3D Icon', label: 'Premium 3D Icon' },
     { value: 'Isometric 3D', label: 'Isometric 3D' },
     { value: 'Claymorphism', label: 'Claymorphism' },
-    { value: 'High-Fashion Editorial', label: 'High-Fashion Editorial' },
+    
+    // Art & Illustration
+    { value: 'Anime Style', label: 'Anime Style' },
+    { value: 'Oil Painting', label: 'Oil Painting' },
     { value: 'Minimalist Vector', label: 'Minimalist Vector' },
     { value: 'Flat Illustration', label: 'Flat Illustration' },
     { value: 'Paper Cut Art', label: 'Paper Cut Art' },
