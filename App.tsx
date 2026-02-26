@@ -131,6 +131,7 @@ const OPTIONS = {
     { value: 'National Geographic Wildstyle', label: 'National Geographic Wildstyle' },
     { value: 'Unreal Engine 5 Render', label: 'Unreal Engine 5 Render' },
     { value: '3D illustration', label: '3D Illustration' },
+    { value: 'Premium 3D Icon', label: 'Premium 3D Icon' },
     { value: 'Isometric 3D', label: 'Isometric 3D' },
     { value: 'Claymorphism', label: 'Claymorphism' },
     { value: 'High-Fashion Editorial', label: 'High-Fashion Editorial' },

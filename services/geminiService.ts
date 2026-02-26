@@ -44,7 +44,7 @@ export const generateStockPrompts = async (
     // --- 1. VISUAL CATEGORY DETERMINATION ---
     const threeDStyles = [
       '3D Render', 'Unreal Engine 5 Render', '3D illustration', 
-      'Isometric 3D', 'Claymorphism'
+      'Isometric 3D', 'Claymorphism', 'Premium 3D Icon'
     ];
     const artisticStyles = [
       'Anime Style', 'Oil Painting', 'Minimalist Vector', 'Flat Illustration', 
@@ -57,7 +57,18 @@ export const generateStockPrompts = async (
     // --- 2. TECHNICAL SPECS CONSTRUCTION (MUTUALLY EXCLUSIVE) ---
     let techSpecsInstructions = "";
     
-    if (is3D) {
+    if (options.visualType === 'Premium 3D Icon') {
+      techSpecsInstructions = `
+      - MODE: PREMIUM 3D ICON ILLUSTRATION
+      - STYLE: Clean, stylized, smooth rounded forms, matte clay-like finish.
+      - STRICT RULE: Remove fine details/textures. Keep recognizable shape. No noise.
+      - LIGHTING: Soft diffused lighting, gentle shadows, subtle ambient occlusion.
+      - COLORS: Harmonious, slightly saturated, true to object's natural colors.
+      - BACKGROUND: Plain off-white or light gray background. No additional elements.
+      - VIBE: Premium collectible figurine, tactile, charming, slightly exaggerated roundness.
+      - REQUIRED KEYWORDS: "3D Icon", "Clay Render", "Smooth", "Matte Finish", "Minimalist", "Soft Lighting", "High Quality UI Asset".
+      `;
+    } else if (is3D) {
       techSpecsInstructions = `
       - MODE: 3D RENDER / CGI
       - STRICT RULE: DO NOT use photography terms (Camera, Lens, ISO, Shutter).
