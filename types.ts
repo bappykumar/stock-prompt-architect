@@ -22,6 +22,11 @@ export interface PromptOptions {
   useCalendar: boolean;
   calendarMonth: string;
   calendarEvent: string;
+  conceptFocus?: string;
+  authenticity?: string;
+  interaction?: string;
+  targetMarket?: string;
+  imageMedium?: string;
   model: 'gemini-3-flash-preview' | 'gemini-3-pro-preview';
   activeFields: Record<string, boolean>;
 }

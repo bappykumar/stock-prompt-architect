@@ -6,7 +6,7 @@ import {
   Globe, Shield, Terminal, Calendar, 
   Layers, Camera, Box, Maximize, User, Moon, Sun,
   Layout, Fingerprint, Focus, Settings2, Download, MessageSquareCode, Send, AlertCircle, X, Cpu, Paintbrush,
-  ChevronUp, Key, Lock, Info, Settings, ToggleLeft, ToggleRight, Activity, Power, Video
+  ChevronUp, Key, Lock, Info, Settings, ToggleLeft, ToggleRight, Activity, Power, Video, Target, Lightbulb, Search
 } from 'lucide-react';
 import { PromptOptions, GeneratedPrompt, PromptBatch, HistoricalPrompt } from './types';
 import { generateStockPrompts } from './services/geminiService';
@@ -44,6 +44,11 @@ const getFreshDefaultOptions = (): PromptOptions => ({
   mockup: 'No mockup',
   visual3DStyle: 'Smooth & rounded',
   materialStyle: 'Default / Auto',
+  conceptFocus: 'Default / Auto',
+  authenticity: 'Default / Auto',
+  interaction: 'Default / Auto',
+  targetMarket: 'Default / Auto',
+  imageMedium: 'Default / Auto',
   qualityCamera: 'Default / Auto',
   quantity: 3,
   useExtraKeywords: false,
@@ -57,6 +62,7 @@ const getFreshDefaultOptions = (): PromptOptions => ({
     subject: true,
     characterBackground: true,
     visualType: true,
+    imageMedium: true,
     environment: true,
     lighting: true,
     framing: true,
@@ -65,7 +71,11 @@ const getFreshDefaultOptions = (): PromptOptions => ({
     shadowStyle: true,
     materialStyle: true,
     visual3DStyle: true,
-    qualityCamera: true
+    qualityCamera: true,
+    conceptFocus: true,
+    authenticity: true,
+    interaction: true,
+    targetMarket: true
   }
 });
 
@@ -74,34 +84,44 @@ const DEFAULT_OPTIONS = getFreshDefaultOptions();
 const OPTIONS = {
   subject: [
     { value: 'Default / Auto', label: 'Default / Auto' },
+
+    // --- Human – Single Person ---
     { value: 'Business professional', label: 'Business Professional' },
-    { value: 'E-commerce Fashion Model', label: 'E-commerce Fashion Model' },
     { value: 'Casual person', label: 'Casual Person' },
     { value: 'Creative person', label: 'Creative Person' },
-    { value: 'Healthcare professional', label: 'Healthcare Professional' },
     { value: 'Student / Academic', label: 'Student / Academic' },
     { value: 'Senior citizen', label: 'Senior Citizen' },
     { value: 'Fitness enthusiast', label: 'Fitness Enthusiast' },
     { value: 'Tech developer', label: 'Tech Developer' },
-    { value: 'Manual laborer', label: 'Manual Laborer' },
-    { value: 'Futuristic Cyborg / Android', label: 'Futuristic Cyborg / Android' },
     { value: 'Content Creator / Influencer', label: 'Content Creator / Influencer' },
+    { value: 'Teenager / Gen Z', label: 'Teenager / Gen Z' },
+    { value: 'Baby / Toddler', label: 'Baby / Toddler' },
+    { value: 'Futuristic Cyborg / Android', label: 'Futuristic Cyborg / Android' },
+    { value: 'E-commerce Fashion Model', label: 'E-commerce Fashion Model' },
+
+    // --- Human – Multiple People ---
     { value: 'Romantic Couple', label: 'Romantic Couple' },
     { value: 'Group of Friends', label: 'Group of Friends' },
     { value: 'Business Team', label: 'Business Team' },
     { value: 'Parent & Child', label: 'Parent & Child' },
     { value: 'Family group', label: 'Family Group' },
+    { value: 'Doctor / Medical Team', label: 'Doctor / Medical Team' },
+
+    // --- Profession / Role-Based Humans ---
+    { value: 'Healthcare professional', label: 'Healthcare Professional' },
     { value: 'Chef / Kitchen Staff', label: 'Chef / Kitchen Staff' },
     { value: 'Construction Worker', label: 'Construction Worker' },
-    { value: 'Doctor / Medical Team', label: 'Doctor / Medical Team' },
     { value: 'Delivery Person', label: 'Delivery Person' },
-    { value: 'Baby / Toddler', label: 'Baby / Toddler' },
-    { value: 'Teenager / Gen Z', label: 'Teenager / Gen Z' },
+    { value: 'Manual laborer', label: 'Manual Laborer' },
+
+    // --- Animals & Wildlife ---
     { value: 'Domestic Pet (Cat, Dog, etc.)', label: 'Domestic Pet (Cat, Dog)' },
     { value: 'Wild Animal (Tiger, Lion, etc.)', label: 'Wild Animal' },
     { value: 'Bird / Avian life', label: 'Bird / Avian Life' },
     { value: 'Marine / Underwater life', label: 'Marine / Underwater Life' },
     { value: 'Macro / Insect', label: 'Macro / Insect' },
+
+    // --- Non-Human Content ---
     { value: 'Still life / Food & Drink', label: 'Still life / Food & Drink' },
     { value: 'No person (product)', label: 'Product / Object Only' },
     { value: 'Background / Landscape only', label: 'Background / Landscape Only' }
@@ -117,10 +137,44 @@ const OPTIONS = {
     { value: 'North American', label: 'North American' },
     { value: 'Latin American', label: 'Latin American' }
   ],
+  conceptFocus: [
+    { value: 'Default / Auto', label: 'Default / Auto' },
+    { value: 'Emotional Concept', label: 'Emotional Concept' },
+    { value: 'Functional / Activity Concept', label: 'Functional / Activity' },
+    { value: 'Problem-Solution Concept', label: 'Problem-Solution' },
+    { value: 'Aspirational Concept', label: 'Aspirational' }
+  ],
+  authenticity: [
+    { value: 'Default / Auto', label: 'Default / Auto' },
+    { value: 'Candid / Natural', label: 'Candid / Natural' },
+    { value: 'Posed / Commercial', label: 'Posed / Commercial' },
+    { value: 'Documentary Style', label: 'Documentary Style' }
+  ],
+  interaction: [
+    { value: 'Default / Auto', label: 'Default / Auto' },
+    { value: 'Eye Contact', label: 'Eye Contact' },
+    { value: 'Side by Side', label: 'Side by Side' },
+    { value: 'Support Gesture', label: 'Support Gesture' },
+    { value: 'Independent / Reflective', label: 'Independent / Reflective' }
+  ],
+  targetMarket: [
+    { value: 'Default / Auto', label: 'Default / Auto' },
+    { value: 'Corporate', label: 'Corporate' },
+    { value: 'Startup / Modern', label: 'Startup / Modern' },
+    { value: 'Healthcare', label: 'Healthcare' },
+    { value: 'Education', label: 'Education' },
+    { value: 'Social Awareness', label: 'Social Awareness' }
+  ],
+  imageMedium: [
+    { value: 'Default / Auto', label: 'Default / Auto' },
+    { value: 'Photography', label: 'Photography' },
+    { value: '3D & CGI', label: '3D & CGI' },
+    { value: 'Art & Illustration', label: 'Art & Illustration' }
+  ],
   visualType: [
     { value: 'Default / Auto', label: 'Default / Auto' },
     
-    // Photography
+    { value: 'header_photography', label: '--- Photography ---' },
     { value: 'Standard photo', label: 'Standard Photo' },
     { value: 'Ultra Realistic', label: 'Ultra Realistic' },
     { value: 'Cinematic', label: 'Cinematic' },
@@ -129,7 +183,7 @@ const OPTIONS = {
     { value: 'National Geographic Wildstyle', label: 'National Geographic Wildstyle' },
     { value: 'Hyper Detailed', label: 'Hyper Detailed' },
     
-    // 3D & CGI (Grouped)
+    { value: 'header_3d', label: '--- 3D & CGI ---' },
     { value: 'Premium 3D Icon', label: 'Premium 3D Icon' },
     { value: '3D Render', label: '3D Render (General)' },
     { value: 'Unreal Engine 5 Render', label: 'Unreal Engine 5 Render' },
@@ -137,7 +191,7 @@ const OPTIONS = {
     { value: 'Isometric 3D', label: 'Isometric 3D' },
     { value: 'Claymorphism', label: 'Claymorphism' },
     
-    // Art & Illustration
+    { value: 'header_art', label: '--- Art & Illustration ---' },
     { value: 'Anime Style', label: 'Anime Style' },
     { value: 'Oil Painting', label: 'Oil Painting' },
     { value: 'Minimalist Vector', label: 'Minimalist Vector' },
@@ -266,113 +320,300 @@ const LOADING_STEPS = [
 ];
 
 const CustomDropdown = ({ 
-  label, 
-  value, 
-  options, 
-  onChange, 
-  icon: Icon,
-  disabled = false,
-  canToggle = false,
-  isActive = true,
-  onToggle
-}: { 
-  label: string; 
-  value: string | number; 
-  options: { value: string | number; label: string }[]; 
-  onChange: (val: any) => void; 
-  icon?: any;
-  disabled?: boolean;
-  canToggle?: boolean;
-  isActive?: boolean;
-  onToggle?: (val: boolean) => void;
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+    label, 
+    value, 
+    options, 
+    onChange, 
+    icon: Icon,
+    disabled = false,
+    canToggle = false,
+    isActive = true,
+    onToggle,
+    helperText,
+    highlight,
+    deemphasize3DMaterials
+  }: { 
+    label: string; 
+    value: string | number; 
+    options: { value: string | number; label: string }[]; 
+    onChange: (val: any) => void; 
+    icon?: any;
+    disabled?: boolean;
+    canToggle?: boolean;
+    isActive?: boolean;
+    onToggle?: (val: boolean) => void;
+    helperText?: string;
+    highlight?: boolean;
+    deemphasize3DMaterials?: boolean;
+  }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+    const dropdownRef = useRef<HTMLDivElement>(null);
+    const searchInputRef = useRef<HTMLInputElement>(null);
+    
+    const safeOptions = Array.isArray(options) ? options : [];
+    const selectedOption = safeOptions.find(opt => opt.value === value) || safeOptions[0] || { label: 'Select...', value: '' };
+    
+    const isInputDisabled = disabled || (canToggle && !isActive);
+    const isDefault = value === 'Default / Auto';
+    const hasGroups = safeOptions.some(opt => opt.label.startsWith('---'));
+    const showSearch = safeOptions.length > 10;
   
-  const safeOptions = Array.isArray(options) ? options : [];
-  const selectedOption = safeOptions.find(opt => opt.value === value) || safeOptions[0] || { label: 'Select...', value: '' };
-  
-  const isInputDisabled = disabled || (canToggle && !isActive);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
+    // Visual Style Badge Logic
+    const getVisualStyleBadge = (val: string | number) => {
+      if (label !== "Visual Style") return null;
+      const opt = safeOptions.find(o => o.value === val);
+      if (!opt) return null;
+      
+      // Find the group this option belongs to
+      let currentGroup = "";
+      for (const o of safeOptions) {
+        if (o.label.startsWith('---')) {
+          currentGroup = o.label;
+        }
+        if (o.value === val) break;
       }
+  
+      if (currentGroup.includes("Photography")) return <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded ml-2">Photography</span>;
+      if (currentGroup.includes("3D & CGI")) return <span className="text-[9px] font-bold uppercase tracking-wider text-purple-500 bg-purple-500/10 px-1.5 py-0.5 rounded ml-2">3D Render</span>;
+      if (currentGroup.includes("Art & Illustration")) return <span className="text-[9px] font-bold uppercase tracking-wider text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded ml-2">Illustration</span>;
+      return null;
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  return (
-    <div className={`w-full relative ${isOpen ? 'z-[100]' : 'z-auto'}`} ref={dropdownRef}>
-      <div className="flex items-center justify-between mb-1.5 ml-1">
-        <div className={`flex items-center gap-1.5 ${isInputDisabled ? 'opacity-50' : 'opacity-100'}`}>
-          {Icon && <Icon size={12} className="text-slate-400 dark:text-slate-500" />}
-          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{label}</label>
-        </div>
-        {canToggle && onToggle && (
-          <button 
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggle(!isActive);
-            }}
-            className="focus:outline-none transition-colors"
-          >
-            {isActive ? (
-              <ToggleRight size={18} className="text-blue-500 dark:text-blue-400" />
-            ) : (
-              <ToggleLeft size={18} className="text-slate-300 dark:text-slate-700" />
+  
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+          setIsOpen(false);
+        }
+      };
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+  
+    useEffect(() => {
+      if (!isOpen) {
+        setSearchQuery("");
+      } else if (showSearch) {
+        setTimeout(() => searchInputRef.current?.focus(), 50);
+      }
+    }, [isOpen, showSearch]);
+  
+    const filteredOptions = safeOptions.filter(opt => {
+      if (!searchQuery) return true;
+      return opt.label.toLowerCase().includes(searchQuery.toLowerCase());
+    });
+  
+    return (
+      <div className={`w-full relative group ${isOpen ? 'z-[100]' : 'z-auto'}`} ref={dropdownRef}>
+        <div className="flex items-center justify-between mb-2 ml-1">
+          <div className={`flex items-center gap-2 transition-opacity duration-300 ${isInputDisabled ? 'opacity-50' : 'opacity-100'}`}>
+            {Icon && <Icon size={12} className="text-slate-400 dark:text-slate-500" />}
+            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{label}</label>
+            {!isDefault && !isInputDisabled && (
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_4px_rgba(59,130,246,0.5)] animate-in fade-in zoom-in duration-300" />
             )}
-          </button>
-        )}
-      </div>
-      <div className={`relative ${isInputDisabled ? 'opacity-40 grayscale pointer-events-none' : 'opacity-100'}`}>
-        <button
-          type="button"
-          disabled={isInputDisabled}
-          onClick={() => setIsOpen(!isOpen)}
-          className={`w-full flex items-center justify-between bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/80 px-4 py-2.5 rounded-xl text-[13px] font-medium text-slate-800 dark:text-slate-200 text-left hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:cursor-not-allowed`}
-        >
-          <span className="truncate">{selectedOption.label}</span>
-          <ChevronDown size={14} className={`text-slate-400 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
-        </button>
-
-        {isOpen && (
-          <div className="absolute z-[200] w-full mt-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl overflow-hidden">
-            <div className="max-h-60 overflow-y-auto custom-scrollbar py-1">
-              {safeOptions.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => {
-                    onChange(opt.value);
-                    setIsOpen(false);
-                  }}
-                  className={`w-full px-4 py-2 text-left text-[13px] flex items-center justify-between group transition-colors ${opt.value === value ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
-                >
-                  <span className="truncate">{opt.label}</span>
-                  {opt.value === value && <Check size={14} className="shrink-0" />}
-                </button>
-              ))}
-            </div>
+            {!isOpen && !isDefault && getVisualStyleBadge(value)}
           </div>
-        )}
+          {canToggle && onToggle && (
+            <button 
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggle(!isActive);
+              }}
+              className="focus:outline-none transition-transform active:scale-95"
+            >
+              {isActive ? (
+                <ToggleRight size={18} className="text-blue-500 dark:text-blue-400 drop-shadow-sm" />
+              ) : (
+                <ToggleLeft size={18} className="text-slate-300 dark:text-slate-700" />
+              )}
+            </button>
+          )}
+        </div>
+        <div className={`relative transition-all duration-300 ${isInputDisabled ? 'opacity-40 grayscale pointer-events-none' : 'opacity-100'}`}>
+          <button
+            type="button"
+            disabled={isInputDisabled}
+            onClick={() => setIsOpen(!isOpen)}
+            className={`w-full flex items-center justify-between bg-white dark:bg-slate-900/40 border px-4 py-3 rounded-xl text-[13px] font-medium text-left transition-all duration-200 outline-none
+              ${isOpen ? 'border-blue-500 ring-2 ring-blue-500/10' : highlight ? 'border-purple-500/50 ring-1 ring-purple-500/20 shadow-[0_0_10px_rgba(168,85,247,0.1)]' : 'border-slate-200 dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700'}
+              ${isDefault ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-slate-100'}
+              disabled:cursor-not-allowed`}
+          >
+            <div className="flex items-center gap-2 truncate">
+              <span className="truncate">{selectedOption.label}</span>
+            </div>
+            <ChevronDown size={14} className={`text-slate-400 transition-transform duration-300 ${isOpen ? 'rotate-180 text-blue-500' : ''}`} />
+          </button>
+  
+          {helperText && (
+            <p className="mt-1.5 ml-1 text-[10px] text-slate-400 dark:text-slate-500 font-medium animate-in fade-in slide-in-from-top-1">{helperText}</p>
+          )}
+  
+          {isOpen && (
+            <div className="absolute z-[200] w-full mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top">
+              {showSearch && (
+                <div className="p-2 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10">
+                  <div className="relative">
+                    <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search..."
+                      className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-3 py-2 text-[12px] outline-none focus:border-blue-500 transition-colors text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                </div>
+              )}
+              <div className="max-h-64 overflow-y-auto custom-scrollbar py-1.5">
+                {filteredOptions.length > 0 ? (
+                  filteredOptions.map((opt) => {
+                    const isHeader = opt.label.startsWith('---');
+                    if (isHeader) {
+                      return (
+                        <div key={opt.value} className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 mt-1 first:mt-0 border-y border-slate-100 dark:border-slate-800/50 first:border-t-0 select-none sticky top-0 z-10 backdrop-blur-sm">
+                          {opt.label.replace(/---/g, '').trim()}
+                        </div>
+                      );
+                    }
+                    const isSelected = opt.value === value;
+                    const isDefaultOption = opt.value === 'Default / Auto';
+                    
+                    // Contextual opacity for Material Finish
+                    let opacityClass = "opacity-100";
+                    if (label === "Material Finish" && !highlight && deemphasize3DMaterials) {
+                       const is3DMaterial = ["Glassmorphism", "Metallic", "Clay", "Frosted"].some(k => opt.label.includes(k));
+                       if (is3DMaterial) opacityClass = "opacity-50 group-hover:opacity-100 transition-opacity";
+                    }
+  
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => {
+                          onChange(opt.value);
+                          setIsOpen(false);
+                        }}
+                        className={`w-full px-4 py-2.5 text-left text-[13px] flex items-center justify-between group transition-all duration-150
+                          ${isSelected 
+                            ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-semibold' 
+                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200'}
+                          ${hasGroups && !isDefaultOption ? 'pl-8' : ''}
+                        `}
+                      >
+                        <span className={`truncate ${opacityClass}`}>{opt.label}</span>
+                        {isSelected && <Check size={14} className="shrink-0 text-blue-500" />}
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="px-4 py-8 text-center text-[12px] text-slate-400">
+                    No options found
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
 export default function App() {
   const [options, setOptions] = useState<PromptOptions>(() => {
     const saved = sessionStorage.getItem('prompt_options');
-    const parsed = saved ? JSON.parse(saved) : DEFAULT_OPTIONS;
+    const parsed = saved ? JSON.parse(saved) : getFreshDefaultOptions();
+    
+    // Ensure activeFields exists and merge with defaults to catch new fields
+    const defaults = getFreshDefaultOptions();
     if (!parsed.activeFields) {
-      parsed.activeFields = DEFAULT_OPTIONS.activeFields;
+      parsed.activeFields = defaults.activeFields;
+    } else {
+      // Merge saved activeFields with defaults to ensure new fields are present
+      parsed.activeFields = { ...defaults.activeFields, ...parsed.activeFields };
+      
+      // Explicitly ensure new fields are enabled if they were missing in saved state
+      if (parsed.activeFields.imageMedium === undefined) {
+        parsed.activeFields.imageMedium = true;
+      }
     }
+    
+    // Ensure new top-level fields exist
+    if (!parsed.imageMedium) {
+      parsed.imageMedium = 'Default / Auto';
+    }
+
     return parsed;
   });
+
+  // Image Medium Filtering Logic
+  const getFilteredVisualStyles = () => {
+    const medium = options.imageMedium;
+    if (!medium || medium === 'Default / Auto') return OPTIONS.visualType;
+
+    if (medium === 'Photography') {
+      return OPTIONS.visualType.filter(opt => 
+        opt.value === 'Default / Auto' || 
+        opt.value === 'header_photography' ||
+        ['Standard photo', 'Ultra Realistic', 'Cinematic', 'Cinematic Film (Kodak Portra)', 'Minimalist Studio Photo', 'National Geographic Wildstyle', 'Hyper Detailed'].includes(opt.value as string)
+      );
+    }
+    
+    if (medium === '3D & CGI') {
+      return OPTIONS.visualType.filter(opt => 
+        opt.value === 'Default / Auto' || 
+        opt.value === 'header_3d' ||
+        ['Premium 3D Icon', '3D Render', 'Unreal Engine 5 Render', '3D illustration', 'Isometric 3D', 'Claymorphism'].includes(opt.value as string)
+      );
+    }
+
+    if (medium === 'Art & Illustration') {
+      return OPTIONS.visualType.filter(opt => 
+        opt.value === 'Default / Auto' || 
+        opt.value === 'header_art' ||
+        ['Anime Style', 'Oil Painting', 'Minimalist Vector', 'Flat Illustration', 'Paper Cut Art', 'Line Art', 'Pencil Sketch / Charcoal'].includes(opt.value as string)
+      );
+    }
+
+    return OPTIONS.visualType;
+  };
+
+  // Handle Image Medium Change
+  const handleImageMediumChange = (val: string) => {
+    setOptions(prev => {
+      const newOptions = { ...prev, imageMedium: val };
+      
+      // Reset Visual Style if incompatible with new medium
+      const currentVisual = prev.visualType;
+      if (currentVisual !== 'Default / Auto') {
+        let isCompatible = true;
+        
+        if (val === 'Photography') {
+          isCompatible = ['Standard photo', 'Ultra Realistic', 'Cinematic', 'Cinematic Film (Kodak Portra)', 'Minimalist Studio Photo', 'National Geographic Wildstyle', 'Hyper Detailed'].includes(currentVisual);
+        } else if (val === '3D & CGI') {
+          isCompatible = ['Premium 3D Icon', '3D Render', 'Unreal Engine 5 Render', '3D illustration', 'Isometric 3D', 'Claymorphism'].includes(currentVisual);
+        } else if (val === 'Art & Illustration') {
+          isCompatible = ['Anime Style', 'Oil Painting', 'Minimalist Vector', 'Flat Illustration', 'Paper Cut Art', 'Line Art', 'Pencil Sketch / Charcoal'].includes(currentVisual);
+        }
+
+        if (!isCompatible) {
+          newOptions.visualType = 'Default / Auto';
+        }
+      }
+      
+      return newOptions;
+    });
+  };
+
+  const filteredVisualStyles = getFilteredVisualStyles();
+
+  // Material Finish Context Logic
+  const isMaterialHighlighted = options.imageMedium === '3D & CGI' || options.visualType.includes("3D") || options.visualType.includes("CGI") || options.visualType.includes("Render");
+  const materialHelperText = isMaterialHighlighted ? "Primarily impactful for 3D & render-based styles" : undefined;
 
   const [batches, setBatches] = useState<PromptBatch[]>(() => {
     const saved = sessionStorage.getItem('prompt_session_history');
@@ -523,7 +764,7 @@ export default function App() {
     setTimeout(() => setIsAllCopied(false), 2000);
   };
 
-  const isMaterialFinishVisible = options.subject === 'No person (product)' || options.visualType.toLowerCase().includes('3d');
+  const isMaterialFinishVisible = true;
   const isCulturalHeritageVisible = !['Domestic Pet', 'Wild Animal', 'Bird', 'Marine', 'Macro', 'Still life', 'No person', 'Background'].some(key => options.subject.includes(key));
   const currentQuantityOptions = useSystemKey ? SYSTEM_QUANTITY_OPTIONS : PERSONAL_QUANTITY_OPTIONS;
 
@@ -544,7 +785,11 @@ export default function App() {
           <div className="flex flex-col">
             <h1 className="text-[13px] font-black uppercase tracking-tighter leading-none">PROMPT MASTER</h1>
             <div className="flex items-center gap-2 mt-1">
-              <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">V3.0 PRODUCTION</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">SYS v1.3</span>
+                <span className="w-px h-2 bg-slate-300 dark:bg-slate-700"></span>
+                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">PROD V3.1</span>
+              </div>
               <div className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase border flex items-center gap-1 ${options.model.includes('pro') ? 'bg-amber-500/10 border-amber-500/30 text-amber-500' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500'}`}>
                 {options.model.includes('pro') ? <Zap size={8} /> : <Cpu size={8} />}
                 <span>{options.model.includes('pro') ? 'PRO-ENGINE' : 'FLASH-ENGINE'}</span>
@@ -612,85 +857,124 @@ export default function App() {
         </div>
       </header>
 
-      <aside className="w-[340px] border-r border-slate-200 dark:border-slate-800/60 bg-white dark:bg-[#0b1120] flex flex-col shrink-0 relative z-40 h-full overflow-hidden">
+      <aside className="w-[340px] border-r border-slate-200 dark:border-slate-800/60 bg-white dark:bg-[#0b1120] flex flex-col shrink-0 relative z-40 h-full overflow-hidden shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)]">
         <div className="flex-1 overflow-y-auto custom-scrollbar pt-16 px-6">
           <div className="py-8 flex flex-col gap-10 pb-32">
             
             {/* Feature Cards */}
-            <div className="space-y-4">
-              <div className="bg-slate-50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800/80 p-5 rounded-[20px] relative">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center text-slate-400">
+            <div className="space-y-5">
+              <div className={`p-5 rounded-[24px] relative transition-all duration-300 border group
+                ${options.useExtraKeywords 
+                  ? 'bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800/30 shadow-md' 
+                  : 'bg-gradient-to-br from-white to-slate-50 dark:from-slate-900/40 dark:to-slate-900/20 border-slate-200 dark:border-slate-800/60 shadow-sm hover:shadow-md'
+                }`}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors duration-300
+                    ${options.useExtraKeywords ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white dark:bg-slate-800 text-slate-400 shadow-sm'}`}>
                     <MessageSquareCode size={16} />
                   </div>
-                  <button onClick={() => setOptions({...options, useExtraKeywords: !options.useExtraKeywords})} className={`w-11 h-6 rounded-full relative transition-colors duration-200 ease-in-out focus:outline-none ${options.useExtraKeywords ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-700'}`}>
-                    <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full shadow-sm transition-transform duration-200 ease-in-out ${options.useExtraKeywords ? 'translate-x-5' : 'translate-x-0'}`} />
+                  <button onClick={() => setOptions({...options, useExtraKeywords: !options.useExtraKeywords})} className={`w-11 h-6 rounded-full relative transition-colors duration-300 ease-out focus:outline-none ${options.useExtraKeywords ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-700'}`}>
+                    <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full shadow-sm transition-transform duration-300 cubic-bezier(0.4, 0, 0.2, 1) ${options.useExtraKeywords ? 'translate-x-5' : 'translate-x-0'}`} />
                   </button>
                 </div>
-                <h4 className="text-[12px] font-bold">Smart Refinement</h4>
-                <p className="text-[10px] text-slate-500 dark:text-slate-500 mt-1 leading-relaxed">Inject custom keywords into the architect logic.</p>
+                <h4 className={`text-[12px] font-bold transition-colors ${options.useExtraKeywords ? 'text-blue-700 dark:text-blue-300' : 'text-slate-900 dark:text-slate-200'}`}>Smart Refinement</h4>
+                <p className="text-[10px] text-slate-500 dark:text-slate-500 mt-1 leading-relaxed font-medium">Inject custom keywords into the architect logic.</p>
                 {options.useExtraKeywords && (
-                  <textarea value={options.extraKeywords} onChange={(e) => setOptions({...options, extraKeywords: e.target.value})} placeholder="Keywords..." className="w-full mt-3 h-24 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-[12px] outline-none" />
+                  <textarea value={options.extraKeywords} onChange={(e) => setOptions({...options, extraKeywords: e.target.value})} placeholder="Keywords..." className="w-full mt-4 h-24 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-[12px] outline-none focus:ring-2 focus:ring-blue-500/20 transition-all resize-none" />
                 )}
               </div>
 
-              <div className="bg-slate-50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800/80 p-5 rounded-[20px] relative">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center text-slate-400">
+              <div className={`p-5 rounded-[24px] relative transition-all duration-300 border group
+                ${options.useCalendar 
+                  ? 'bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800/30 shadow-md' 
+                  : 'bg-gradient-to-br from-white to-slate-50 dark:from-slate-900/40 dark:to-slate-900/20 border-slate-200 dark:border-slate-800/60 shadow-sm hover:shadow-md'
+                }`}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors duration-300
+                    ${options.useCalendar ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white dark:bg-slate-800 text-slate-400 shadow-sm'}`}>
                     <Calendar size={16} />
                   </div>
-                  <button onClick={() => setOptions({...options, useCalendar: !options.useCalendar})} className={`w-11 h-6 rounded-full relative transition-colors duration-200 ease-in-out focus:outline-none ${options.useCalendar ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-700'}`}>
-                    <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full shadow-sm transition-transform duration-200 ease-in-out ${options.useCalendar ? 'translate-x-5' : 'translate-x-0'}`} />
+                  <button onClick={() => setOptions({...options, useCalendar: !options.useCalendar})} className={`w-11 h-6 rounded-full relative transition-colors duration-300 ease-out focus:outline-none ${options.useCalendar ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-700'}`}>
+                    <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full shadow-sm transition-transform duration-300 cubic-bezier(0.4, 0, 0.2, 1) ${options.useCalendar ? 'translate-x-5' : 'translate-x-0'}`} />
                   </button>
                 </div>
-                <h4 className="text-[12px] font-bold">Dynamic Seasonality</h4>
-                <p className="text-[10px] text-slate-500 dark:text-slate-500 mt-1 leading-relaxed">Add month and holiday specific context.</p>
+                <h4 className={`text-[12px] font-bold transition-colors ${options.useCalendar ? 'text-blue-700 dark:text-blue-300' : 'text-slate-900 dark:text-slate-200'}`}>Dynamic Seasonality</h4>
+                <p className="text-[10px] text-slate-500 dark:text-slate-500 mt-1 leading-relaxed font-medium">Add month and holiday specific context.</p>
                 {options.useCalendar && (
-                  <div className="mt-4 space-y-3">
-                    <select value={options.calendarMonth} onChange={e => setOptions({...options, calendarMonth: e.target.value, calendarEvent: EVENTS_BY_MONTH[e.target.value][0]})} className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-[12px] outline-none">
-                      {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
-                    </select>
-                    <select value={options.calendarEvent} onChange={e => setOptions({...options, calendarEvent: e.target.value})} className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-[12px] outline-none">
-                      {EVENTS_BY_MONTH[options.calendarMonth].map(e => <option key={e} value={e}>{e}</option>)}
-                    </select>
+                  <div className="mt-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="relative">
+                      <select value={options.calendarMonth} onChange={e => setOptions({...options, calendarMonth: e.target.value, calendarEvent: EVENTS_BY_MONTH[e.target.value][0]})} className="w-full appearance-none bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-4 py-2.5 rounded-xl text-[12px] font-medium outline-none focus:ring-2 focus:ring-blue-500/20 transition-all">
+                        {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
+                      </select>
+                      <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    </div>
+                    <div className="relative">
+                      <select value={options.calendarEvent} onChange={e => setOptions({...options, calendarEvent: e.target.value})} className="w-full appearance-none bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-4 py-2.5 rounded-xl text-[12px] font-medium outline-none focus:ring-2 focus:ring-blue-500/20 transition-all">
+                        {EVENTS_BY_MONTH[options.calendarMonth].map(e => <option key={e} value={e}>{e}</option>)}
+                      </select>
+                      <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    </div>
                   </div>
                 )}
               </div>
             </div>
 
             {/* Config Sections */}
-            <div className="space-y-12">
+            <div className="space-y-10">
               <section className="space-y-6">
-                <header className="flex items-center gap-2 px-1">
-                  <div className="w-1 h-3.5 bg-blue-500 rounded-full" />
-                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Identity & Character</h3>
+                <header className="flex items-center gap-3 px-1">
+                  <div className="w-1 h-4 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+                  <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Identity & Character</h3>
                 </header>
                 <div className="space-y-5">
                    <CustomDropdown label="Primary Actor" value={options.subject} options={OPTIONS.subject} onChange={(val) => setOptions({...options, subject: val})} icon={User} canToggle={true} isActive={options.activeFields?.subject} onToggle={(val) => toggleField('subject', val)} />
                    {isCulturalHeritageVisible && (
                       <CustomDropdown label="Cultural Context" value={options.characterBackground} options={OPTIONS.characterBackground} onChange={(val) => setOptions({...options, characterBackground: val})} icon={Globe} canToggle={true} isActive={options.activeFields?.characterBackground} onToggle={(val) => toggleField('characterBackground', val)} />
                    )}
+                   <CustomDropdown label="Interaction" value={options.interaction || 'Default / Auto'} options={OPTIONS.interaction} onChange={(val) => setOptions({...options, interaction: val})} icon={User} canToggle={true} isActive={options.activeFields?.interaction} onToggle={(val) => toggleField('interaction', val)} />
+                   <CustomDropdown label="Target Market" value={options.targetMarket || 'Default / Auto'} options={OPTIONS.targetMarket} onChange={(val) => setOptions({...options, targetMarket: val})} icon={Target} canToggle={true} isActive={options.activeFields?.targetMarket} onToggle={(val) => toggleField('targetMarket', val)} />
                 </div>
               </section>
 
+              <div className="h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-800 to-transparent opacity-60" />
+
               <section className="space-y-6">
-                <header className="flex items-center gap-2 px-1">
-                  <div className="w-1 h-3.5 bg-blue-500 rounded-full" />
-                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">World & Style</h3>
+                <header className="flex items-center gap-3 px-1">
+                  <div className="w-1 h-4 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+                  <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">World & Style</h3>
                 </header>
                 <div className="space-y-5">
-                   <CustomDropdown label="Visual Style" value={options.visualType} options={OPTIONS.visualType} onChange={(val) => setOptions({...options, visualType: val})} icon={Layers} canToggle={true} isActive={options.activeFields?.visualType} onToggle={(val) => toggleField('visualType', val)} />
-                   <CustomDropdown label="Environment" value={options.environment} options={OPTIONS.environment} onChange={(val) => setOptions({...options, environment: val})} icon={Box} canToggle={true} isActive={options.activeFields?.environment} onToggle={(val) => toggleField('environment', val)} />
+                   <div className="pb-5 border-b border-dashed border-slate-200 dark:border-slate-800/60 mb-2">
+                      <CustomDropdown label="Image Medium" value={options.imageMedium || 'Default / Auto'} options={OPTIONS.imageMedium} onChange={handleImageMediumChange} icon={Layers} canToggle={true} isActive={options.activeFields?.imageMedium} onToggle={(val) => toggleField('imageMedium', val)} />
+                   </div>
+                   <CustomDropdown label="Visual Style" value={options.visualType} options={filteredVisualStyles} onChange={(val) => setOptions({...options, visualType: val})} icon={Layers} canToggle={true} isActive={options.activeFields?.visualType} onToggle={(val) => toggleField('visualType', val)} />
                    {isMaterialFinishVisible && (
-                      <CustomDropdown label="Material Finish" value={options.materialStyle} options={OPTIONS.materialStyle} onChange={(val) => setOptions({...options, materialStyle: val})} icon={Paintbrush} canToggle={true} isActive={options.activeFields?.materialStyle} onToggle={(val) => toggleField('materialStyle', val)} />
+                      <CustomDropdown 
+                        label="Material Finish" 
+                        value={options.materialStyle} 
+                        options={OPTIONS.materialStyle} 
+                        onChange={(val) => setOptions({...options, materialStyle: val})} 
+                        icon={Paintbrush} 
+                        canToggle={true} 
+                        isActive={options.activeFields?.materialStyle} 
+                        onToggle={(val) => toggleField('materialStyle', val)}
+                        highlight={isMaterialHighlighted}
+                        helperText={materialHelperText}
+                        deemphasize3DMaterials={options.imageMedium === 'Photography' || options.imageMedium === 'Art & Illustration'}
+                      />
                    )}
+                   <CustomDropdown label="Concept Focus" value={options.conceptFocus || 'Default / Auto'} options={OPTIONS.conceptFocus} onChange={(val) => setOptions({...options, conceptFocus: val})} icon={Lightbulb} canToggle={true} isActive={options.activeFields?.conceptFocus} onToggle={(val) => toggleField('conceptFocus', val)} />
+                   <CustomDropdown label="Authenticity" value={options.authenticity || 'Default / Auto'} options={OPTIONS.authenticity} onChange={(val) => setOptions({...options, authenticity: val})} icon={Camera} canToggle={true} isActive={options.activeFields?.authenticity} onToggle={(val) => toggleField('authenticity', val)} />
+                   <CustomDropdown label="Environment" value={options.environment} options={OPTIONS.environment} onChange={(val) => setOptions({...options, environment: val})} icon={Box} canToggle={true} isActive={options.activeFields?.environment} onToggle={(val) => toggleField('environment', val)} />
                 </div>
               </section>
 
+              <div className="h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-800 to-transparent opacity-60" />
+
               <section className="space-y-6">
-                <header className="flex items-center gap-2 px-1">
-                  <div className="w-1 h-3.5 bg-blue-500 rounded-full" />
-                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Optics & Technicals</h3>
+                <header className="flex items-center gap-3 px-1">
+                  <div className="w-1 h-4 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+                  <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Optics & Technicals</h3>
                 </header>
                 <div className="space-y-5">
                    <CustomDropdown label="Quality & Camera" value={options.qualityCamera} options={OPTIONS.qualityCamera} onChange={(val) => setOptions({...options, qualityCamera: val})} icon={Video} canToggle={true} isActive={options.activeFields?.qualityCamera} onToggle={(val) => toggleField('qualityCamera', val)} />
@@ -702,10 +986,12 @@ export default function App() {
                 </div>
               </section>
 
+              <div className="h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-800 to-transparent opacity-60" />
+
               <section className="space-y-6">
-                <header className="flex items-center gap-2 px-1">
-                  <div className="w-1 h-3.5 bg-blue-500 rounded-full" />
-                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Output Parameters</h3>
+                <header className="flex items-center gap-3 px-1">
+                  <div className="w-1 h-4 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+                  <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Output Parameters</h3>
                 </header>
                 <div className="space-y-5">
                    <CustomDropdown label="Batch Quantity" value={options.quantity} options={currentQuantityOptions} onChange={(val) => setOptions({...options, quantity: val})} icon={Settings2} />
@@ -717,8 +1003,8 @@ export default function App() {
 
         {/* Action Button */}
         <div className="shrink-0 p-6 bg-white dark:bg-[#0b1120] border-t border-slate-200 dark:border-slate-800/60 z-50">
-          <button onClick={handleGenerate} disabled={isGenerating} className="w-full py-3.5 rounded-full bg-white dark:bg-white text-slate-900 font-black uppercase tracking-widest text-[13px] flex items-center justify-center gap-3 shadow-lg hover:bg-slate-50 active:scale-[0.97] transition-all">
-             {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} className="fill-current" />}
+          <button onClick={handleGenerate} disabled={isGenerating} className="w-full py-4 rounded-full bg-gradient-to-r from-slate-900 to-slate-800 dark:from-white dark:to-slate-200 text-white dark:text-slate-900 font-black uppercase tracking-widest text-[13px] flex items-center justify-center gap-3 shadow-lg shadow-slate-900/20 hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-300 group">
+             {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} className="fill-current group-hover:scale-110 transition-transform" />}
              <span>Run Architect</span>
           </button>
         </div>
@@ -775,20 +1061,20 @@ export default function App() {
             </div>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-center animate-welcome-reveal">
-              <div className="w-20 h-20 bg-slate-100 dark:bg-slate-900 rounded-[30px] flex items-center justify-center text-slate-400 mb-8 border border-slate-200 dark:border-slate-800">
-                <Terminal size={32} />
+              <div className="w-24 h-24 bg-slate-100 dark:bg-slate-900 rounded-[36px] flex items-center justify-center text-slate-400 mb-8 border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-black/50">
+                <Terminal size={40} strokeWidth={1.5} />
               </div>
-              <h2 className="text-[32px] font-black uppercase tracking-tightest leading-tight mb-4">Ready to Architect</h2>
-              <p className="text-[14px] font-medium text-slate-500 dark:text-slate-400 max-w-sm leading-relaxed mb-16">Configure your parameters in the sidebar to build high-performance commercial stock prompts.</p>
+              <h2 className="text-4xl font-black uppercase tracking-tightest leading-tight mb-4 bg-gradient-to-br from-slate-900 to-slate-500 dark:from-white dark:to-slate-500 bg-clip-text text-transparent">Ready to Architect</h2>
+              <p className="text-[14px] font-medium text-slate-500 dark:text-slate-400 max-w-sm leading-relaxed mb-16 opacity-60">Configure your parameters in the sidebar to build high-performance commercial stock prompts.</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-2xl">
-                <div className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 p-8 rounded-[28px] text-left space-y-4 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500"><Zap size={20} className="fill-current" /></div>
-                  <h3 className="text-xs font-black uppercase tracking-widest">Production Grade</h3>
+                <div className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 p-8 rounded-[28px] text-left space-y-4 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group cursor-default">
+                  <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform duration-300"><Zap size={20} className="fill-current" /></div>
+                  <h3 className="text-xs font-black uppercase tracking-widest group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">Production Grade</h3>
                   <p className="text-[13px] leading-relaxed text-slate-500 dark:text-slate-400">Prompts are algorithmically optimized for Adobe Stock and Freepik guidelines.</p>
                 </div>
-                <div className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 p-8 rounded-[28px] text-left space-y-4 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500"><Shield size={20} className="fill-current" /></div>
-                  <h3 className="text-xs font-black uppercase tracking-widest">Dual Intelligence</h3>
+                <div className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 p-8 rounded-[28px] text-left space-y-4 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group cursor-default">
+                  <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform duration-300"><Shield size={20} className="fill-current" /></div>
+                  <h3 className="text-xs font-black uppercase tracking-widest group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">Dual Intelligence</h3>
                   <p className="text-[13px] leading-relaxed text-slate-500 dark:text-slate-400">Seamlessly transition between Gemini Flash and Pro engines based on complexity.</p>
                 </div>
               </div>
