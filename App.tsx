@@ -786,7 +786,7 @@ export default function App() {
             <h1 className="text-[13px] font-black uppercase tracking-tighter leading-none">PROMPT MASTER</h1>
             <div className="flex items-center gap-2 mt-1">
               <div className="flex items-center gap-2">
-                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">SYS v1.3</span>
+                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">SYS v1.4</span>
                 <span className="w-px h-2 bg-slate-300 dark:bg-slate-700"></span>
                 <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">PROD V3.1</span>
               </div>

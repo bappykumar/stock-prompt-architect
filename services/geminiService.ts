@@ -176,13 +176,54 @@ export const generateStockPrompts = async (
     // --- 5. COMMERCIAL SAFETY BLOCK ---
     const SAFETY_BLOCK = "no text, no typography, no branding, no logo, no watermark, no copyright elements, no signature, no labels, no UI overlay, no visible trademarks, no studio equipment visible, no light stands, no softboxes, brand-neutral environment, clean commercial stock image";
 
-    // --- 6. DIVERGENCE (HISTORY) ---
+    // --- 6. BACKGROUND MODE ENGINE (v1.4) ---
+    let backgroundModeEngine = "";
+    if (options.subject === 'Background / Landscape only') {
+      backgroundModeEngine = `
+      BACKGROUND COMPOSITION MODE (ACTIVE):
+      1. COMPOSITION BEHAVIOR:
+         - The visual must behave as a background, not a single isolated object.
+         - Avoid centered product-like subjects.
+         - Shapes, surfaces, waves, spirals, or patterns should extend toward the edges of the frame.
+         - Elements may partially enter or exit the frame.
+         - The image should feel like a wallpaper, hero background, or design backdrop.
+         - The structure should fill the frame or create flowing environmental composition.
+
+      2. OBJECT PREVENTION RULES:
+         - Do NOT render a single isolated floating object.
+         - Do NOT generate pedestal-style renders.
+         - Do NOT place objects sitting in empty space.
+         - Do NOT create product showcase composition.
+
+      3. STRUCTURE GENERATION:
+         - Allow: flowing abstract waves, layered geometric patterns, metallic ribbons, spiral structures, fluid gradients, holographic surfaces, repeating patterns, texture-like structures.
+         - These structures should behave like an environment or design surface rather than a standalone object.
+
+      4. CAMERA BEHAVIOR:
+         - Preferred: wide composition, macro abstract perspective, environmental framing, edge-to-edge composition.
+         - Avoid: tight product framing, centered object framing.
+
+      5. LIGHTING BEHAVIOR:
+         - Lighting should support surface and texture visibility rather than product spotlight.
+         - Examples: soft studio lighting, gradient lighting, ambient lighting, cinematic reflections for abstract surfaces.
+
+      6. COPY SPACE AWARENESS:
+         - Allow empty space for text placement, balanced negative space.
+         - Composition suitable for marketing banners or website hero sections.
+
+      7. SR (SMART REFINEMENT) INTERPRETATION:
+         - Interpret SR as a conceptual theme rather than a specific object.
+         - Example: "metallic spiral" -> Expand into environmental abstract composition.
+      `;
+    }
+
+    // --- 7. DIVERGENCE (HISTORY) ---
     const recentPrompts = sessionHistory.slice(0, 50).map(h => h.text.substring(0, 50));
     const divergenceInstruction = recentPrompts.length > 0 
       ? `Avoid repeating these recent concepts: ${recentPrompts.join(" | ")}. Create distinct variations.` 
       : "";
 
-    // --- 7. GATHER INPUTS ---
+    // --- 8. GATHER INPUTS ---
     const inputs = {
       subject: getFieldVal('subject', options.subject),
       background: getFieldVal('characterBackground', options.characterBackground),
@@ -215,6 +256,8 @@ export const generateStockPrompts = async (
     ${lightingDiscipline}
 
     ${opticsEngine}
+
+    ${backgroundModeEngine}
 
     CORE ASSEMBLY FRAMEWORK (STRICT ORDER):
     1. [IDENTITY LAYER]: Primary Actor + Cultural Context (if human) + Interaction (visible body language).
