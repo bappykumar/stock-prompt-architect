@@ -8,8 +8,8 @@ import {
   Layout, Fingerprint, Focus, Settings2, Download, MessageSquareCode, Send, AlertCircle, X, Cpu, Paintbrush,
   ChevronUp, Key, Lock, Info, Settings, ToggleLeft, ToggleRight, Activity, Power, Video, Target, Lightbulb, Search
 } from 'lucide-react';
-import { PromptOptions, GeneratedPrompt, PromptBatch, HistoricalPrompt } from './types';
-import { generateStockPrompts } from './services/geminiService';
+import { PromptOptions, GeneratedPrompt, PromptBatch, HistoricalPrompt, ApiKeyRecord } from './types';
+import { generateStockPrompts, testApiKey } from './services/geminiService';
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -620,9 +620,26 @@ export default function App() {
     return saved ? JSON.parse(saved) : [];
   });
 
-  const [apiKey, setApiKey] = useState<string>(() => {
-    return localStorage.getItem('user_gemini_api_key') || '';
+  const [apiKeys, setApiKeys] = useState<ApiKeyRecord[]>(() => {
+    const saved = localStorage.getItem('user_api_keys');
+    if (saved) return JSON.parse(saved);
+    
+    // Migration from old single key
+    const oldKey = localStorage.getItem('user_gemini_api_key');
+    if (oldKey) {
+      const migrated: ApiKeyRecord[] = [{ id: crypto.randomUUID(), key: oldKey, status: 'untested', addedAt: Date.now() }];
+      localStorage.setItem('user_api_keys', JSON.stringify(migrated));
+      localStorage.removeItem('user_gemini_api_key');
+      return migrated;
+    }
+    return [];
   });
+
+  const [activeKeyId, setActiveKeyId] = useState<string>(() => {
+    return localStorage.getItem('active_api_key_id') || '';
+  });
+
+  const [newKeyInput, setNewKeyInput] = useState("");
 
   const [useSystemKey, setUseSystemKey] = useState<boolean>(() => {
     const saved = localStorage.getItem('use_system_api_key');
@@ -661,9 +678,48 @@ export default function App() {
     }
   }, [isDarkMode]);
 
-  const saveApiKey = (key: string) => {
-    setApiKey(key);
-    localStorage.setItem('user_gemini_api_key', key);
+  useEffect(() => {
+    localStorage.setItem('user_api_keys', JSON.stringify(apiKeys));
+    if (apiKeys.length > 0 && !apiKeys.find(k => k.id === activeKeyId)) {
+      setActiveKeyId(apiKeys[0].id);
+    } else if (apiKeys.length === 0) {
+      setActiveKeyId('');
+    }
+  }, [apiKeys, activeKeyId]);
+
+  useEffect(() => {
+    localStorage.setItem('active_api_key_id', activeKeyId);
+  }, [activeKeyId]);
+
+  const handleAddKey = () => {
+    if (!newKeyInput.trim()) return;
+    const newKey: ApiKeyRecord = {
+      id: crypto.randomUUID(),
+      key: newKeyInput.trim(),
+      status: 'untested',
+      addedAt: Date.now()
+    };
+    setApiKeys(prev => [...prev, newKey]);
+    if (!activeKeyId) setActiveKeyId(newKey.id);
+    setNewKeyInput("");
+  };
+
+  const handleRemoveKey = (id: string) => {
+    setApiKeys(prev => prev.filter(k => k.id !== id));
+  };
+
+  const handleTestKey = async (id: string) => {
+    const keyRecord = apiKeys.find(k => k.id === id);
+    if (!keyRecord) return;
+    
+    setApiKeys(prev => prev.map(k => k.id === id ? { ...k, status: 'testing' } : k));
+    
+    try {
+      await testApiKey(keyRecord.key);
+      setApiKeys(prev => prev.map(k => k.id === id ? { ...k, status: 'valid' } : k));
+    } catch (error) {
+      setApiKeys(prev => prev.map(k => k.id === id ? { ...k, status: 'invalid' } : k));
+    }
   };
 
   const toggleSystemKey = (val: boolean) => {
@@ -708,7 +764,10 @@ export default function App() {
   }, []);
 
   const handleGenerate = useCallback(async () => {
-    if (!apiKey && !useSystemKey) {
+    const activeKeyRecord = apiKeys.find(k => k.id === activeKeyId);
+    const finalApiKey = activeKeyRecord ? activeKeyRecord.key : '';
+
+    if (!finalApiKey && !useSystemKey) {
       setIsModalOpen(true);
       return;
     }
@@ -724,7 +783,7 @@ export default function App() {
       const history: HistoricalPrompt[] = batches.flatMap(batch => 
         batch.prompts.map(p => ({ text: p.text, score: p.qualityScore }))
       );
-      const results = await generateStockPrompts(options, useSystemKey ? "" : apiKey, history);
+      const results = await generateStockPrompts(options, useSystemKey ? "" : finalApiKey, history);
       const newPrompts: GeneratedPrompt[] = results.map(r => ({
         id: crypto.randomUUID(),
         text: r.text,
@@ -743,7 +802,7 @@ export default function App() {
         loadingIntervalRef.current = null;
       }
     }
-  }, [options, batches, apiKey, useSystemKey]);
+  }, [options, batches, apiKeys, activeKeyId, useSystemKey]);
 
   const copyIndividual = (batchId: string, promptId: string, text: string) => {
     navigator.clipboard.writeText(text);
@@ -786,7 +845,7 @@ export default function App() {
             <h1 className="text-[13px] font-black uppercase tracking-tighter leading-none">PROMPT MASTER</h1>
             <div className="flex items-center gap-2 mt-1">
               <div className="flex items-center gap-2">
-                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">SYS v1.4</span>
+                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">SYS v1.5</span>
                 <span className="w-px h-2 bg-slate-300 dark:bg-slate-700"></span>
                 <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">PROD V3.1</span>
               </div>
@@ -1133,7 +1192,62 @@ export default function App() {
                        </button>
                     </div>
                     {!useSystemKey && (
-                      <input type="password" value={apiKey} onChange={e => saveApiKey(e.target.value)} placeholder="API Key..." className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-4 py-2 rounded-xl text-xs outline-none focus:border-blue-500" onClick={(e) => e.stopPropagation()} />
+                      <div className="space-y-4 pt-2 border-t border-slate-200 dark:border-slate-800">
+                        <div className="flex gap-2">
+                          <input 
+                            type="password" 
+                            value={newKeyInput} 
+                            onChange={e => setNewKeyInput(e.target.value)} 
+                            placeholder="Add new API Key..." 
+                            className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-4 py-2 rounded-xl text-xs outline-none focus:border-blue-500" 
+                            onClick={(e) => e.stopPropagation()} 
+                          />
+                          <button 
+                            onClick={handleAddKey}
+                            disabled={!newKeyInput.trim()}
+                            className="px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-xs font-bold disabled:opacity-50 transition-colors"
+                          >
+                            Add
+                          </button>
+                        </div>
+                        
+                        {apiKeys.length > 0 && (
+                          <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                            {apiKeys.map(k => (
+                              <div key={k.id} className={`flex items-center justify-between p-3 rounded-xl border transition-colors ${activeKeyId === k.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/10' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'}`}>
+                                <div className="flex items-center gap-3">
+                                  <div 
+                                    onClick={() => setActiveKeyId(k.id)}
+                                    className={`w-4 h-4 rounded-full border flex items-center justify-center cursor-pointer transition-colors ${activeKeyId === k.id ? 'border-blue-500' : 'border-slate-300 dark:border-slate-600'}`}
+                                  >
+                                    {activeKeyId === k.id && <div className="w-2 h-2 bg-blue-500 rounded-full" />}
+                                  </div>
+                                  <div className="flex flex-col">
+                                    <span className="text-[11px] font-mono font-medium text-slate-700 dark:text-slate-300">
+                                      {k.key.substring(0, 8)}...{k.key.substring(k.key.length - 4)}
+                                    </span>
+                                    <span className={`text-[9px] font-bold uppercase tracking-wider ${k.status === 'valid' ? 'text-emerald-500' : k.status === 'invalid' ? 'text-red-500' : k.status === 'testing' ? 'text-amber-500' : 'text-slate-400'}`}>
+                                      {k.status}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <button 
+                                    onClick={() => handleTestKey(k.id)} 
+                                    disabled={k.status === 'testing'} 
+                                    className="px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-[10px] font-bold text-slate-600 dark:text-slate-300 transition-colors disabled:opacity-50"
+                                  >
+                                    {k.status === 'testing' ? 'Testing...' : 'Test'}
+                                  </button>
+                                  <button onClick={() => handleRemoveKey(k.id)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors">
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>

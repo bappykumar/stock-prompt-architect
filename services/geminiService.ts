@@ -1,6 +1,22 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { PromptOptions, HistoricalPrompt } from "../types";
 
+export const testApiKey = async (apiKey: string): Promise<boolean> => {
+  try {
+    const ai = new GoogleGenAI({ apiKey });
+    // A very lightweight call to verify the key is valid
+    await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: 'test',
+      config: { maxOutputTokens: 1 }
+    });
+    return true;
+  } catch (error) {
+    console.error("API Key Test Failed:", error);
+    throw error;
+  }
+};
+
 export const generateStockPrompts = async (
   options: PromptOptions, 
   apiKey: string,
@@ -224,20 +240,24 @@ export const generateStockPrompts = async (
       : "";
 
     // --- 8. GATHER INPUTS ---
+    const isBackgroundMode = options.subject === 'Background / Landscape only';
+    
     const inputs = {
       subject: getFieldVal('subject', options.subject),
       background: getFieldVal('characterBackground', options.characterBackground),
       environment: getFieldVal('environment', options.environment),
       lighting: getFieldVal('lighting', options.lighting),
-      framing: getFieldVal('framing', options.framing),
+      // Ignore subject-specific framing/position if Background Mode is active
+      framing: isBackgroundMode ? null : getFieldVal('framing', options.framing),
       angle: getFieldVal('cameraAngle', options.cameraAngle),
-      position: getFieldVal('subjectPosition', options.subjectPosition),
+      position: isBackgroundMode ? null : getFieldVal('subjectPosition', options.subjectPosition),
       shadows: getFieldVal('shadowStyle', options.shadowStyle),
       style: getFieldVal('visualType', options.visualType),
       material: getFieldVal('materialStyle', options.materialStyle),
       concept: getFieldVal('conceptFocus', options.conceptFocus || 'Default / Auto'),
       authenticity: getFieldVal('authenticity', options.authenticity || 'Default / Auto'),
-      interaction: getFieldVal('interaction', options.interaction || 'Default / Auto'),
+      // Ignore interaction if Background Mode is active
+      interaction: isBackgroundMode ? null : getFieldVal('interaction', options.interaction || 'Default / Auto'),
       target: getFieldVal('targetMarket', options.targetMarket || 'Default / Auto'),
       season: options.useCalendar ? `${options.calendarMonth} (${options.calendarEvent})` : null,
       smartRefinement: options.useExtraKeywords ? options.extraKeywords : null
@@ -300,10 +320,20 @@ export const generateStockPrompts = async (
       }
     });
 
-    const result = JSON.parse(response.text?.trim() || '{"prompts":[]}');
+    let rawText = response.text?.trim() || '{"prompts":[]}';
+    // Remove markdown code block formatting if present
+    rawText = rawText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+
+    const result = JSON.parse(rawText);
     return result.prompts.map((p: any) => ({ text: p.text, score: p.qualityScore }));
   } catch (error: any) {
     console.error("Gemini Error:", error);
+    // Provide a more user-friendly error message if possible
+    if (error.message?.includes('API key not valid')) {
+      throw new Error("Invalid API Key. Please check your settings.");
+    } else if (error.message?.includes('quota')) {
+      throw new Error("API Quota exceeded. Please try again later or use a different key.");
+    }
     throw error;
   }
 };

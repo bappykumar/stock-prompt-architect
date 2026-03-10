@@ -48,3 +48,10 @@ export interface HistoricalPrompt {
   text: string;
   score: number;
 }
+
+export interface ApiKeyRecord {
+  id: string;
+  key: string;
+  status: 'untested' | 'valid' | 'invalid' | 'testing';
+  addedAt: number;
+}
