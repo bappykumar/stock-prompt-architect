@@ -233,11 +233,19 @@ export const generateStockPrompts = async (
       `;
     }
 
-    // --- 7. DIVERGENCE (HISTORY) ---
-    const recentPrompts = sessionHistory.slice(0, 50).map(h => h.text.substring(0, 50));
+    // --- 7. DIVERGENCE (HISTORY & VARIATION) ---
+    // Increase history tracking to 100 to prevent long-term loops
+    const recentPrompts = sessionHistory.slice(0, 100).map(h => h.text.substring(0, 60));
     const divergenceInstruction = recentPrompts.length > 0 
-      ? `Avoid repeating these recent concepts: ${recentPrompts.join(" | ")}. Create distinct variations.` 
-      : "";
+      ? `CRITICAL DIVERGENCE RULE: You MUST NOT generate prompts that are structurally or conceptually identical to these recent outputs:
+         ${recentPrompts.join(" | ")}
+         
+         VARIATION MANDATE:
+         - Change the specific action, pose, or micro-interaction.
+         - Alter the exact color palette or wardrobe details.
+         - Shift the specific angle or environmental framing slightly.
+         - Do not just swap one word; create a distinctly new scenario within the given parameters.` 
+      : `VARIATION MANDATE: Ensure each prompt in this batch explores a distinctly different angle, action, or micro-scenario within the given parameters. Do not make them clones of each other.`;
 
     // --- 8. GATHER INPUTS ---
     const isBackgroundMode = options.subject === 'Background / Landscape only';
@@ -316,7 +324,8 @@ export const generateStockPrompts = async (
       config: {
         responseMimeType: "application/json",
         responseSchema: schema,
-        temperature: 0.9,
+        temperature: 0.95, // Increased slightly for more creativity
+        topP: 0.95, // Added topP for better variation
       }
     });
 
