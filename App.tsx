@@ -732,6 +732,7 @@ export default function App() {
   const [referenceImage, setReferenceImage] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [autoFillSuccessMsg, setAutoFillSuccessMsg] = useState<string | null>(null);
+  const [autoFillOptionsHash, setAutoFillOptionsHash] = useState<string | null>(null);
 
   const [isAdvanced, setIsAdvanced] = useState<boolean>(() => {
     const savedMode = localStorage.getItem('prompt_mode');
@@ -957,10 +958,11 @@ export default function App() {
         analyzeReferenceAndSuggestSettings(input, OPTIONS, key, providerToUse)
       , providerToUse);
       
+      let newOptions: any;
       setOptions(prev => {
         const resetActiveFields = Object.keys(prev.activeFields).reduce((acc, key) => ({...acc, [key]: false}), {});
         
-        return {
+        newOptions = {
           ...prev,
           ...result.settings,
           smartRefinementText: result.smartRefinement || prev.smartRefinementText,
@@ -970,15 +972,16 @@ export default function App() {
             smartRefinement: true
           }
         };
+        return newOptions;
       });
       
+      setAutoFillOptionsHash(JSON.stringify(newOptions));
+      
       if (autoFillMode === 'image') {
-        setAutoFillMode('text');
         setAutoFillSuccessMsg("Settings and scene description auto-filled from your image — review before running.");
       } else {
         setAutoFillSuccessMsg("Settings auto-filled from your reference — review and adjust as needed before running.");
       }
-      setTimeout(() => setAutoFillSuccessMsg(null), 5000);
     } catch (err: any) {
       console.warn('Auto-fill failed:', err);
       setErrorMessage(err.message || 'Auto-fill failed');
@@ -1237,18 +1240,27 @@ export default function App() {
                     </div>
 
                     {autoFillMode === 'image' ? (
-                      <div className="relative border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-4 text-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                        <input type="file" accept="image/jpeg, image/png" onChange={(e) => setReferenceImage(e.target.files?.[0] || null)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                      <div className="relative border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden text-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex items-center justify-center min-h-[8rem]">
+                        <input type="file" accept="image/jpeg, image/png" onChange={(e) => setReferenceImage(e.target.files?.[0] || null)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-30" />
                         {referenceImage ? (
-                          <div className="flex flex-col items-center gap-2">
-                            <img src={URL.createObjectURL(referenceImage)} alt="Preview" className="h-16 w-16 object-cover rounded-md border border-slate-200 dark:border-slate-700 shadow-sm" />
-                            <div className="text-[11px] font-medium text-slate-700 dark:text-slate-300 flex items-center justify-center gap-2 truncate max-w-full px-2">
-                              <Check size={14} className="text-green-500 shrink-0" />
+                          <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-slate-900/5 dark:bg-slate-900/50">
+                            <img src={URL.createObjectURL(referenceImage)} alt="Preview Background" className="absolute inset-0 w-full h-full object-cover opacity-20 blur-sm pointer-events-none" />
+                            <img src={URL.createObjectURL(referenceImage)} alt="Preview" className="relative z-10 w-full h-full object-contain pointer-events-none" />
+                            
+                            {/* Scanning Animation */}
+                            {isAnalyzing && (
+                              <div className="absolute inset-0 z-20 pointer-events-none overflow-hidden">
+                                <div className="w-full h-0.5 bg-blue-500 shadow-[0_0_20px_4px_rgba(59,130,246,0.8)] absolute animate-[scan_1.5s_ease-in-out_infinite]" />
+                              </div>
+                            )}
+                            
+                            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-medium px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg border border-white/10 max-w-[90%] pointer-events-none">
+                              <Check size={12} className="text-green-400 shrink-0" />
                               <span className="truncate">{referenceImage.name}</span>
                             </div>
                           </div>
                         ) : (
-                          <div className="text-[11px] font-medium text-slate-500 flex flex-col items-center gap-1">
+                          <div className="text-[11px] font-medium text-slate-500 flex flex-col items-center gap-1 p-6 relative z-10">
                             <Image size={18} className="text-slate-400 mb-1" />
                             <span>Drop, click, or paste (Ctrl+V) image anywhere</span>
                             <span className="text-[9px] text-slate-400">JPG, PNG up to 10MB</span>
@@ -1259,7 +1271,14 @@ export default function App() {
                       <textarea value={options.smartRefinementText} onChange={(e) => setOptions({...options, smartRefinementText: e.target.value})} placeholder="Describe your concept (e.g. 'a moody cinematic shot of a businessman in rain')..." className="w-full h-24 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-[12px] outline-none focus:ring-2 focus:ring-blue-500/20 transition-all resize-none custom-scrollbar" />
                     )}
 
-                    <button onClick={handleAutoFill} disabled={isAnalyzing || (autoFillMode === 'image' && !referenceImage) || (autoFillMode === 'text' && !options.smartRefinementText)} className="w-full mt-4 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white transition-all disabled:opacity-50 disabled:hover:bg-slate-900 dark:disabled:hover:bg-white dark:disabled:hover:text-slate-900">
+                    <button 
+                      onClick={handleAutoFill} 
+                      disabled={isAnalyzing || (autoFillMode === 'image' && !referenceImage) || (autoFillMode === 'text' && !options.smartRefinementText)} 
+                      className={`w-full mt-4 py-2.5 rounded-xl font-bold uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 transition-all disabled:opacity-50
+                        ${(autoFillSuccessMsg && autoFillOptionsHash === JSON.stringify(options)) 
+                          ? 'bg-green-500 text-white hover:bg-green-600 disabled:hover:bg-green-500' 
+                          : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white disabled:hover:bg-slate-900 dark:disabled:hover:bg-white dark:disabled:hover:text-slate-900'}`}
+                    >
                       {isAnalyzing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                       {autoFillMode === 'image' ? 'Analyze Image & Auto-Fill' : 'Auto-Fill Settings from Text'}
                     </button>
