@@ -728,11 +728,41 @@ export default function App() {
   const [testAllSummary, setTestAllSummary] = useState<{valid: number, invalid: number, total: number} | null>(null);
   const [isTestingAll, setIsTestingAll] = useState(false);
 
+  useEffect(() => {
+    if (isModalOpen) {
+      const activeModelObj = OPTIONS.model.find(m => m.value === options.model);
+      if (activeModelObj) {
+        setActiveProviderTab(activeModelObj.provider as any);
+      }
+    }
+  }, [isModalOpen, options.model]);
+
   const [autoFillMode, setAutoFillMode] = useState<'image'|'text'>('text');
   const [referenceImage, setReferenceImage] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [autoFillSuccessMsg, setAutoFillSuccessMsg] = useState<string | null>(null);
   const [autoFillOptionsHash, setAutoFillOptionsHash] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (autoFillSuccessMsg && autoFillOptionsHash) {
+      if (JSON.stringify(options) !== autoFillOptionsHash) {
+        setAutoFillSuccessMsg(null);
+        setAutoFillOptionsHash(null);
+      }
+    }
+  }, [options, autoFillSuccessMsg, autoFillOptionsHash]);
+
+  useEffect(() => {
+    let timeoutId: number;
+    if (autoFillSuccessMsg) {
+      timeoutId = window.setTimeout(() => {
+        setAutoFillSuccessMsg(null);
+      }, 5000);
+    }
+    return () => {
+      if (timeoutId) window.clearTimeout(timeoutId);
+    };
+  }, [autoFillSuccessMsg]);
 
   const [isAdvanced, setIsAdvanced] = useState<boolean>(() => {
     const savedMode = localStorage.getItem('prompt_mode');
@@ -954,15 +984,21 @@ export default function App() {
         providerToUse = 'gemini'; // Force Gemini for image processing
       }
 
+      const visualOptions = { ...OPTIONS };
+      delete (visualOptions as any).model;
+
       const result = await executeWithKeyRotation((key) => 
-        analyzeReferenceAndSuggestSettings(input, OPTIONS, key, providerToUse)
+        analyzeReferenceAndSuggestSettings(input, visualOptions, key, providerToUse)
       , providerToUse);
       
+      const newSettings = { ...result.settings };
+      delete newSettings.model;
+
       const resetActiveFields = Object.keys(options.activeFields).reduce((acc, key) => ({...acc, [key]: false}), {});
       
       const newOptions = {
         ...options,
-        ...result.settings,
+        ...newSettings,
         smartRefinementText: result.smartRefinement || options.smartRefinementText,
         activeFields: {
           ...resetActiveFields,
@@ -1277,14 +1313,14 @@ export default function App() {
                       onClick={handleAutoFill} 
                       disabled={isAnalyzing || (autoFillMode === 'image' && !referenceImage) || (autoFillMode === 'text' && !options.smartRefinementText)} 
                       className={`w-full mt-4 py-2.5 rounded-xl font-bold uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 transition-all disabled:opacity-50
-                        ${(autoFillSuccessMsg && autoFillOptionsHash === JSON.stringify(options)) 
+                        ${autoFillSuccessMsg 
                           ? 'bg-green-500 text-white hover:bg-green-600 disabled:hover:bg-green-500' 
                           : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white disabled:hover:bg-slate-900 dark:disabled:hover:bg-white dark:disabled:hover:text-slate-900'}`}
                     >
                       {isAnalyzing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                       {autoFillMode === 'image' ? 'Analyze Image & Auto-Fill' : 'Auto-Fill Settings from Text'}
                     </button>
-                    {(autoFillSuccessMsg && autoFillOptionsHash === JSON.stringify(options)) && (
+                    {autoFillSuccessMsg && (
                       <div className="mt-3 text-[10px] text-green-600 dark:text-green-400 font-medium flex items-center gap-1.5 leading-tight">
                         <Check size={12} className="shrink-0" /> {autoFillSuccessMsg}
                       </div>
