@@ -611,7 +611,7 @@ export default function App() {
     }
 
     // Ensure model is valid
-    const validModels = ['gemini-2.5-pro', 'gemini-2.5-flash'];
+    const validModels = OPTIONS.model.map(m => m.value);
     if (!validModels.includes(parsed.model)) {
       parsed.model = 'gemini-2.5-flash';
     }
@@ -732,7 +732,15 @@ export default function App() {
   const [referenceImage, setReferenceImage] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [autoFillSuccessMsg, setAutoFillSuccessMsg] = useState<string | null>(null);
-  const [autoFillOptionsHash, setAutoFillOptionsHash] = useState<string | null>(null);
+  const isAutoFilling = useRef(false);
+
+  useEffect(() => {
+    if (isAutoFilling.current) {
+      isAutoFilling.current = false;
+      return;
+    }
+    setAutoFillSuccessMsg(null);
+  }, [options]);
 
   const [isAdvanced, setIsAdvanced] = useState<boolean>(() => {
     const savedMode = localStorage.getItem('prompt_mode');
@@ -887,7 +895,7 @@ export default function App() {
 
   const executeWithKeyRotation = async <T,>(
     operation: (key: string) => Promise<T>,
-    providerOverride?: 'gemini' | 'groq' | 'mistral'
+    providerOverride?: 'gemini' | 'groq' | 'mistral' | 'openrouter'
   ): Promise<T> => {
     const activeModelObj = OPTIONS.model.find(m => m.value === options.model);
     const requiredProvider = providerOverride || (activeModelObj ? activeModelObj.provider : 'gemini');
@@ -948,7 +956,7 @@ export default function App() {
       }
       
       const activeModelObj = OPTIONS.model.find(m => m.value === options.model);
-      let providerToUse = activeModelObj ? activeModelObj.provider as 'gemini'|'groq'|'mistral' : 'gemini';
+      let providerToUse = activeModelObj ? activeModelObj.provider as 'gemini'|'groq'|'mistral'|'openrouter' : 'gemini';
       
       if (input.type === 'image' && providerToUse !== 'gemini') {
         providerToUse = 'gemini'; // Force Gemini for image processing
@@ -958,24 +966,21 @@ export default function App() {
         analyzeReferenceAndSuggestSettings(input, OPTIONS, key, providerToUse)
       , providerToUse);
       
-      let newOptions: any;
-      setOptions(prev => {
-        const resetActiveFields = Object.keys(prev.activeFields).reduce((acc, key) => ({...acc, [key]: false}), {});
-        
-        newOptions = {
-          ...prev,
-          ...result.settings,
-          smartRefinementText: result.smartRefinement || prev.smartRefinementText,
-          activeFields: {
-            ...resetActiveFields,
-            ...(result.activeFields || {}),
-            smartRefinement: true
-          }
-        };
-        return newOptions;
-      });
+      const resetActiveFields = Object.keys(options.activeFields).reduce((acc, key) => ({...acc, [key]: false}), {});
       
-      setAutoFillOptionsHash(JSON.stringify(newOptions));
+      const newOptions = {
+        ...options,
+        ...result.settings,
+        smartRefinementText: result.smartRefinement || options.smartRefinementText,
+        activeFields: {
+          ...resetActiveFields,
+          ...(result.activeFields || {}),
+          smartRefinement: true
+        }
+      };
+      
+      isAutoFilling.current = true;
+      setOptions(newOptions);
       
       if (autoFillMode === 'image') {
         setAutoFillMode('text');
@@ -1277,14 +1282,14 @@ export default function App() {
                       onClick={handleAutoFill} 
                       disabled={isAnalyzing || (autoFillMode === 'image' && !referenceImage) || (autoFillMode === 'text' && !options.smartRefinementText)} 
                       className={`w-full mt-4 py-2.5 rounded-xl font-bold uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 transition-all disabled:opacity-50
-                        ${(autoFillSuccessMsg && autoFillOptionsHash === JSON.stringify(options)) 
+                        ${autoFillSuccessMsg 
                           ? 'bg-green-500 text-white hover:bg-green-600 disabled:hover:bg-green-500' 
                           : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white disabled:hover:bg-slate-900 dark:disabled:hover:bg-white dark:disabled:hover:text-slate-900'}`}
                     >
                       {isAnalyzing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                       {autoFillMode === 'image' ? 'Analyze Image & Auto-Fill' : 'Auto-Fill Settings from Text'}
                     </button>
-                    {(autoFillSuccessMsg && autoFillOptionsHash === JSON.stringify(options)) && (
+                    {autoFillSuccessMsg && (
                       <div className="mt-3 text-[10px] text-green-600 dark:text-green-400 font-medium flex items-center gap-1.5 leading-tight">
                         <Check size={12} className="shrink-0" /> {autoFillSuccessMsg}
                       </div>
