@@ -978,6 +978,7 @@ export default function App() {
       setAutoFillOptionsHash(JSON.stringify(newOptions));
       
       if (autoFillMode === 'image') {
+        setAutoFillMode('text');
         setAutoFillSuccessMsg("Settings and scene description auto-filled from your image — review before running.");
       } else {
         setAutoFillSuccessMsg("Settings auto-filled from your reference — review and adjust as needed before running.");
