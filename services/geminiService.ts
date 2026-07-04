@@ -207,12 +207,20 @@ Return ONLY this JSON structure, no markdown:
     return JSON.parse(cleaned);
   } catch (error: any) {
     console.warn("Gemini Error:", error);
-    if (error.message?.includes('API key not valid')) {
+    let msg = error.message || "An unknown error occurred.";
+    try {
+      const parsed = JSON.parse(msg.replace(/^\[.*?\]\s*/, ''));
+      if (parsed.error && parsed.error.message) {
+        msg = parsed.error.message;
+      }
+    } catch(e) {}
+    
+    if (msg.includes('API key not valid')) {
       throw new Error("Invalid API Key. Please check your settings.");
-    } else if (error.message?.includes('quota') || error.message?.includes('429')) {
+    } else if (msg.includes('quota') || msg.includes('429')) {
       throw new Error("API Quota exceeded. Please try again later or use a different key.");
     }
-    throw error;
+    throw new Error(msg);
   }
 }
 
@@ -637,11 +645,20 @@ export const generateStockPrompts = async (
   } catch (error: any) {
     console.warn("Gemini Error:", error);
     // Provide a more user-friendly error message if possible
-    if (error.message?.includes('API key not valid')) {
+    let msg = error.message || "An unknown error occurred.";
+    try {
+      // Try to parse if it's a JSON string from GoogleGenAI
+      const parsed = JSON.parse(msg.replace(/^\[.*?\]\s*/, ''));
+      if (parsed.error && parsed.error.message) {
+        msg = parsed.error.message;
+      }
+    } catch(e) {}
+    
+    if (msg.includes('API key not valid')) {
       throw new Error("Invalid API Key. Please check your settings.");
-    } else if (error.message?.includes('quota')) {
+    } else if (msg.includes('quota') || msg.includes('429')) {
       throw new Error("API Quota exceeded. Please try again later or use a different key.");
     }
-    throw error;
+    throw new Error(msg);
   }
 };

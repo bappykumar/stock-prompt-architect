@@ -1061,6 +1061,10 @@ export default function App() {
     return { total, copied, pending: total - copied };
   }, [batches]);
 
+  const activeModelObj = OPTIONS.model.find(m => m.value === options.model);
+  const activeProvider = activeModelObj ? activeModelObj.provider : 'gemini';
+  const activeModelLabel = activeModelObj ? activeModelObj.label : options.model;
+
   return (
     <div className={`flex h-screen overflow-hidden font-sans transition-colors duration-500 ${isDarkMode ? 'dark bg-[#0b1120] text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
       
@@ -1072,14 +1076,16 @@ export default function App() {
           <div className="flex flex-col">
             <h1 className="text-[13px] font-black uppercase tracking-tighter leading-none">PROMPT MASTER</h1>
             <div className="flex items-center gap-2 mt-1">
-              <div className="flex items-center gap-2">
-                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">SYS v1.5</span>
-                <span className="w-px h-2 bg-slate-300 dark:bg-slate-700"></span>
-                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">PROD V3.1</span>
-              </div>
-              <div className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase border flex items-center gap-1 ${options.model?.includes('pro') ? 'bg-amber-500/10 border-amber-500/30 text-amber-500' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500'}`}>
-                {options.model?.includes('pro') ? <Zap size={8} /> : <Cpu size={8} />}
-                <span>{options.model?.includes('pro') ? 'PRO-ENGINE' : 'FLASH-ENGINE'}</span>
+              <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">SYS V1.5</span>
+              <span className="w-px h-2 bg-slate-300 dark:bg-slate-700"></span>
+              <div className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase border flex items-center gap-1 max-w-[180px] ${
+                activeProvider === 'gemini' ? 'bg-blue-500/10 border-blue-500/30 text-blue-500' :
+                activeProvider === 'groq' ? 'bg-orange-500/10 border-orange-500/30 text-orange-500' :
+                activeProvider === 'mistral' ? 'bg-amber-500/10 border-amber-500/30 text-amber-500' :
+                'bg-emerald-500/10 border-emerald-500/30 text-emerald-500'
+              }`}>
+                {activeProvider === 'gemini' ? <Sparkles size={8} className="shrink-0" /> : <Cpu size={8} className="shrink-0" />}
+                <span className="truncate" title={activeModelLabel}>{activeModelLabel}</span>
               </div>
             </div>
           </div>
@@ -1253,11 +1259,6 @@ export default function App() {
                                 <div className="w-full h-0.5 bg-blue-500 shadow-[0_0_20px_4px_rgba(59,130,246,0.8)] absolute animate-[scan_1.5s_ease-in-out_infinite]" />
                               </div>
                             )}
-                            
-                            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-medium px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg border border-white/10 max-w-[90%] pointer-events-none">
-                              <Check size={12} className="text-green-400 shrink-0" />
-                              <span className="truncate">{referenceImage.name}</span>
-                            </div>
                           </div>
                         ) : (
                           <div className="text-[11px] font-medium text-slate-500 flex flex-col items-center gap-1 p-6 relative z-10">
@@ -1282,7 +1283,7 @@ export default function App() {
                       {isAnalyzing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                       {autoFillMode === 'image' ? 'Analyze Image & Auto-Fill' : 'Auto-Fill Settings from Text'}
                     </button>
-                    {autoFillSuccessMsg && (
+                    {(autoFillSuccessMsg && autoFillOptionsHash === JSON.stringify(options)) && (
                       <div className="mt-3 text-[10px] text-green-600 dark:text-green-400 font-medium flex items-center gap-1.5 leading-tight">
                         <Check size={12} className="shrink-0" /> {autoFillSuccessMsg}
                       </div>
