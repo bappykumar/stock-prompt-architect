@@ -732,15 +732,7 @@ export default function App() {
   const [referenceImage, setReferenceImage] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [autoFillSuccessMsg, setAutoFillSuccessMsg] = useState<string | null>(null);
-  const isAutoFilling = useRef(false);
-
-  useEffect(() => {
-    if (isAutoFilling.current) {
-      isAutoFilling.current = false;
-      return;
-    }
-    setAutoFillSuccessMsg(null);
-  }, [options]);
+  const [autoFillOptionsHash, setAutoFillOptionsHash] = useState<string | null>(null);
 
   const [isAdvanced, setIsAdvanced] = useState<boolean>(() => {
     const savedMode = localStorage.getItem('prompt_mode');
@@ -979,8 +971,8 @@ export default function App() {
         }
       };
       
-      isAutoFilling.current = true;
       setOptions(newOptions);
+      setAutoFillOptionsHash(JSON.stringify(newOptions));
       
       if (autoFillMode === 'image') {
         setAutoFillMode('text');
@@ -1282,14 +1274,14 @@ export default function App() {
                       onClick={handleAutoFill} 
                       disabled={isAnalyzing || (autoFillMode === 'image' && !referenceImage) || (autoFillMode === 'text' && !options.smartRefinementText)} 
                       className={`w-full mt-4 py-2.5 rounded-xl font-bold uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 transition-all disabled:opacity-50
-                        ${autoFillSuccessMsg 
+                        ${(autoFillSuccessMsg && autoFillOptionsHash === JSON.stringify(options)) 
                           ? 'bg-green-500 text-white hover:bg-green-600 disabled:hover:bg-green-500' 
                           : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white disabled:hover:bg-slate-900 dark:disabled:hover:bg-white dark:disabled:hover:text-slate-900'}`}
                     >
                       {isAnalyzing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                       {autoFillMode === 'image' ? 'Analyze Image & Auto-Fill' : 'Auto-Fill Settings from Text'}
                     </button>
-                    {autoFillSuccessMsg && (
+                    {(autoFillSuccessMsg && autoFillOptionsHash === JSON.stringify(options)) && (
                       <div className="mt-3 text-[10px] text-green-600 dark:text-green-400 font-medium flex items-center gap-1.5 leading-tight">
                         <Check size={12} className="shrink-0" /> {autoFillSuccessMsg}
                       </div>
@@ -1592,7 +1584,13 @@ export default function App() {
                 {PROVIDERS.map(p => (
                   <button
                     key={p.id}
-                    onClick={() => setActiveProviderTab(p.id as any)}
+                    onClick={() => {
+                      setActiveProviderTab(p.id as any);
+                      const modelsForProvider = OPTIONS.model.filter(m => m.provider === p.id);
+                      if (modelsForProvider.length > 0 && !modelsForProvider.find(m => m.value === options.model)) {
+                        setOptions(prev => ({...prev, model: modelsForProvider[0].value as any}));
+                      }
+                    }}
                     className={`flex-1 py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-sm font-bold transition-all ${activeProviderTab === p.id ? 'bg-white dark:bg-slate-800 text-blue-500 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                   >
                      <p.icon size={16} />
