@@ -1006,8 +1006,11 @@ export default function App() {
         batch.prompts.map(p => ({ text: p.text }))
       );
       
+      const activeModelObj = OPTIONS.model.find(m => m.value === options.model);
+      const activeProvider = activeModelObj ? activeModelObj.provider as 'gemini'|'groq'|'mistral'|'openrouter' : 'gemini';
+
       const results = await executeWithKeyRotation((key) => 
-        generateStockPrompts(options, key, history)
+        generateStockPrompts(options, key, history, activeProvider)
       );
 
       const newPrompts: GeneratedPrompt[] = results.map(r => ({

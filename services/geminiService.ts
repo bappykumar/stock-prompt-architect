@@ -203,8 +203,19 @@ Return ONLY this JSON structure, no markdown:
       rawText = data.choices[0]?.message?.content || "";
     }
 
-    const cleaned = rawText.replace(/```json|```/g, '').trim();
-    return JSON.parse(cleaned);
+    let jsonString = rawText;
+    const markdownMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (markdownMatch) {
+      jsonString = markdownMatch[1];
+    } else {
+      const firstBrace = rawText.indexOf('{');
+      const lastBrace = rawText.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        jsonString = rawText.substring(firstBrace, lastBrace + 1);
+      }
+    }
+    
+    return JSON.parse(jsonString.trim());
   } catch (error: any) {
     console.warn("Gemini Error:", error);
     let msg = error.message || "An unknown error occurred.";
@@ -225,10 +236,10 @@ Return ONLY this JSON structure, no markdown:
 }
 
 export const generateStockPrompts = async (
-
   options: PromptOptions, 
   apiKey: string,
-  sessionHistory: HistoricalPrompt[] = []
+  sessionHistory: HistoricalPrompt[] = [],
+  provider: 'gemini' | 'groq' | 'mistral' | 'openrouter' = 'gemini'
 ): Promise<{text: string}[]> => {
   
   const finalKey = apiKey || process.env.API_KEY;
@@ -556,16 +567,6 @@ export const generateStockPrompts = async (
     `;
 
     let rawText = "";
-    
-    // Infer provider from model name
-    let provider = 'gemini';
-    if (options.model.includes('/')) {
-      provider = 'openrouter';
-    } else if (options.model.startsWith('llama') || options.model.startsWith('mixtral')) {
-      provider = 'groq';
-    } else if (options.model.startsWith('mistral')) {
-      provider = 'mistral';
-    }
 
     if (provider === 'gemini') {
       const response = await ai.models.generateContent({
@@ -637,10 +638,19 @@ export const generateStockPrompts = async (
       rawText = data.choices[0]?.message?.content || '{"prompts":[]}';
     }
 
-    // Remove markdown code block formatting if present
-    rawText = rawText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
-
-    const result = JSON.parse(rawText);
+    let jsonString = rawText;
+    const markdownMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (markdownMatch) {
+      jsonString = markdownMatch[1];
+    } else {
+      const firstBrace = rawText.indexOf('{');
+      const lastBrace = rawText.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        jsonString = rawText.substring(firstBrace, lastBrace + 1);
+      }
+    }
+    
+    const result = JSON.parse(jsonString.trim());
     return result.prompts.map((p: any) => ({ text: p.text }));
   } catch (error: any) {
     console.warn("Gemini Error:", error);
