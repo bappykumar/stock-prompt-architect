@@ -1,27 +1,227 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { PromptOptions, HistoricalPrompt } from "../types";
 
-export const testApiKey = async (apiKey: string): Promise<boolean> => {
+export const testApiKey = async (apiKey: string, provider: 'gemini' | 'groq' | 'mistral' | 'openrouter' = 'gemini'): Promise<boolean> => {
   try {
-    const ai = new GoogleGenAI({ apiKey });
-    // A very lightweight call to verify the key is valid
-    await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: 'test',
-      config: { maxOutputTokens: 1 }
-    });
-    return true;
+    if (provider === 'gemini') {
+      const ai = new GoogleGenAI({ apiKey });
+      await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: 'test',
+        config: { maxOutputTokens: 1 }
+      });
+      return true;
+    } else if (provider === 'groq') {
+      const response = await fetch('https://api.groq.com/openai/v1/models', {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`
+        }
+      });
+      if (!response.ok) throw new Error("Groq API test failed");
+      return true;
+    } else if (provider === 'mistral') {
+      const response = await fetch('https://api.mistral.ai/v1/models', {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`
+        }
+      });
+      if (!response.ok) throw new Error("Mistral API test failed");
+      return true;
+    } else if (provider === 'openrouter') {
+      const response = await fetch('https://openrouter.ai/api/v1/models', {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`
+        }
+      });
+      if (!response.ok) throw new Error("OpenRouter API test failed");
+      return true;
+    }
+    return false;
   } catch (error) {
-    console.error("API Key Test Failed:", error);
+    console.warn("API Key Test Failed:", error);
     throw error;
   }
 };
 
+export async function analyzeReferenceAndSuggestSettings(
+  input: { type: 'image', data: string, mimeType: string } 
+       | { type: 'text', description: string },
+  availableOptions: any,
+  apiKey: string,
+  provider: 'gemini' | 'groq' | 'mistral' | 'openrouter' = 'gemini'
+): Promise<any> {
+  
+  const finalKey = apiKey || process.env.API_KEY;
+  if (!finalKey) {
+    throw new Error("No API Key found. Please configure your key in settings.");
+  }
+  const ai = new GoogleGenAI({ apiKey: finalKey });
+
+  let analysisPrompt = '';
+
+  if (input.type === 'image') {
+    if (provider !== 'gemini') {
+      throw new Error("Image analysis requires a Gemini API key.");
+    }
+    analysisPrompt = `Analyze this image's VISUAL 
+CONTENT ONLY — completely ignore and ignore any text, 
+watermarks, logos, captions, or written words that 
+may appear in the image. Focus purely on the visual 
+scene: who/what is shown, their appearance, the 
+setting, lighting, and mood.
+
+Based on the visual content, return a JSON object 
+with three parts:
+
+1. "settings": best matching values from these 
+available options:
+${JSON.stringify(availableOptions)}
+Only include fields you can confidently determine 
+from the image. If a field cannot be determined, set it to "Default / Auto".
+
+2. "smartRefinement": a concise core description of the main subject and their specific action/appearance. Maximum 15 words. Only unique scene-specific details. No framing, no lighting, no technical terms. Just describe the subject and what they are doing.
+
+3. "activeFields": A boolean map of the fields. Set to true if the field is prominently featured and should be explicitly toggled on, and false if it should be turned off or left as Default/Auto. Include keys: subject, characterBackground, ageRange, interaction, targetMarket, imageMedium, visualType, materialStyle, conceptFocus, authenticity, environment, colorMood, qualityCamera, framing, cameraAngle, lighting, shadowStyle.
+IMPORTANT LOGIC: If the image is a flat illustration or vector art, you MUST set photographic fields (qualityCamera, framing, cameraAngle, lighting, shadowStyle, authenticity) to false, as they do not apply to flat graphics.
+
+Return ONLY this JSON structure, no markdown:
+{
+  "settings": { ... },
+  "smartRefinement": "...",
+  "activeFields": { ... }
+}`;
+  } else {
+    analysisPrompt = `Analyze this description 
+  and determine the best matching settings from 
+  these available options:
+  ${JSON.stringify(availableOptions)}
+  
+  Return ONLY a JSON object matching this structure 
+  with your best-guess values for each field based 
+  on what you observe.
+  
+  1. "settings": The values for the fields. If you cannot determine a field, set it to "Default / Auto".
+  
+  2. "smartRefinement": A concise core description of the main subject and their specific action/appearance based on the input. Maximum 15 words. Only unique scene-specific details. No framing, no lighting, no technical terms. Just describe the subject and what they are doing.
+  
+  3. "activeFields": A boolean map of the fields. Set to true ONLY if the field is explicitly mentioned or strongly implied in the description and should be toggled on. Set to false if the field should be turned off or kept as Default/Auto. You MUST provide a boolean value for ALL of these keys: subject, characterBackground, ageRange, interaction, targetMarket, imageMedium, visualType, materialStyle, conceptFocus, authenticity, environment, colorMood, qualityCamera, framing, cameraAngle, lighting, shadowStyle.
+  IMPORTANT LOGIC: If the concept is a flat illustration or 2D vector art, you MUST set photographic fields (qualityCamera, framing, cameraAngle, lighting, shadowStyle, authenticity) to false, as they do not apply to flat graphics.
+  
+  {
+    "settings": {
+      "subject": "...",
+      "characterBackground": "...",
+      "ageRange": "...",
+      "imageMedium": "...",
+      "visualType": "...",
+      "environment": "...",
+      "colorMood": "...",
+      "lighting": "...",
+      "conceptFocus": "...",
+      "interaction": "...",
+      "targetMarket": "...",
+      "materialStyle": "...",
+      "authenticity": "...",
+      "qualityCamera": "...",
+      "framing": "...",
+      "cameraAngle": "...",
+      "shadowStyle": "..."
+    },
+    "smartRefinement": "...",
+    "activeFields": {
+      "subject": true,
+      "characterBackground": false
+    }
+  }
+  
+  Respond with ONLY the JSON object, no markdown, 
+  no explanation.`;
+  }
+
+  const contents: any[] = input.type === 'image' 
+    ? [{ inlineData: { data: input.data.replace(/^data:(.*,)?/, ''), mimeType: input.mimeType } }, { text: analysisPrompt }]
+    : [{ text: `${analysisPrompt}\n\nDescription: ${input.description}` }];
+
+  try {
+    let rawText = "";
+    
+    if (provider === 'gemini') {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: contents,
+        config: {
+          responseMimeType: "application/json",
+        }
+      });
+      rawText = response.text || "";
+    } else if (provider === 'groq') {
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${finalKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'llama3-70b-8192',
+          messages: [{ role: 'user', content: `${analysisPrompt}\n\nDescription: ${(input as any).description}` }],
+          response_format: { type: 'json_object' }
+        })
+      });
+      if (!response.ok) throw new Error(`Groq API Error: ${response.status}`);
+      const data = await response.json();
+      rawText = data.choices[0]?.message?.content || "";
+    } else if (provider === 'mistral') {
+      const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${finalKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'mistral-large-latest',
+          messages: [{ role: 'user', content: `${analysisPrompt}\n\nDescription: ${(input as any).description}` }],
+          response_format: { type: 'json_object' }
+        })
+      });
+      if (!response.ok) throw new Error(`Mistral API Error: ${response.status}`);
+      const data = await response.json();
+      rawText = data.choices[0]?.message?.content || "";
+    } else if (provider === 'openrouter') {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${finalKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'meta-llama/llama-3-8b-instruct:free',
+          messages: [{ role: 'user', content: `${analysisPrompt}\n\nDescription: ${(input as any).description}` }]
+        })
+      });
+      if (!response.ok) throw new Error(`OpenRouter API Error: ${response.status}`);
+      const data = await response.json();
+      rawText = data.choices[0]?.message?.content || "";
+    }
+
+    const cleaned = rawText.replace(/```json|```/g, '').trim();
+    return JSON.parse(cleaned);
+  } catch (error: any) {
+    console.warn("Gemini Error:", error);
+    if (error.message?.includes('API key not valid')) {
+      throw new Error("Invalid API Key. Please check your settings.");
+    } else if (error.message?.includes('quota') || error.message?.includes('429')) {
+      throw new Error("API Quota exceeded. Please try again later or use a different key.");
+    }
+    throw error;
+  }
+}
+
 export const generateStockPrompts = async (
+
   options: PromptOptions, 
   apiKey: string,
   sessionHistory: HistoricalPrompt[] = []
-): Promise<{text: string, score: number}[]> => {
+): Promise<{text: string}[]> => {
   
   const finalKey = apiKey || process.env.API_KEY;
 
@@ -47,10 +247,9 @@ export const generateStockPrompts = async (
           items: {
             type: Type.OBJECT,
             properties: {
-              text: { type: Type.STRING, description: "The full descriptive prompt text." },
-              qualityScore: { type: Type.INTEGER, description: "Internal quality score (1-100)." }
+              text: { type: Type.STRING, description: "The full descriptive prompt text." }
             },
-            required: ["text", "qualityScore"]
+            required: ["text"]
           }
         }
       },
@@ -84,14 +283,13 @@ export const generateStockPrompts = async (
       // Camera Model Logic - ONLY if DSLR Quality is selected
       let cameraModel = "";
       if (options.qualityCamera === 'Professional DSLR Quality') {
-        const models = ["Canon EOS R5", "Sony A7R V", "Nikon Z8", "Generic Full-frame Mirrorless"];
-        cameraModel = models[Math.floor(Math.random() * models.length)];
+        cameraModel = "Generic Full-frame Mirrorless";
       }
 
       // Construct Camera Gear String
       let cameraGear = "";
       if (cameraModel) {
-        cameraGear = `Shot on ${cameraModel}`;
+        cameraGear = `professional full-frame camera quality, ${cameraModel.includes('Generic') ? 'natural lens perspective' : 'high-resolution sensor quality'}`;
       } else {
         cameraGear = `Professional Photography`; 
       }
@@ -106,7 +304,7 @@ export const generateStockPrompts = async (
     } else if (is3D) {
       renderingInstructions = `
       - MODE: 3D RENDER / CGI
-      - VOCABULARY: Use render-based language (e.g., "Octane Render", "Unreal Engine 5", "Ray Tracing").
+      - VOCABULARY: Use render-based language (e.g., "Ray Tracing", "Global Illumination", "Subsurface Scattering").
       - PRIORITY: Prioritize material and lighting descriptions before subject emotion.
       - STRICT RULE: Never use real camera brands (Canon, Sony, etc.). DO NOT use photography terms like "ISO" or "Shutter Speed".
       `;
@@ -190,7 +388,22 @@ export const generateStockPrompts = async (
     `;
 
     // --- 5. COMMERCIAL SAFETY BLOCK ---
-    const SAFETY_BLOCK = "no text, no typography, no branding, no logo, no watermark, no copyright elements, no signature, no labels, no UI overlay, no visible trademarks, no studio equipment visible, no light stands, no softboxes, brand-neutral environment, clean commercial stock image";
+    const nonHumanSubjects = [
+      'Background / Landscape only',
+      'No person',
+      'Still life',
+      'Abstract Shape',
+      'Icon / Logo',
+      'Domestic Pet',
+      'Wild Animal'
+    ];
+    const isHumanSubject = !nonHumanSubjects.some(key => options.subject?.includes(key));
+    
+    let NEGATIVE_BLOCK = "no artificial symmetry, no obvious AI look, no floating objects, no visible studio lights, no light stands, no softboxes, no reflectors, no photography equipment, no text overlay, no logos, no watermarks, no brand elements,";
+    if (isHumanSubject) {
+      NEGATIVE_BLOCK = "no extra fingers, no distorted hands, no plastic skin texture, no staged unnatural pose, no blurry eyes, " + NEGATIVE_BLOCK;
+    }
+    const SAFETY_BLOCK = "no copyright elements, no signature, no labels, no UI overlay, no visible trademarks, no studio equipment visible, brand-neutral environment, clean commercial stock image";
 
     // --- 6. BACKGROUND MODE ENGINE (v1.4) ---
     let backgroundModeEngine = "";
@@ -268,8 +481,12 @@ export const generateStockPrompts = async (
       interaction: isBackgroundMode ? null : getFieldVal('interaction', options.interaction || 'Default / Auto'),
       target: getFieldVal('targetMarket', options.targetMarket || 'Default / Auto'),
       season: options.useCalendar ? `${options.calendarMonth} (${options.calendarEvent})` : null,
-      smartRefinement: options.useExtraKeywords ? options.extraKeywords : null
+      smartRefinement: options.activeFields?.smartRefinement ? options.smartRefinementText : null,
+      ageRange: getFieldVal('ageRange', options.ageRange || 'Default / Auto'),
+      colorMood: getFieldVal('colorMood', options.colorMood || 'Default / Auto')
     };
+
+    console.log("Final smartRefinement being used:", inputs.smartRefinement);
 
     const systemPrompt = `
     ROLE: RULE-BASED PROMPT ASSEMBLY ENGINE.
@@ -289,20 +506,30 @@ export const generateStockPrompts = async (
 
     CORE ASSEMBLY FRAMEWORK (STRICT ORDER):
     1. [IDENTITY LAYER]: Primary Actor + Cultural Context (if human) + Interaction (visible body language).
+       - Rule: Clean commercial stock image only. Absolutely no visible text, no logos, no watermarks, no studio lights, no light stands, no softboxes, no camera equipment visible in frame. (Apply this as a system rule, DO NOT output this text in the generated prompt).
        - Rule: If "Business Team" selected but Smart Refinement specifies 1-2 people, obey Smart Refinement.
        - Rule: Clearly define subject count and role.
+       - Rule: If ageRange is specified, inject it directly after the subject description. Examples: 'Senior (60s+)' -> 'elderly woman in her 60s', 'Young Adult (20s-30s)' -> 'young woman in her late 20s', 'Middle-Aged (40s-50s)' -> 'middle-aged man in his 40s', 'Young Teen (13-17, school context only)' -> 'teenage girl, approximately 15 years old'.
     2. [CONCEPT LAYER]: Smart Refinement + Concept Focus + Target Market.
+       - CRITICAL RULE: If Smart Refinement is provided, it is the EXACT core scene description. You MUST use it as the foundational basis of the prompt and ensure the final scene directly matches it.
        - Rule: Concept Focus must influence tone (emotional/functional/aspirational).
     3. [ENVIRONMENT LAYER]: Environment + Seasonality (if enabled).
        - Rule: Replace vague wording with specific spatial descriptions.
+    3.5 [COLOR LAYER]: If colorMood is active, inject the dominant color palette:
+       - 'Warm & Golden' → warm golden amber tones, rich warm color temperature
+       - 'Cool & Clinical' → cool blue-white tones, clinical sterile color palette
+       - 'Soft Pastel' → soft muted pastel palette, gentle desaturated tones
+       - 'Neutral & Earthy' → neutral earthy tones, warm beige and natural brown palette
+       - 'Vibrant & Bold' → vibrant saturated colors, high energy bold palette
+       - 'Moody & Dark' → deep rich dark tones, dramatic low-key color grade
+       - 'Monochromatic' → single color family palette, tonal variation only
     4. [RENDERING LAYER]: Image Medium language + Visual Style + Material Finish + Authenticity.
        - Rule: Candid = natural interaction; Posed = structured; Documentary = observational.
     5. [OPTICS LAYER]: Quality/Camera + Framing + Elevation + Placement + Atmosphere + Shadows.
-       - Rule: 4K/8K = resolution intensity.
        - Rule: Atmosphere = lighting description (do not stack multiple types).
        - Rule: Shadows = realistic behavior.
     6. [COMMERCIAL INTENT]: "High detail commercial stock photograph" or equivalent.
-    7. [SAFETY BLOCK]: "${SAFETY_BLOCK}" (MUST BE APPENDED ONCE AT THE END).
+    7. [SAFETY BLOCK]: "${NEGATIVE_BLOCK} ${SAFETY_BLOCK}" (MUST BE APPENDED ONCE AT THE END).
 
     PROMPT HYGIENE RULES:
     - Remove redundant adjectives.
@@ -310,7 +537,9 @@ export const generateStockPrompts = async (
     - Avoid lighting conflicts (e.g., studio vs outdoor).
     - Max 2 lighting descriptors.
     - Maintain natural sentence flow.
-    - LENGTH: 90-140 words.
+    - RENDER ENGINE RULE: Never mention specific 3D render engine names anywhere in the generated prompt. Banned terms: Octane Render, Unreal Engine 5, V-Ray, Arnold Render, Redshift, Cinema 4D, Cycles, Blender, KeyShot, Maxwell Render. These are irrelevant for AI image generators. Replace with generic terms only: '3D render', '3D CGI', 'high quality 3D'.
+    - BANNED LIGHTING TERMS FOR 3D: Never use 'physically accurate global illumination', 'global illumination', 'ray tracing', 'physically accurate lighting', 'balanced dynamic range', 'controlled highlights', 'balanced exposure'. For 3D & CGI medium, replace lighting description with: 'soft even lighting' or 'clean studio light' — maximum 4 words for lighting description.
+    - LENGTH: Photography medium: 90-120 words. 3D & CGI or Art & Illustration medium: 40-60 words maximum for core prompt body. Short focused description works better for abstract and 3D content in AI generators. The NEGATIVE_BLOCK and SAFETY_BLOCK are appended after — do not count them toward word limit.
     - CONFLICT HANDLING: Prioritize Image Medium logic. Reset incompatible vocabulary.
 
     ${divergenceInstruction}
@@ -318,25 +547,95 @@ export const generateStockPrompts = async (
     Generate JSON with "prompts" array containing "text" and "qualityScore".
     `;
 
-    const response = await ai.models.generateContent({
-      model: options.model, 
-      contents: systemPrompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: schema,
-        temperature: 0.95, // Increased slightly for more creativity
-        topP: 0.95, // Added topP for better variation
-      }
-    });
+    let rawText = "";
+    
+    // Infer provider from model name
+    let provider = 'gemini';
+    if (options.model.includes('/')) {
+      provider = 'openrouter';
+    } else if (options.model.startsWith('llama') || options.model.startsWith('mixtral')) {
+      provider = 'groq';
+    } else if (options.model.startsWith('mistral')) {
+      provider = 'mistral';
+    }
 
-    let rawText = response.text?.trim() || '{"prompts":[]}';
+    if (provider === 'gemini') {
+      const response = await ai.models.generateContent({
+        model: options.model, 
+        contents: systemPrompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: schema,
+          temperature: 0.95, // Increased slightly for more creativity
+          topP: 0.95, // Added topP for better variation
+        }
+      });
+      rawText = response.text?.trim() || '{"prompts":[]}';
+    } else if (provider === 'groq') {
+      // Groq
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: options.model,
+          messages: [{ role: 'user', content: systemPrompt }],
+          response_format: { type: 'json_object' },
+          temperature: 0.95,
+          top_p: 0.95
+        })
+      });
+      if (!response.ok) throw new Error(`Groq API Error: ${response.status}`);
+      const data = await response.json();
+      rawText = data.choices[0]?.message?.content || '{"prompts":[]}';
+    } else if (provider === 'mistral') {
+      // Mistral
+      const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: options.model,
+          messages: [{ role: 'user', content: systemPrompt }],
+          response_format: { type: 'json_object' },
+          temperature: 0.95,
+          top_p: 0.95
+        })
+      });
+      if (!response.ok) throw new Error(`Mistral API Error: ${response.status}`);
+      const data = await response.json();
+      rawText = data.choices[0]?.message?.content || '{"prompts":[]}';
+    } else if (provider === 'openrouter') {
+      // OpenRouter
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: options.model,
+          messages: [{ role: 'user', content: systemPrompt }],
+          temperature: 0.95,
+          top_p: 0.95
+        })
+      });
+      if (!response.ok) throw new Error(`OpenRouter API Error: ${response.status}`);
+      const data = await response.json();
+      rawText = data.choices[0]?.message?.content || '{"prompts":[]}';
+    }
+
     // Remove markdown code block formatting if present
     rawText = rawText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
 
     const result = JSON.parse(rawText);
-    return result.prompts.map((p: any) => ({ text: p.text, score: p.qualityScore }));
+    return result.prompts.map((p: any) => ({ text: p.text }));
   } catch (error: any) {
-    console.error("Gemini Error:", error);
+    console.warn("Gemini Error:", error);
     // Provide a more user-friendly error message if possible
     if (error.message?.includes('API key not valid')) {
       throw new Error("Invalid API Key. Please check your settings.");

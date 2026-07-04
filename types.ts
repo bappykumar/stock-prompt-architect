@@ -16,8 +16,7 @@ export interface PromptOptions {
   materialStyle: string;
   qualityCamera: string;
   quantity: number;
-  useExtraKeywords: boolean;
-  extraKeywords: string;
+  smartRefinementText: string;
   extraContext?: string;
   useCalendar: boolean;
   calendarMonth: string;
@@ -27,7 +26,9 @@ export interface PromptOptions {
   interaction?: string;
   targetMarket?: string;
   imageMedium?: string;
-  model: 'gemini-3-flash-preview' | 'gemini-3-pro-preview';
+  ageRange?: string;
+  colorMood?: string;
+  model: string;
   activeFields: Record<string, boolean>;
 }
 
@@ -35,7 +36,6 @@ export interface GeneratedPrompt {
   id: string;
   text: string;
   copied: boolean;
-  qualityScore: number;
 }
 
 export interface PromptBatch {
@@ -46,11 +46,11 @@ export interface PromptBatch {
 
 export interface HistoricalPrompt {
   text: string;
-  score: number;
 }
 
 export interface ApiKeyRecord {
   id: string;
+  provider: 'gemini' | 'groq' | 'mistral' | 'openrouter';
   key: string;
   status: 'untested' | 'valid' | 'invalid' | 'testing';
   addedAt: number;
