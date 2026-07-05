@@ -363,9 +363,9 @@ const OPTIONS = {
     { value: 'llama3-8b-8192', label: 'Llama 3 8B', desc: 'Faster and free tier optimized.', provider: 'groq' },
     { value: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B', desc: 'Excellent open-source model.', provider: 'groq' },
     { value: 'mistral-large-latest', label: 'Mistral Large', desc: 'Top-tier reasoning by Mistral AI.', provider: 'mistral' },
-    { value: 'google/gemini-2.5-flash:free', label: 'Gemini 2.5 Flash (Free)', desc: 'Free via OpenRouter', provider: 'openrouter' },
-    { value: 'meta-llama/llama-3-8b-instruct:free', label: 'Llama 3 8B (Free)', desc: 'Free via OpenRouter', provider: 'openrouter' },
-    { value: 'mistralai/mistral-7b-instruct:free', label: 'Mistral 7B (Free)', desc: 'Free via OpenRouter', provider: 'openrouter' }
+    { value: 'google/gemma-4-31b-it:free', label: 'Gemma 4 31B (Free)', desc: 'Free via OpenRouter', provider: 'openrouter' },
+    { value: 'meta-llama/llama-3.3-70b-instruct:free', label: 'Llama 3.3 70B (Free)', desc: 'Free via OpenRouter', provider: 'openrouter' },
+    { value: 'openrouter/free', label: 'Auto OpenRouter (Free)', desc: 'Automatically selects best free model', provider: 'openrouter' }
   ]
 };
 

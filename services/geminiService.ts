@@ -17,7 +17,10 @@ export const testApiKey = async (apiKey: string, provider: 'gemini' | 'groq' | '
           'Authorization': `Bearer ${apiKey}`
         }
       });
-      if (!response.ok) throw new Error("Groq API test failed");
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Groq API test failed: ${response.status} - ${errText}`);
+      }
       return true;
     } else if (provider === 'mistral') {
       const response = await fetch('https://api.mistral.ai/v1/models', {
@@ -25,7 +28,10 @@ export const testApiKey = async (apiKey: string, provider: 'gemini' | 'groq' | '
           'Authorization': `Bearer ${apiKey}`
         }
       });
-      if (!response.ok) throw new Error("Mistral API test failed");
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Mistral API test failed: ${response.status} - ${errText}`);
+      }
       return true;
     } else if (provider === 'openrouter') {
       const response = await fetch('https://openrouter.ai/api/v1/models', {
@@ -33,7 +39,10 @@ export const testApiKey = async (apiKey: string, provider: 'gemini' | 'groq' | '
           'Authorization': `Bearer ${apiKey}`
         }
       });
-      if (!response.ok) throw new Error("OpenRouter API test failed");
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`OpenRouter API test failed: ${response.status} - ${errText}`);
+      }
       return true;
     }
     return false;
@@ -164,10 +173,9 @@ Return ONLY this JSON structure, no markdown:
         body: JSON.stringify({
           model: 'llama3-70b-8192',
           messages: [{ role: 'user', content: `${analysisPrompt}\n\nDescription: ${(input as any).description}` }],
-          response_format: { type: 'json_object' }
         })
       });
-      if (!response.ok) throw new Error(`Groq API Error: ${response.status}`);
+      if (!response.ok) { let errText = await response.text(); try { const parsed = JSON.parse(errText); errText = parsed.error?.message || errText; } catch(e) {} throw new Error(`Groq API Error: ${response.status} - ${errText}`); }
       const data = await response.json();
       rawText = data.choices[0]?.message?.content || "";
     } else if (provider === 'mistral') {
@@ -180,10 +188,9 @@ Return ONLY this JSON structure, no markdown:
         body: JSON.stringify({
           model: 'mistral-large-latest',
           messages: [{ role: 'user', content: `${analysisPrompt}\n\nDescription: ${(input as any).description}` }],
-          response_format: { type: 'json_object' }
         })
       });
-      if (!response.ok) throw new Error(`Mistral API Error: ${response.status}`);
+      if (!response.ok) { let errText = await response.text(); try { const parsed = JSON.parse(errText); errText = parsed.error?.message || errText; } catch(e) {} throw new Error(`Mistral API Error: ${response.status} - ${errText}`); }
       const data = await response.json();
       rawText = data.choices[0]?.message?.content || "";
     } else if (provider === 'openrouter') {
@@ -198,7 +205,7 @@ Return ONLY this JSON structure, no markdown:
           messages: [{ role: 'user', content: `${analysisPrompt}\n\nDescription: ${(input as any).description}` }]
         })
       });
-      if (!response.ok) throw new Error(`OpenRouter API Error: ${response.status}`);
+      if (!response.ok) { let errText = await response.text(); try { const parsed = JSON.parse(errText); errText = parsed.error?.message || errText; } catch(e) {} throw new Error(`OpenRouter API Error: ${response.status} - ${errText}`); }
       const data = await response.json();
       rawText = data.choices[0]?.message?.content || "";
     }
@@ -593,12 +600,11 @@ export const generateStockPrompts = async (
         body: JSON.stringify({
           model: options.model,
           messages: [{ role: 'user', content: systemPrompt }],
-          response_format: { type: 'json_object' },
           temperature: 0.95,
           top_p: 0.95
         })
       });
-      if (!response.ok) throw new Error(`Groq API Error: ${response.status}`);
+      if (!response.ok) { let errText = await response.text(); try { const parsed = JSON.parse(errText); errText = parsed.error?.message || errText; } catch(e) {} throw new Error(`Groq API Error: ${response.status} - ${errText}`); }
       const data = await response.json();
       rawText = data.choices[0]?.message?.content || '{"prompts":[]}';
     } else if (provider === 'mistral') {
@@ -612,12 +618,11 @@ export const generateStockPrompts = async (
         body: JSON.stringify({
           model: options.model,
           messages: [{ role: 'user', content: systemPrompt }],
-          response_format: { type: 'json_object' },
           temperature: 0.95,
           top_p: 0.95
         })
       });
-      if (!response.ok) throw new Error(`Mistral API Error: ${response.status}`);
+      if (!response.ok) { let errText = await response.text(); try { const parsed = JSON.parse(errText); errText = parsed.error?.message || errText; } catch(e) {} throw new Error(`Mistral API Error: ${response.status} - ${errText}`); }
       const data = await response.json();
       rawText = data.choices[0]?.message?.content || '{"prompts":[]}';
     } else if (provider === 'openrouter') {
@@ -635,7 +640,7 @@ export const generateStockPrompts = async (
           top_p: 0.95
         })
       });
-      if (!response.ok) throw new Error(`OpenRouter API Error: ${response.status}`);
+      if (!response.ok) { let errText = await response.text(); try { const parsed = JSON.parse(errText); errText = parsed.error?.message || errText; } catch(e) {} throw new Error(`OpenRouter API Error: ${response.status} - ${errText}`); }
       const data = await response.json();
       rawText = data.choices[0]?.message?.content || '{"prompts":[]}';
     }
