@@ -19,7 +19,7 @@ const fileToBase64 = (file: File): Promise<{data: string, mimeType: string}> => 
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = (e) => {
-      const img = new Image();
+      const img = new window.Image();
       img.onload = () => {
         const MAX_WIDTH = 512;
         const MAX_HEIGHT = 512;
