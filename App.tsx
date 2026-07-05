@@ -18,10 +18,44 @@ const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
-    reader.onload = () => {
-      const base64 = reader.result as string;
-      // Extract just the base64 part, removing the data URL prefix
-      resolve(base64.split(',')[1]);
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX_WIDTH = 1024;
+        const MAX_HEIGHT = 1024;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          const base64 = reader.result as string;
+          return resolve(base64.split(',')[1]);
+        }
+        
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        resolve(dataUrl.split(',')[1]);
+      };
+      img.onerror = () => {
+        const base64 = reader.result as string;
+        resolve(base64.split(',')[1]);
+      };
+      img.src = e.target?.result as string;
     };
     reader.onerror = error => reject(error);
   });
@@ -1312,10 +1346,12 @@ export default function App() {
                     <button 
                       onClick={handleAutoFill} 
                       disabled={isAnalyzing || (autoFillMode === 'image' && !referenceImage) || (autoFillMode === 'text' && !options.smartRefinementText)} 
-                      className={`w-full mt-4 py-2.5 rounded-xl font-bold uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 transition-all disabled:opacity-50
+                      className={`w-full mt-4 py-2.5 rounded-xl font-bold uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed
                         ${autoFillSuccessMsg 
-                          ? 'bg-green-500 text-white hover:bg-green-600 disabled:hover:bg-green-500' 
-                          : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white disabled:hover:bg-slate-900 dark:disabled:hover:bg-white dark:disabled:hover:text-slate-900'}`}
+                          ? 'bg-green-500 text-white' 
+                          : ((autoFillMode === 'image' && referenceImage) || (autoFillMode === 'text' && options.smartRefinementText))
+                            ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20'
+                            : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500'}`}
                     >
                       {isAnalyzing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                       {autoFillMode === 'image' ? 'Analyze Image & Auto-Fill' : 'Auto-Fill Settings from Text'}

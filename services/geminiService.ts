@@ -230,6 +230,8 @@ Return ONLY this JSON structure, no markdown:
       throw new Error("Invalid API Key. Please check your settings.");
     } else if (msg.includes('quota') || msg.includes('429')) {
       throw new Error("API Quota exceeded. Please try again later or use a different key.");
+    } else if (msg.includes('Unterminated string in JSON') || msg.includes('Unexpected end of JSON')) {
+      throw new Error("The AI model returned an incomplete or massive response that could not be parsed. Please try generating again or use a smaller image.");
     }
     throw new Error(msg);
   }
@@ -668,6 +670,8 @@ export const generateStockPrompts = async (
       throw new Error("Invalid API Key. Please check your settings.");
     } else if (msg.includes('quota') || msg.includes('429')) {
       throw new Error("API Quota exceeded. Please try again later or use a different key.");
+    } else if (msg.includes('Unterminated string in JSON') || msg.includes('Unexpected end of JSON')) {
+      throw new Error("The AI model returned an incomplete or massive response that could not be parsed. Please try generating again or use a smaller image.");
     }
     throw new Error(msg);
   }
