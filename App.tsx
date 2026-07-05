@@ -14,15 +14,15 @@ import { QUICK_START_PRESETS } from './presets';
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-const fileToBase64 = (file: File): Promise<string> => {
+const fileToBase64 = (file: File): Promise<{data: string, mimeType: string}> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
-        const MAX_WIDTH = 1024;
-        const MAX_HEIGHT = 1024;
+        const MAX_WIDTH = 512;
+        const MAX_HEIGHT = 512;
         let width = img.width;
         let height = img.height;
 
@@ -44,16 +44,16 @@ const fileToBase64 = (file: File): Promise<string> => {
         const ctx = canvas.getContext('2d');
         if (!ctx) {
           const base64 = reader.result as string;
-          return resolve(base64.split(',')[1]);
+          return resolve({data: base64.split(',')[1], mimeType: file.type});
         }
         
         ctx.drawImage(img, 0, 0, width, height);
         const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-        resolve(dataUrl.split(',')[1]);
+        resolve({data: dataUrl.split(',')[1], mimeType: 'image/jpeg'});
       };
       img.onerror = () => {
         const base64 = reader.result as string;
-        resolve(base64.split(',')[1]);
+        resolve({data: base64.split(',')[1], mimeType: file.type});
       };
       img.src = e.target?.result as string;
     };
@@ -1005,8 +1005,8 @@ export default function App() {
     try {
       let input: any;
       if (autoFillMode === 'image' && referenceImage) {
-        const base64 = await fileToBase64(referenceImage);
-        input = { type: 'image' as const, data: base64, mimeType: referenceImage.type };
+        const imageResult = await fileToBase64(referenceImage);
+        input = { type: 'image' as const, data: imageResult.data, mimeType: imageResult.mimeType };
       } else {
         input = { type: 'text' as const, description: options.smartRefinementText };
       }
@@ -1348,7 +1348,7 @@ export default function App() {
                       disabled={isAnalyzing || (autoFillMode === 'image' && !referenceImage) || (autoFillMode === 'text' && !options.smartRefinementText)} 
                       className={`w-full mt-4 py-2.5 rounded-xl font-bold uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed
                         ${autoFillSuccessMsg 
-                          ? 'bg-green-500 text-white' 
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20' 
                           : ((autoFillMode === 'image' && referenceImage) || (autoFillMode === 'text' && options.smartRefinementText))
                             ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20'
                             : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500'}`}
@@ -1357,7 +1357,7 @@ export default function App() {
                       {autoFillMode === 'image' ? 'Analyze Image & Auto-Fill' : 'Auto-Fill Settings from Text'}
                     </button>
                     {autoFillSuccessMsg && (
-                      <div className="mt-3 text-[10px] text-green-600 dark:text-green-400 font-medium flex items-center gap-1.5 leading-tight">
+                      <div className="mt-3 text-[10px] text-blue-600 dark:text-blue-400 font-medium flex items-center gap-1.5 leading-tight">
                         <Check size={12} className="shrink-0" /> {autoFillSuccessMsg}
                       </div>
                     )}
