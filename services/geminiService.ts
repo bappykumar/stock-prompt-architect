@@ -171,7 +171,7 @@ Return ONLY this JSON structure, no markdown:
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'llama3-70b-8192',
+          model: 'llama-3.3-70b-versatile',
           messages: [{ role: 'user', content: `${analysisPrompt}\n\nDescription: ${(input as any).description}` }],
         })
       });
@@ -557,7 +557,7 @@ export const generateStockPrompts = async (
        - Rule: Atmosphere = lighting description (do not stack multiple types).
        - Rule: Shadows = realistic behavior.
     6. [COMMERCIAL INTENT]: "High detail commercial stock photograph" or equivalent.
-    7. [SAFETY BLOCK]: "${NEGATIVE_BLOCK} ${SAFETY_BLOCK}" (MUST BE APPENDED ONCE AT THE END).
+    7. [SAFETY BLOCK]: You MUST append the exact string "${NEGATIVE_BLOCK} ${SAFETY_BLOCK}" to the very end of EVERY generated prompt text. Do not omit this.
 
     PROMPT HYGIENE RULES:
     - Remove redundant adjectives.
@@ -658,7 +658,19 @@ export const generateStockPrompts = async (
     }
     
     const result = JSON.parse(jsonString.trim());
-    return result.prompts.map((p: any) => ({ text: p.text }));
+    const finalSafetyString = `${NEGATIVE_BLOCK} ${SAFETY_BLOCK}`;
+    return result.prompts.map((p: any) => {
+      let text = p.text.trim();
+      if (!text.includes("no copyright elements")) {
+        if (!text.endsWith(".") && !text.endsWith(",")) {
+          text += ", ";
+        } else {
+          text += " ";
+        }
+        text += finalSafetyString;
+      }
+      return { text };
+    });
   } catch (error: any) {
     console.warn("Gemini Error:", error);
     // Provide a more user-friendly error message if possible

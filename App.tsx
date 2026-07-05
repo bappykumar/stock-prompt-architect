@@ -359,8 +359,8 @@ const OPTIONS = {
   model: [
     { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', desc: 'Fast & efficient. Best for Free Tier limits.', provider: 'gemini' },
     { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', desc: 'Complex reasoning. Recommended for Pro/Paid limits.', provider: 'gemini' },
-    { value: 'llama3-70b-8192', label: 'Llama 3 70B', desc: 'Lightning fast generation via Groq.', provider: 'groq' },
-    { value: 'llama3-8b-8192', label: 'Llama 3 8B', desc: 'Faster and free tier optimized.', provider: 'groq' },
+    { value: 'llama-3.3-70b-versatile', label: 'Llama 3 70B', desc: 'Lightning fast generation via Groq.', provider: 'groq' },
+    { value: 'llama-3.1-8b-instant', label: 'Llama 3 8B', desc: 'Faster and free tier optimized.', provider: 'groq' },
     { value: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B', desc: 'Excellent open-source model.', provider: 'groq' },
     { value: 'mistral-large-latest', label: 'Mistral Large', desc: 'Top-tier reasoning by Mistral AI.', provider: 'mistral' },
     { value: 'google/gemma-4-31b-it:free', label: 'Gemma 4 31B (Free)', desc: 'Free via OpenRouter', provider: 'openrouter' },
