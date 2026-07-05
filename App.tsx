@@ -1618,6 +1618,7 @@ export default function App() {
                     setOptions(getFreshDefaultOptions());
                     setBatches([]);
                     setDisplayedPresets(getRandomPresets(4));
+                    window.location.reload();
                   }}
                   className="flex-1 py-3.5 px-4 rounded-xl text-[12px] font-bold uppercase tracking-widest text-white bg-red-500 hover:bg-red-600 transition-colors shadow-lg shadow-red-500/20"
                 >
