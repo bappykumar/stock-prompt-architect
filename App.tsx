@@ -133,6 +133,38 @@ const getFreshDefaultOptions = (): PromptOptions => ({
 
 const DEFAULT_OPTIONS = getFreshDefaultOptions();
 
+const safeLocalStorage = {
+  getItem(key: string): string | null {
+    try {
+      return localStorage.getItem(key);
+    } catch (e) {
+      console.warn(`localStorage.getItem failed for key "${key}":`, e);
+      return null;
+    }
+  },
+  setItem(key: string, value: string): void {
+    try {
+      localStorage.setItem(key, value);
+    } catch (e) {
+      console.warn(`localStorage.setItem failed for key "${key}":`, e);
+    }
+  },
+  removeItem(key: string): void {
+    try {
+      localStorage.removeItem(key);
+    } catch (e) {
+      console.warn(`localStorage.removeItem failed for key "${key}":`, e);
+    }
+  },
+  clear(): void {
+    try {
+      localStorage.clear();
+    } catch (e) {
+      console.warn('localStorage.clear failed:', e);
+    }
+  }
+};
+
 const OPTIONS = {
   subject: [
     { value: 'Default / Auto', label: 'Default / Auto' },
@@ -622,7 +654,7 @@ const PROVIDER_LINKS: Record<string, string> = {
 
 export default function App() {
   const [options, setOptions] = useState<PromptOptions>(() => {
-    const saved = localStorage.getItem('prompt_options');
+    const saved = safeLocalStorage.getItem('prompt_options');
     const parsed = saved ? JSON.parse(saved) : getFreshDefaultOptions();
     
     // Ensure activeFields exists and merge with defaults to catch new fields
@@ -721,34 +753,61 @@ export default function App() {
   const [displayedPresets, setDisplayedPresets] = useState(() => getRandomPresets(4));
 
   const [batches, setBatches] = useState<PromptBatch[]>(() => {
-    const saved = localStorage.getItem('prompt_session_history');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = safeLocalStorage.getItem('prompt_session_history');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(b => b && b.id && Array.isArray(b.prompts));
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to parse prompt session history:', e);
+    }
+    return [];
   });
 
   const [apiKeys, setApiKeys] = useState<ApiKeyRecord[]>(() => {
-    const saved = localStorage.getItem('user_api_keys');
-    if (saved) return JSON.parse(saved);
+    try {
+      const saved = safeLocalStorage.getItem('user_api_keys');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(k => k && k.id && k.key);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to parse user API keys:', e);
+    }
     
     // Migration from old single key
-    const oldKey = localStorage.getItem('user_gemini_api_key');
-    if (oldKey) {
-      const migrated: ApiKeyRecord[] = [{ id: crypto.randomUUID(), key: oldKey, status: 'untested', addedAt: Date.now() }];
-      localStorage.setItem('user_api_keys', JSON.stringify(migrated));
-      localStorage.removeItem('user_gemini_api_key');
-      return migrated;
+    try {
+      const oldKey = safeLocalStorage.getItem('user_gemini_api_key');
+      if (oldKey) {
+        const migrated: ApiKeyRecord[] = [{ id: crypto.randomUUID(), key: oldKey, status: 'untested', addedAt: Date.now() }];
+        safeLocalStorage.setItem('user_api_keys', JSON.stringify(migrated));
+        safeLocalStorage.removeItem('user_gemini_api_key');
+        return migrated;
+      }
+    } catch (e) {
+      console.warn('Failed old key migration:', e);
     }
     return [];
   });
 
   const [activeKeyId, setActiveKeyId] = useState<string>(() => {
-    return localStorage.getItem('active_api_key_id') || '';
+    try {
+      return safeLocalStorage.getItem('active_api_key_id') || '';
+    } catch (e) {
+      return '';
+    }
   });
 
   const [newKeyInput, setNewKeyInput] = useState("");
   const [activeProviderTab, setActiveProviderTab] = useState<'gemini' | 'groq' | 'mistral' | 'openrouter'>('gemini');
 
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
-    const saved = localStorage.getItem('theme_preference');
+    const saved = safeLocalStorage.getItem('theme_preference');
     return saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
   });
 
@@ -777,6 +836,22 @@ export default function App() {
   const [autoFillSuccessMsg, setAutoFillSuccessMsg] = useState<string | null>(null);
   const [autoFillOptionsHash, setAutoFillOptionsHash] = useState<string | null>(null);
 
+  const [toasts, setToasts] = useState<{ id: string; message: string; type: 'info' | 'success' | 'warning' | 'error' | 'retry' }[]>([]);
+
+  const addToast = useCallback((message: string, type: 'info' | 'success' | 'warning' | 'error' | 'retry' = 'info') => {
+    const id = crypto.randomUUID();
+    setToasts(prev => [...prev, { id, message, type }]);
+    return id;
+  }, []);
+
+  const removeToast = useCallback((id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+
+  const updateToast = useCallback((id: string, message: string, type?: 'info' | 'success' | 'warning' | 'error' | 'retry') => {
+    setToasts(prev => prev.map(t => t.id === id ? { ...t, message, ...(type ? { type } : {}) } : t));
+  }, []);
+
   useEffect(() => {
     if (autoFillSuccessMsg && autoFillOptionsHash) {
       if (JSON.stringify(options) !== autoFillOptionsHash) {
@@ -799,7 +874,7 @@ export default function App() {
   }, [autoFillSuccessMsg]);
 
   const [isAdvanced, setIsAdvanced] = useState<boolean>(() => {
-    const savedMode = localStorage.getItem('prompt_mode');
+    const savedMode = safeLocalStorage.getItem('prompt_mode');
     return savedMode === 'advanced';
   });
 
@@ -828,19 +903,19 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('prompt_mode', isAdvanced ? 'advanced' : 'basic');
+    safeLocalStorage.setItem('prompt_mode', isAdvanced ? 'advanced' : 'basic');
   }, [isAdvanced]);
 
   useEffect(() => {
-    localStorage.setItem('prompt_options', JSON.stringify(options));
+    safeLocalStorage.setItem('prompt_options', JSON.stringify(options));
   }, [options]);
 
   useEffect(() => {
-    localStorage.setItem('prompt_session_history', JSON.stringify(batches));
+    safeLocalStorage.setItem('prompt_session_history', JSON.stringify(batches));
   }, [batches]);
 
   useEffect(() => {
-    localStorage.setItem('theme_preference', isDarkMode ? 'dark' : 'light');
+    safeLocalStorage.setItem('theme_preference', isDarkMode ? 'dark' : 'light');
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
     } else {
@@ -849,7 +924,7 @@ export default function App() {
   }, [isDarkMode]);
 
   useEffect(() => {
-    localStorage.setItem('user_api_keys', JSON.stringify(apiKeys));
+    safeLocalStorage.setItem('user_api_keys', JSON.stringify(apiKeys));
     if (apiKeys.length > 0 && !apiKeys.find(k => k.id === activeKeyId)) {
       setActiveKeyId(apiKeys[0].id);
     } else if (apiKeys.length === 0) {
@@ -858,7 +933,7 @@ export default function App() {
   }, [apiKeys, activeKeyId]);
 
   useEffect(() => {
-    localStorage.setItem('active_api_key_id', activeKeyId);
+    safeLocalStorage.setItem('active_api_key_id', activeKeyId);
   }, [activeKeyId]);
 
   const handleAddKey = () => {
@@ -959,7 +1034,10 @@ export default function App() {
     let keysToTry: { id: string, key: string }[] = [];
     
     if (apiKeys.length > 0) {
-      const compatibleKeys = apiKeys.filter(k => k.provider === requiredProvider);
+      const compatibleKeys = apiKeys
+        .map(k => ({ ...k, provider: k.provider || 'gemini' }))
+        .filter(k => k.provider === requiredProvider);
+        
       const currentIdx = compatibleKeys.findIndex(k => k.id === activeKeyId);
       if (currentIdx !== -1) {
         keysToTry = [...compatibleKeys.slice(currentIdx), ...compatibleKeys.slice(0, currentIdx)];
@@ -973,30 +1051,66 @@ export default function App() {
       throw new Error(`No API key configured for provider: ${requiredProvider}. Please add one.`);
     }
 
+    const maxRetriesPerKey = 3;
     let lastError: any = null;
+    let toastId: string | null = null;
 
-    for (const keyRecord of keysToTry) {
-      try {
-        const result = await operation(keyRecord.key);
-        if (keyRecord.id !== 'system' && keyRecord.id !== activeKeyId) {
-          setActiveKeyId(keyRecord.id);
-        }
-        return result;
-      } catch (err: any) {
-        const isQuotaError = err.message?.toLowerCase().includes('quota') || err.message?.includes('429');
-        if (isQuotaError) {
+    for (let keyIdx = 0; keyIdx < keysToTry.length; keyIdx++) {
+      const keyRecord = keysToTry[keyIdx];
+      const maskedKey = keyRecord.key ? `${keyRecord.key.substring(0, 6)}...${keyRecord.key.substring(keyRecord.key.length - 4)}` : 'unspecified';
+
+      for (let attempt = 1; attempt <= maxRetriesPerKey; attempt++) {
+        try {
+          if (toastId) {
+            removeToast(toastId);
+            toastId = null;
+          }
+          const result = await operation(keyRecord.key);
+          if (keyRecord.id !== 'system' && keyRecord.id !== activeKeyId) {
+            setActiveKeyId(keyRecord.id);
+          }
+          return result;
+        } catch (err: any) {
           lastError = err;
-          continue;
-        } else {
-          throw err;
+          console.warn(`Attempt ${attempt} failed with key ${maskedKey}:`, err);
+
+          const isLastAttempt = attempt === maxRetriesPerKey;
+          const isLastKey = keyIdx === keysToTry.length - 1;
+
+          if (!isLastAttempt) {
+            const backoffMs = attempt * 1500; // Backoff of 1.5s, 3s
+            const statusMessage = `API request failed with ${requiredProvider}. Retrying (Attempt ${attempt + 1}/${maxRetriesPerKey}) in ${(backoffMs / 1000).toFixed(1)}s...`;
+            
+            if (toastId) {
+              updateToast(toastId, statusMessage, 'retry');
+            } else {
+              toastId = addToast(statusMessage, 'retry');
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, backoffMs));
+          } else if (!isLastKey) {
+            // Rotate keys
+            const statusMessage = `API Key failed. Rotating to next compatible key for ${requiredProvider}...`;
+            if (toastId) {
+              updateToast(toastId, statusMessage, 'info');
+            } else {
+              toastId = addToast(statusMessage, 'info');
+            }
+            await new Promise(resolve => setTimeout(resolve, 800));
+          }
         }
       }
     }
 
+    if (toastId) {
+      removeToast(toastId);
+    }
+
     setIsModalOpen(true);
+    const apiErrorDetail = lastError?.message ? `: ${lastError.message}` : '';
     throw new Error(apiKeys.length > 1 
-      ? "All available API keys have exceeded their quota. Please add a new API key."
-      : "Your API key has exceeded its quota. Please add a new API key.");
+      ? `All available API keys have failed${apiErrorDetail}. Please add a new API key.`
+      : `Your API key failed${apiErrorDetail}. Please add a new API key.`);
   };
 
   const handleAutoFill = async () => {
@@ -1612,9 +1726,9 @@ export default function App() {
                 <button 
                   onClick={() => {
                     setIsResetConfirmOpen(false);
-                    localStorage.removeItem('prompt_options');
-                    localStorage.removeItem('prompt_session_history');
-                    localStorage.setItem('use_system_api_key', 'false');
+                    safeLocalStorage.removeItem('prompt_options');
+                    safeLocalStorage.removeItem('prompt_session_history');
+                    safeLocalStorage.setItem('use_system_api_key', 'false');
                     setOptions(getFreshDefaultOptions());
                     setBatches([]);
                     setDisplayedPresets(getRandomPresets(4));
@@ -1804,6 +1918,44 @@ export default function App() {
                <button onClick={() => setIsModalOpen(false)} className="w-full py-4 bg-slate-950 dark:bg-white text-white dark:text-slate-950 rounded-full font-black uppercase tracking-widest text-xs shadow-lg active:scale-[0.98] transition-all">Save Settings</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Toast Notification Container */}
+      {toasts.length > 0 && (
+        <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3 max-w-sm w-full pointer-events-none">
+          {toasts.map(toast => (
+            <div 
+              key={toast.id} 
+              className={`pointer-events-auto p-4 rounded-2xl border shadow-2xl flex items-start gap-3 animate-in slide-in-from-bottom-5 fade-in duration-300 ${
+                toast.type === 'retry' ? 'bg-[#0f172a] text-blue-400 border-blue-500/30' :
+                toast.type === 'error' ? 'bg-red-950 text-red-400 border-red-500/30' :
+                toast.type === 'success' ? 'bg-emerald-950 text-emerald-400 border-emerald-500/30' :
+                'bg-slate-900 text-slate-300 border-slate-800'
+              }`}
+            >
+              <div className="mt-0.5 shrink-0">
+                {toast.type === 'retry' ? (
+                  <Loader2 size={16} className="animate-spin text-blue-400" />
+                ) : toast.type === 'error' ? (
+                  <AlertCircle size={16} className="text-red-400" />
+                ) : toast.type === 'success' ? (
+                  <Check size={16} className="text-emerald-400" />
+                ) : (
+                  <Info size={16} className="text-slate-400" />
+                )}
+              </div>
+              <div className="flex-1 text-xs font-bold leading-normal select-none">
+                {toast.message}
+              </div>
+              <button 
+                onClick={() => removeToast(toast.id)} 
+                className="opacity-50 hover:opacity-100 shrink-0 self-center text-slate-400 hover:text-slate-200 transition-colors"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ))}
         </div>
       )}
     </div>
