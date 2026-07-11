@@ -485,8 +485,8 @@ export const generateStockPrompts = async (
          - Change the specific action, pose, or micro-interaction.
          - Alter the exact color palette or wardrobe details.
          - Shift the specific angle or environmental framing slightly.
-         - Do not just swap one word; create a distinctly new scenario within the given parameters.` 
-      : `VARIATION MANDATE: Ensure each prompt in this batch explores a distinctly different angle, action, or micro-scenario within the given parameters. Do not make them clones of each other.`;
+         - Visually diversify: Each prompt in this batch MUST represent the core concept/Smart Refinement from a completely different visual perspective, composition style, lighting, framing, background details, and mood. Ensure the outputs are highly distinct and visually unique from one another.` 
+      : `VARIATION MANDATE: Ensure each prompt in this batch explores a distinctly different angle, action, or micro-scenario within the given parameters. Do not make them clones of each other. Represent the core concept/Smart Refinement from a completely different visual angle, composition style, lighting setup, framing, background details, and mood for each option in the batch to maximize visual diversity.`;
 
     // --- 8. GATHER INPUTS ---
     const isBackgroundMode = options.subject === 'Background / Landscape only';
@@ -522,6 +522,19 @@ export const generateStockPrompts = async (
     
     INPUT CONFIGURATION:
     ${JSON.stringify(inputs, null, 2)}
+
+    DIVERSITY & VARIATION RULES FOR INPUTS (CRITICAL FOR VISUAL VARIETY):
+    - The 'INPUT CONFIGURATION' above shows the base settings selected by the user.
+    - If quantity is greater than 1 (generating a batch of prompts), you MUST NOT apply the exact same values for lighting, framing, camera angle, subject position, shadow style, and color mood to every option in the batch! This is extremely important to prevent "cloned" or repetitive visual prompts.
+    - Treat the user's 'INPUT CONFIGURATION' as the "Anchor/Reference Style" for the FIRST generated option.
+    - For all other options (Option 2, Option 3, Option 4, etc.), you are REQUIRED to dynamically, creatively, and logically vary these visual attributes (lighting, framing, camera angle, subject position, shadow style) to provide a visually diverse suite of prompts.
+    - Examples of dynamic variations to apply across options in the batch:
+      - Lighting: If 'Golden Hour' is the input, use it for Option 1, but vary other options with 'moody overcast ambient daylight', 'dramatic high-contrast side-lighting', 'soft morning mist', 'warm rim-lighting', or 'split lighting with deep shadows'.
+      - Framing: If 'Close-up' is the input, use it for Option 1, but vary other options with 'cinematic medium shot', 'asymmetrical tight macro focus', 'dynamic over-the-shoulder wide framing', or 'artistic profile composition'.
+      - Camera Angle: If 'Eye Level' is the input, vary others with 'low-angle looking up for powerful stature', 'subtle high-angle overview', or 'dynamic dutch tilt angle'.
+      - Subject Position: If 'Centered' is the input, vary others with 'off-center rule-of-thirds alignment', 'asymmetrical dynamic foreground positioning', or 'deep perspective background integration'.
+      - Shadow Style: If 'Soft Shadows' is the input, vary others with 'long dramatic late-afternoon shadows', 'defined geometric cast shadows', or 'subtle cinematic gradient shadow play'.
+    - Ensure that each option in the batch features a highly unique, cohesive combination of composition, lighting, camera work, and perspective, presenting the core Smart Refinement/concept in completely different visual ways.
     
     RENDERING RULES (MEDIUM-AWARE):
     ${renderingInstructions}
@@ -539,7 +552,7 @@ export const generateStockPrompts = async (
        - Rule: Clearly define subject count and role.
        - Rule: If ageRange is specified, inject it directly after the subject description. Examples: 'Senior (60s+)' -> 'elderly woman in her 60s', 'Young Adult (20s-30s)' -> 'young woman in her late 20s', 'Middle-Aged (40s-50s)' -> 'middle-aged man in his 40s', 'Young Teen (13-17, school context only)' -> 'teenage girl, approximately 15 years old'.
     2. [CONCEPT LAYER]: Smart Refinement + Concept Focus + Target Market.
-       - CRITICAL RULE: If Smart Refinement is provided, it is the EXACT core scene description. You MUST use it as the foundational basis of the prompt and ensure the final scene directly matches it.
+       - CRITICAL RULE: If Smart Refinement is provided, it is the core conceptual foundation. You MUST use its core subject and action as the basis, but you are forbidden from copying it identically across options. You MUST visually expand and present this same concept differently in each generated prompt by altering the composition, setting, background, color theme, perspective, and framing. Each prompt must feel like a unique visual representation.
        - Rule: Concept Focus must influence tone (emotional/functional/aspirational).
     3. [ENVIRONMENT LAYER]: Environment + Seasonality (if enabled).
        - Rule: Replace vague wording with specific spatial descriptions.
