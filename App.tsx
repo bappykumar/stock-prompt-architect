@@ -298,6 +298,7 @@ const OPTIONS = {
     
     { value: 'header_3d', label: '--- 3D & CGI ---' },
     { value: 'Premium 3D Icon', label: 'Premium 3D Icon' },
+    { value: 'Abstract Environmental 3D', label: 'Abstract Environmental 3D' },
     { value: '3D Render', label: '3D Render (General)' },
     { value: '3D illustration', label: '3D Illustration' },
     { value: 'Isometric 3D', label: 'Isometric 3D' },
@@ -784,7 +785,7 @@ export default function App() {
     try {
       const oldKey = safeLocalStorage.getItem('user_gemini_api_key');
       if (oldKey) {
-        const migrated: ApiKeyRecord[] = [{ id: crypto.randomUUID(), key: oldKey, status: 'untested', addedAt: Date.now() }];
+        const migrated: ApiKeyRecord[] = [{ id: crypto.randomUUID(), provider: 'gemini', key: oldKey, status: 'untested', addedAt: Date.now() }];
         safeLocalStorage.setItem('user_api_keys', JSON.stringify(migrated));
         safeLocalStorage.removeItem('user_gemini_api_key');
         return migrated;
@@ -1147,7 +1148,7 @@ export default function App() {
       const newOptions = {
         ...options,
         ...newSettings,
-        smartRefinementText: result.smartRefinement || options.smartRefinementText,
+        smartRefinementText: input.type === 'text' ? options.smartRefinementText : (result.smartRefinement || options.smartRefinementText),
         activeFields: {
           ...resetActiveFields,
           ...(result.activeFields || {}),

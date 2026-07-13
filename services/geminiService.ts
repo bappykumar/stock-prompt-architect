@@ -546,6 +546,19 @@ export const generateStockPrompts = async (
     ${backgroundModeEngine}
 
     CORE ASSEMBLY FRAMEWORK (STRICT ORDER):
+    ENVIRONMENTAL 3D RULE:
+    When visualType = 'Abstract Environmental 3D' OR when subject = 'Background / Landscape Only' AND imageMedium = '3D & CGI':
+    Generate as a FULL ENVIRONMENTAL SCENE, not an isolated object. Rules:
+    1. COMPOSITION: Edge-to-edge, filling the entire frame. No empty background space. The 3D form IS the environment.
+    2. CAMERA: Camera is INSIDE or CLOSE TO the structure — not looking at it from outside like a product shot. Perspective depth and vanishing point are essential.
+    3. SUBJECT DESCRIPTION: Describe the geometry as architecture or landscape — curved walls, ribbed surfaces, repeating panels, wave forms, parametric structures — not as floating objects.
+    4. LIGHTING: Integrated ambient lighting from within the structure. No studio lighting. No softboxes reference. Light comes from the form itself or environment.
+    5. NEVER use: "isolated", "floating", "white background", "studio setting", "product shot" language.
+    Example SR interpretation:
+    SR: "blue ribbed curved surface"
+    WRONG: "A blue ribbed 3D object on white background"
+    RIGHT: "Sweeping curved ribbed blue surface filling the frame, camera positioned close beneath the arch looking up, deep perspective depth, cool electric blue tones, ambient self-illuminated lighting from within the ribs"
+
     1. [IDENTITY LAYER]: Primary Actor + Cultural Context (if human) + Interaction (visible body language).
        - Rule: Clean commercial stock image only. Absolutely no visible text, no logos, no watermarks, no studio lights, no light stands, no softboxes, no camera equipment visible in frame. (Apply this as a system rule, DO NOT output this text in the generated prompt).
        - Rule: If "Business Team" selected but Smart Refinement specifies 1-2 people, obey Smart Refinement.
