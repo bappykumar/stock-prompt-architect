@@ -546,24 +546,37 @@ export const generateStockPrompts = async (
     ${backgroundModeEngine}
 
     CORE ASSEMBLY FRAMEWORK (STRICT ORDER):
-    ENVIRONMENTAL 3D RULE:
-    When visualType = 'Abstract Environmental 3D' OR when subject = 'Background / Landscape Only' AND imageMedium = '3D & CGI':
-    Generate as a FULL ENVIRONMENTAL SCENE, not an isolated object. Rules:
-    1. COMPOSITION: Edge-to-edge, filling the entire frame. No empty background space. The 3D form IS the environment.
-    2. CAMERA: Camera is INSIDE or CLOSE TO the structure — not looking at it from outside like a product shot. Perspective depth and vanishing point are essential.
-    3. SUBJECT DESCRIPTION: Describe the geometry as architecture or landscape — curved walls, ribbed surfaces, repeating panels, wave forms, parametric structures — not as floating objects.
-    4. LIGHTING: Integrated ambient lighting from within the structure. No studio lighting. No softboxes reference. Light comes from the form itself or environment.
-    5. NEVER use: "isolated", "floating", "white background", "studio setting", "product shot" language.
-    Example SR interpretation:
-    SR: "blue ribbed curved surface"
-    WRONG: "A blue ribbed 3D object on white background"
-    RIGHT: "Sweeping curved ribbed blue surface filling the frame, camera positioned close beneath the arch looking up, deep perspective depth, cool electric blue tones, ambient self-illuminated lighting from within the ribs"
 
     1. [IDENTITY LAYER]: Primary Actor + Cultural Context (if human) + Interaction (visible body language).
        - Rule: Clean commercial stock image only. Absolutely no visible text, no logos, no watermarks, no studio lights, no light stands, no softboxes, no camera equipment visible in frame. (Apply this as a system rule, DO NOT output this text in the generated prompt).
        - Rule: If "Business Team" selected but Smart Refinement specifies 1-2 people, obey Smart Refinement.
        - Rule: Clearly define subject count and role.
        - Rule: If ageRange is specified, inject it directly after the subject description. Examples: 'Senior (60s+)' -> 'elderly woman in her 60s', 'Young Adult (20s-30s)' -> 'young woman in her late 20s', 'Middle-Aged (40s-50s)' -> 'middle-aged man in his 40s', 'Young Teen (13-17, school context only)' -> 'teenage girl, approximately 15 years old'.
+
+    [ENVIRONMENTAL 3D RULE]:
+    When visualType = 'Abstract Environmental 3D':
+
+    1. COMPOSITION RULE:
+    Generate as a full environmental scene.
+    Camera is positioned INSIDE or EXTREMELY CLOSE TO the structure. The 3D form fills the entire frame edge-to-edge. No empty background visible.
+
+    2. SUBJECT LANGUAGE:
+    Describe as architecture or landscape — NOT as a floating object. Use terms like:
+    "sweeping curved surface", "repeating geometric panels", "parametric ribbed structure", "architectural wave form", "infinite corridor", "repeating pattern receding to vanishing point"
+
+    3. CAMERA LANGUAGE:
+    Always include perspective depth. Use terms like:
+    "deep perspective vanishing point", "camera looking along the curve", "perspective depth receding into distance", "immersive first-person viewpoint"
+
+    4. LIGHTING:
+    Ambient self-illumination from within the structure. Never use studio lighting language.
+    Use: "ambient glow from within", "self-lit geometric form", "integrated environmental lighting", "cool ambient fill"
+
+    5. NEVER USE for this visual type:
+    "isolated", "white background", "studio setting", "floating object", "product shot", "softbox", "three-point lighting"
+
+    6. LENGTH: 50-70 words for core prompt body.
+
     2. [CONCEPT LAYER]: Smart Refinement + Concept Focus + Target Market.
        - CRITICAL RULE: If Smart Refinement is provided, it is the core conceptual foundation. You MUST use its core subject and action as the basis, but you are forbidden from copying it identically across options. You MUST visually expand and present this same concept differently in each generated prompt by altering the composition, setting, background, color theme, perspective, and framing. Each prompt must feel like a unique visual representation.
        - Rule: Concept Focus must influence tone (emotional/functional/aspirational).

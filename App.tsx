@@ -298,11 +298,11 @@ const OPTIONS = {
     
     { value: 'header_3d', label: '--- 3D & CGI ---' },
     { value: 'Premium 3D Icon', label: 'Premium 3D Icon' },
-    { value: 'Abstract Environmental 3D', label: 'Abstract Environmental 3D' },
     { value: '3D Render', label: '3D Render (General)' },
     { value: '3D illustration', label: '3D Illustration' },
     { value: 'Isometric 3D', label: 'Isometric 3D' },
     { value: 'Claymorphism', label: 'Claymorphism' },
+    { value: 'Abstract Environmental 3D', label: 'Abstract Environmental 3D' },
     
     { value: 'header_art', label: '--- Art & Illustration ---' },
     { value: 'Anime Style', label: 'Anime Style' },
@@ -703,7 +703,7 @@ export default function App() {
       return OPTIONS.visualType.filter(opt => 
         opt.value === 'Default / Auto' || 
         opt.value === 'header_3d' ||
-        ['Premium 3D Icon', '3D Render', '3D illustration', 'Isometric 3D', 'Claymorphism'].includes(opt.value as string)
+        ['Premium 3D Icon', '3D Render', '3D illustration', 'Isometric 3D', 'Claymorphism', 'Abstract Environmental 3D'].includes(opt.value as string)
       );
     }
 
@@ -731,7 +731,7 @@ export default function App() {
         if (val === 'Photography') {
           isCompatible = ['Standard photo', 'Ultra Realistic', 'Cinematic', 'Cinematic Film (Kodak Portra)', 'Minimalist Studio Photo', 'Hyper Detailed', 'Documentary / Editorial'].includes(currentVisual);
         } else if (val === '3D & CGI') {
-          isCompatible = ['Premium 3D Icon', '3D Render', '3D illustration', 'Isometric 3D', 'Claymorphism'].includes(currentVisual);
+          isCompatible = ['Premium 3D Icon', '3D Render', '3D illustration', 'Isometric 3D', 'Claymorphism', 'Abstract Environmental 3D'].includes(currentVisual);
         } else if (val === 'Art & Illustration') {
           isCompatible = ['Anime Style', 'Oil Painting', 'Minimalist Vector', 'Flat Illustration', 'Paper Cut Art', 'Line Art'].includes(currentVisual);
         }
@@ -1026,31 +1026,33 @@ export default function App() {
   }, []);
 
   const executeWithKeyRotation = async <T,>(
-    operation: (key: string) => Promise<T>,
+    operation: (keyRecord: { id: string, key: string, provider: 'gemini'|'groq'|'mistral'|'openrouter' }, fallbackModel?: string) => Promise<T>,
     providerOverride?: 'gemini' | 'groq' | 'mistral' | 'openrouter'
   ): Promise<T> => {
     const activeModelObj = OPTIONS.model.find(m => m.value === options.model);
-    const requiredProvider = providerOverride || (activeModelObj ? activeModelObj.provider : 'gemini');
+    const requiredProvider = providerOverride || (activeModelObj ? (activeModelObj as any).provider as 'gemini'|'groq'|'mistral'|'openrouter' : 'gemini');
 
-    let keysToTry: { id: string, key: string }[] = [];
-    
-    if (apiKeys.length > 0) {
-      const compatibleKeys = apiKeys
-        .map(k => ({ ...k, provider: k.provider || 'gemini' }))
-        .filter(k => k.provider === requiredProvider);
-        
-      const currentIdx = compatibleKeys.findIndex(k => k.id === activeKeyId);
-      if (currentIdx !== -1) {
-        keysToTry = [...compatibleKeys.slice(currentIdx), ...compatibleKeys.slice(0, currentIdx)];
-      } else {
-        keysToTry = [...compatibleKeys];
-      }
-    }
-
-    if (keysToTry.length === 0) {
+    if (apiKeys.length === 0) {
       setIsModalOpen(true);
-      throw new Error(`No API key configured for provider: ${requiredProvider}. Please add one.`);
+      throw new Error(`No API key configured. Please add one.`);
     }
+
+    const allKeys = apiKeys.map(k => ({ ...k, provider: (k.provider || 'gemini') as 'gemini'|'groq'|'mistral'|'openrouter' }));
+
+    // Prioritize the requested provider's keys
+    const preferredKeys = allKeys.filter(k => k.provider === requiredProvider);
+    const otherKeys = allKeys.filter(k => k.provider !== requiredProvider);
+
+    // Rotate preferred keys so activeKeyId (if it's preferred) is first
+    let prioritizedPreferred = [];
+    const currentIdx = preferredKeys.findIndex(k => k.id === activeKeyId);
+    if (currentIdx !== -1) {
+      prioritizedPreferred = [...preferredKeys.slice(currentIdx), ...preferredKeys.slice(0, currentIdx)];
+    } else {
+      prioritizedPreferred = [...preferredKeys];
+    }
+
+    const keysToTry = [...prioritizedPreferred, ...otherKeys];
 
     const maxRetriesPerKey = 3;
     let lastError: any = null;
@@ -1060,27 +1062,36 @@ export default function App() {
       const keyRecord = keysToTry[keyIdx];
       const maskedKey = keyRecord.key ? `${keyRecord.key.substring(0, 6)}...${keyRecord.key.substring(keyRecord.key.length - 4)}` : 'unspecified';
 
+      // Find a default model for this provider if it's not the requiredProvider
+      let fallbackModel = undefined;
+      if (keyRecord.provider !== requiredProvider) {
+        const defaultForProv = OPTIONS.model.find(m => (m as any).provider === keyRecord.provider);
+        if (defaultForProv) {
+          fallbackModel = defaultForProv.value;
+        }
+      }
+
       for (let attempt = 1; attempt <= maxRetriesPerKey; attempt++) {
         try {
           if (toastId) {
             removeToast(toastId);
             toastId = null;
           }
-          const result = await operation(keyRecord.key);
+          const result = await operation(keyRecord, fallbackModel);
           if (keyRecord.id !== 'system' && keyRecord.id !== activeKeyId) {
             setActiveKeyId(keyRecord.id);
           }
           return result;
         } catch (err: any) {
           lastError = err;
-          console.warn(`Attempt ${attempt} failed with key ${maskedKey}:`, err);
-
+          console.warn(`Attempt ${attempt} failed with key ${maskedKey} (${keyRecord.provider}):`, err);
+          
           const isLastAttempt = attempt === maxRetriesPerKey;
           const isLastKey = keyIdx === keysToTry.length - 1;
 
           if (!isLastAttempt) {
             const backoffMs = attempt * 1500; // Backoff of 1.5s, 3s
-            const statusMessage = `API request failed with ${requiredProvider}. Retrying (Attempt ${attempt + 1}/${maxRetriesPerKey}) in ${(backoffMs / 1000).toFixed(1)}s...`;
+            const statusMessage = `API request failed with ${keyRecord.provider}. Retrying (Attempt ${attempt + 1}/${maxRetriesPerKey}) in ${(backoffMs / 1000).toFixed(1)}s...`;
             
             if (toastId) {
               updateToast(toastId, statusMessage, 'retry');
@@ -1091,7 +1102,7 @@ export default function App() {
             await new Promise(resolve => setTimeout(resolve, backoffMs));
           } else if (!isLastKey) {
             // Rotate keys
-            const statusMessage = `API Key failed. Rotating to next compatible key for ${requiredProvider}...`;
+            const statusMessage = `API Key failed. Rotating to next available key...`;
             if (toastId) {
               updateToast(toastId, statusMessage, 'info');
             } else {
@@ -1106,11 +1117,10 @@ export default function App() {
     if (toastId) {
       removeToast(toastId);
     }
-
     setIsModalOpen(true);
     const apiErrorDetail = lastError?.message ? `: ${lastError.message}` : '';
     throw new Error(apiKeys.length > 1 
-      ? `All available API keys have failed${apiErrorDetail}. Please add a new API key.`
+      ? `All available API keys across all providers have failed${apiErrorDetail}. Please add a new API key.`
       : `Your API key failed${apiErrorDetail}. Please add a new API key.`);
   };
 
@@ -1136,9 +1146,12 @@ export default function App() {
       const visualOptions = { ...OPTIONS };
       delete (visualOptions as any).model;
 
-      const result = await executeWithKeyRotation((key) => 
-        analyzeReferenceAndSuggestSettings(input, visualOptions, key, providerToUse)
-      , providerToUse);
+      // Image analysis forces Gemini, but executeWithKeyRotation might rotate to Groq if Gemini fails.
+      // We pass the keyRecord.provider down. If it's an image and rotates to non-gemini, we rely on the service to handle/fail.
+      const result = await executeWithKeyRotation((keyRecord, fallbackModel) => {
+        const passedOptions = fallbackModel ? { ...visualOptions, model: fallbackModel } : visualOptions;
+        return analyzeReferenceAndSuggestSettings(input, passedOptions, keyRecord.key, keyRecord.provider);
+      }, providerToUse);
       
       const newSettings = { ...result.settings };
       delete newSettings.model;
@@ -1194,9 +1207,10 @@ export default function App() {
       const activeModelObj = OPTIONS.model.find(m => m.value === options.model);
       const activeProvider = activeModelObj ? activeModelObj.provider as 'gemini'|'groq'|'mistral'|'openrouter' : 'gemini';
 
-      const results = await executeWithKeyRotation((key) => 
-        generateStockPrompts(options, key, history, activeProvider)
-      );
+      const results = await executeWithKeyRotation((keyRecord, fallbackModel) => {
+        const passedOptions = fallbackModel ? { ...options, model: fallbackModel } : options;
+        return generateStockPrompts(passedOptions, keyRecord.key, history, keyRecord.provider);
+      });
 
       const newPrompts: GeneratedPrompt[] = results.map(r => ({
         id: crypto.randomUUID(),
