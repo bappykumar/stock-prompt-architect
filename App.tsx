@@ -839,9 +839,16 @@ export default function App() {
 
   const [toasts, setToasts] = useState<{ id: string; message: string; type: 'info' | 'success' | 'warning' | 'error' | 'retry' }[]>([]);
 
-  const addToast = useCallback((message: string, type: 'info' | 'success' | 'warning' | 'error' | 'retry' = 'info') => {
+  const addToast = useCallback((message: string, type: 'info' | 'success' | 'warning' | 'error' | 'retry' = 'info', duration: number = 5000) => {
     const id = crypto.randomUUID();
     setToasts(prev => [...prev, { id, message, type }]);
+    
+    if (duration > 0) {
+      setTimeout(() => {
+        setToasts(prev => prev.filter(t => t.id !== id));
+      }, duration);
+    }
+    
     return id;
   }, []);
 
@@ -1075,7 +1082,7 @@ export default function App() {
             if (toastId) {
               updateToast(toastId, statusMessage, 'retry');
             } else {
-              toastId = addToast(statusMessage, 'retry');
+              toastId = addToast(statusMessage, 'retry', 0);
             }
             
             await new Promise(resolve => setTimeout(resolve, backoffMs));
@@ -1085,7 +1092,7 @@ export default function App() {
             if (toastId) {
               updateToast(toastId, statusMessage, 'info');
             } else {
-              toastId = addToast(statusMessage, 'info');
+              toastId = addToast(statusMessage, 'info', 0);
             }
             await new Promise(resolve => setTimeout(resolve, 800));
           }
