@@ -6,7 +6,7 @@ import {
   Globe, Shield, Terminal, Calendar, 
   Layers, Camera, Box, Maximize, User, Moon, Sun,
   Layout, Fingerprint, Focus, Settings2, Download, MessageSquareCode, Send, AlertCircle, X, Cpu, Paintbrush,
-  ChevronUp, Key, Lock, Info, Settings, ToggleLeft, ToggleRight, Activity, Power, Video, Target, Lightbulb, Search, Shuffle, Image, Type, RefreshCw
+  ChevronUp, Key, Lock, Info, Settings, ToggleLeft, ToggleRight, Activity, Power, Video, Target, Lightbulb, Search, Shuffle, Image, Type, RefreshCw, ListX
 } from 'lucide-react';
 import { PromptOptions, GeneratedPrompt, PromptBatch, HistoricalPrompt, ApiKeyRecord } from './types';
 import { generateStockPrompts, testApiKey, analyzeReferenceAndSuggestSettings } from './services/geminiService';
@@ -1251,6 +1251,13 @@ export default function App() {
     setTimeout(() => setIsAllCopied(false), 2000);
   };
 
+  const clearCopiedPrompts = () => {
+    setBatches(prev => prev.map(batch => ({
+      ...batch,
+      prompts: batch.prompts.filter(p => !p.copied)
+    })).filter(batch => batch.prompts.length > 0));
+  };
+
   const isMaterialFinishVisible = true;
   const isCulturalHeritageVisible = !['Domestic Pet', 'Wild Animal', 'Bird', 'Marine', 'Macro', 'Still life', 'No person', 'Background'].some(key => options.subject?.includes(key));
   const currentQuantityOptions = PERSONAL_QUANTITY_OPTIONS;
@@ -1335,18 +1342,26 @@ export default function App() {
              <span>Config</span>
           </button>
           
-          {batches.length > 0 && (
-            <>
-              <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 mx-1" />
-              <button 
-                onClick={copyAllWorkspacePrompts}
-                className={`flex items-center gap-3 px-5 py-2 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all shadow-sm active:scale-[0.96] ${isAllCopied ? 'bg-emerald-500 text-white border border-emerald-500' : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:opacity-90 border border-transparent'}`}
-              >
-                {isAllCopied ? <Check size={14} strokeWidth={3} /> : <Download size={14} />}
-                <span>{isAllCopied ? 'Copied' : 'Export All'}</span>
-              </button>
-            </>
-          )}
+          <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 mx-1" />
+          
+          <button 
+            onClick={clearCopiedPrompts}
+            disabled={stats.copied === 0}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-bold uppercase tracking-widest border transition-all active:scale-[0.95] ${stats.copied > 0 ? 'border-slate-200 dark:border-slate-800 text-orange-500 hover:text-white hover:bg-orange-500 hover:border-orange-500' : 'border-slate-200 dark:border-slate-800 text-slate-300 dark:text-slate-700 opacity-50 cursor-not-allowed'}`}
+            title="Remove Copied Prompts"
+          >
+            <ListX size={14} />
+            <span>Clear Copied</span>
+          </button>
+          
+          <button 
+            onClick={copyAllWorkspacePrompts}
+            disabled={batches.length === 0}
+            className={`flex items-center gap-3 px-5 py-2 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all shadow-sm active:scale-[0.96] ${batches.length === 0 ? 'bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 cursor-not-allowed' : isAllCopied ? 'bg-emerald-500 text-white border border-emerald-500' : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:opacity-90 border border-transparent'}`}
+          >
+            {isAllCopied ? <Check size={14} strokeWidth={3} /> : <Download size={14} />}
+            <span>{isAllCopied ? 'Copied' : 'Export All'}</span>
+          </button>
         </div>
       </header>
 
@@ -1372,15 +1387,30 @@ export default function App() {
                     key={idx}
                     onClick={() => {
                       const defaults = getFreshDefaultOptions();
+                      
+                      const getRandom = (key: keyof typeof OPTIONS) => {
+                         // @ts-ignore
+                         const opts = OPTIONS[key]?.filter(o => o.value !== 'Default / Auto') || [];
+                         return opts.length > 0 ? opts[Math.floor(Math.random() * opts.length)].value : 'Default / Auto';
+                      };
+
                       setOptions({
                         ...defaults, // Reset all visual fields
+                        // Randomize some fields to ensure variety if the preset doesn't set them
+                        lighting: getRandom('lighting'),
+                        cameraAngle: getRandom('cameraAngle'),
+                        framing: getRandom('framing'),
+                        qualityCamera: getRandom('qualityCamera'),
+                        characterBackground: getRandom('characterBackground'),
+                        colorMood: getRandom('colorMood'),
+                        ageRange: getRandom('ageRange'),
                         quantity: options.quantity, // Preserve user config
                         smartRefinementText: options.smartRefinementText,
                         useCalendar: options.useCalendar,
                         calendarMonth: options.calendarMonth,
                         calendarEvent: options.calendarEvent,
                         model: options.model,
-                        ...preset.settings // Apply the preset over the defaults
+                        ...preset.settings // Apply the preset over the defaults (preset will override random if specified)
                       });
                     }}
                     className="py-2 px-3 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/50 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 transition-colors text-left truncate"
