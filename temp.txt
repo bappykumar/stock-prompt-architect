@@ -1,0 +1,12 @@
+                    <button 
+                      onClick={handleAutoFill} 
+                      disabled={isAnalyzing || (autoFillMode === 'image' && !referenceImage) || (autoFillMode === 'text' && !options.smartRefinementText)} 
+                      className={`w-full mt-4 py-2.5 rounded-xl font-bold uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed
+                        ${autoFillSuccessMsg 
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20' 
+                          : ((autoFillMode === 'image' && referenceImage) || (autoFillMode === 'text' && options.smartRefinementText))
+                            ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20'
+                            : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500'}`}
+                    >
+                      {isAnalyzing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                      {autoFillMode === 'image' ? 'Analyze Image & Auto-Fill' : 'Auto-Fill Settings from Text'}

@@ -834,8 +834,8 @@ export default function App() {
   const [autoFillMode, setAutoFillMode] = useState<'image'|'text'>('text');
   const [referenceImage, setReferenceImage] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [autoFillSuccessMsg, setAutoFillSuccessMsg] = useState<string | null>(null);
-  const [autoFillOptionsHash, setAutoFillOptionsHash] = useState<string | null>(null);
+  const [lastUsedReference, setLastUsedReference] = useState<{mode: 'text' | 'image' | null, value: string | null}>({ mode: null, value: null });
+
 
   const [toasts, setToasts] = useState<{ id: string; message: string; type: 'info' | 'success' | 'warning' | 'error' | 'retry' }[]>([]);
 
@@ -852,27 +852,6 @@ export default function App() {
   const updateToast = useCallback((id: string, message: string, type?: 'info' | 'success' | 'warning' | 'error' | 'retry') => {
     setToasts(prev => prev.map(t => t.id === id ? { ...t, message, ...(type ? { type } : {}) } : t));
   }, []);
-
-  useEffect(() => {
-    if (autoFillSuccessMsg && autoFillOptionsHash) {
-      if (JSON.stringify(options) !== autoFillOptionsHash) {
-        setAutoFillSuccessMsg(null);
-        setAutoFillOptionsHash(null);
-      }
-    }
-  }, [options, autoFillSuccessMsg, autoFillOptionsHash]);
-
-  useEffect(() => {
-    let timeoutId: number;
-    if (autoFillSuccessMsg) {
-      timeoutId = window.setTimeout(() => {
-        setAutoFillSuccessMsg(null);
-      }, 5000);
-    }
-    return () => {
-      if (timeoutId) window.clearTimeout(timeoutId);
-    };
-  }, [autoFillSuccessMsg]);
 
   const [isAdvanced, setIsAdvanced] = useState<boolean>(() => {
     const savedMode = safeLocalStorage.getItem('prompt_mode');
@@ -1126,7 +1105,6 @@ export default function App() {
 
   const handleAutoFill = async () => {
     setIsAnalyzing(true);
-    setAutoFillSuccessMsg(null);
     try {
       let input: any;
       if (autoFillMode === 'image' && referenceImage) {
@@ -1170,13 +1148,12 @@ export default function App() {
       };
       
       setOptions(newOptions);
-      setAutoFillOptionsHash(JSON.stringify(newOptions));
       
       if (autoFillMode === 'image') {
         setAutoFillMode('text');
-        setAutoFillSuccessMsg("Settings and scene description auto-filled from your image — review before running.");
+        addToast("Image analyzed and settings auto-filled successfully.", "success");
       } else {
-        setAutoFillSuccessMsg("Settings auto-filled from your reference — review and adjust as needed before running.");
+        addToast("Reference text analyzed and settings auto-filled successfully.", "success");
       }
     } catch (err: any) {
       console.warn('Auto-fill failed:', err);
@@ -1194,6 +1171,11 @@ export default function App() {
     setIsGenerating(true);
     setLoadingStepIdx(0);
     setErrorMessage(null);
+
+    setLastUsedReference({
+      mode: autoFillMode,
+      value: autoFillMode === 'image' ? (referenceImage?.name || null) : (options.smartRefinementText || null)
+    });
 
     loadingIntervalRef.current = window.setInterval(() => {
       setLoadingStepIdx(prev => (prev + 1) % LOADING_STEPS.length);
@@ -1502,24 +1484,30 @@ export default function App() {
                       <textarea value={options.smartRefinementText} onChange={(e) => setOptions({...options, smartRefinementText: e.target.value})} placeholder="Describe your concept (e.g. 'a moody cinematic shot of a businessman in rain')..." className="w-full h-24 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-[12px] outline-none focus:ring-2 focus:ring-blue-500/20 transition-all resize-none custom-scrollbar" />
                     )}
 
-                    <button 
-                      onClick={handleAutoFill} 
-                      disabled={isAnalyzing || (autoFillMode === 'image' && !referenceImage) || (autoFillMode === 'text' && !options.smartRefinementText)} 
-                      className={`w-full mt-4 py-2.5 rounded-xl font-bold uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed
-                        ${autoFillSuccessMsg 
-                          ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20' 
-                          : ((autoFillMode === 'image' && referenceImage) || (autoFillMode === 'text' && options.smartRefinementText))
-                            ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20'
-                            : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500'}`}
-                    >
-                      {isAnalyzing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                      {autoFillMode === 'image' ? 'Analyze Image & Auto-Fill' : 'Auto-Fill Settings from Text'}
-                    </button>
-                    {autoFillSuccessMsg && (
-                      <div className="mt-3 text-[10px] text-blue-600 dark:text-blue-400 font-medium flex items-center gap-1.5 leading-tight">
-                        <Check size={12} className="shrink-0" /> {autoFillSuccessMsg}
-                      </div>
-                    )}
+                    {(() => {
+                      const hasSrContent = autoFillMode === 'image' ? !!referenceImage : !!options.smartRefinementText;
+                      const currentSrValue = autoFillMode === 'image' ? (referenceImage?.name || null) : (options.smartRefinementText || null);
+                      const isSrUsed = hasSrContent && lastUsedReference.mode === autoFillMode && lastUsedReference.value === currentSrValue;
+                      
+                      return (
+                        <button 
+                          onClick={handleAutoFill}
+                          disabled={isAnalyzing || !hasSrContent}
+                          className={`w-full mt-4 py-2.5 rounded-xl font-bold uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed
+                            ${!hasSrContent
+                               ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500' 
+                               : isSrUsed 
+                                 ? 'bg-red-500 hover:bg-red-600 text-white shadow-md shadow-red-500/20' 
+                                 : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-md shadow-emerald-500/20'}`}
+                        >
+                          {isAnalyzing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                          {isSrUsed 
+                            ? (autoFillMode === 'image' ? 'Image Reference Applied' : 'Text Reference Applied') 
+                            : (autoFillMode === 'image' ? 'Analyze Image & Auto-Fill' : 'Auto-Fill Settings from Text')}
+                        </button>
+                      );
+                    })()}
+
                   </>
                 )}
               </div>
