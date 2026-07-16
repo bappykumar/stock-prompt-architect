@@ -1,3 +1,4 @@
+import { RunArchitectButton } from "./components/RunArchitectButton";
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { 
   Sparkles, Check, Copy, ChevronDown, Loader2, 
@@ -6,7 +7,7 @@ import {
   Globe, Shield, Terminal, Calendar, 
   Layers, Camera, Box, Maximize, User, Moon, Sun,
   Layout, Fingerprint, Focus, Settings2, Download, MessageSquareCode, Send, AlertCircle, X, Cpu, Paintbrush,
-  ChevronUp, Key, Lock, Info, Settings, ToggleLeft, ToggleRight, Activity, Power, Video, Target, Lightbulb, Search, Shuffle, Image, Type, RefreshCw, ListX
+  ChevronUp, Key, Lock, Info, Settings, ToggleLeft, ToggleRight, Activity, Power, Video, Target, Lightbulb, Search, Shuffle, Image, Type, RefreshCw, ListX, PanelLeftClose, PanelLeftOpen
 } from 'lucide-react';
 import { PromptOptions, GeneratedPrompt, PromptBatch, HistoricalPrompt, ApiKeyRecord } from './types';
 import { generateStockPrompts, testApiKey, analyzeReferenceAndSuggestSettings } from './services/geminiService';
@@ -653,6 +654,23 @@ const PROVIDER_LINKS: Record<string, string> = {
   openrouter: 'https://openrouter.ai/keys'
 };
 
+const TerminalText: React.FC<{ text: string }> = ({ text }) => {
+  const [displayedText, setDisplayedText] = useState('');
+
+  useEffect(() => {
+    setDisplayedText('');
+    let i = 0;
+    const interval = setInterval(() => {
+      setDisplayedText(text.substring(0, i + 1));
+      i++;
+      if (i >= text.length) clearInterval(interval);
+    }, 30);
+    return () => clearInterval(interval);
+  }, [text]);
+
+  return <span>{displayedText}</span>;
+};
+
 export default function App() {
   const [options, setOptions] = useState<PromptOptions>(() => {
     const saved = safeLocalStorage.getItem('prompt_options');
@@ -807,12 +825,31 @@ export default function App() {
   const [newKeyInput, setNewKeyInput] = useState("");
   const [activeProviderTab, setActiveProviderTab] = useState<'gemini' | 'groq' | 'mistral' | 'openrouter'>('gemini');
 
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     const saved = safeLocalStorage.getItem('theme_preference');
     return saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
   });
 
   const [isGenerating, setIsGenerating] = useState(false);
+
+  const [apiTrackerState, setApiTrackerState] = useState<{
+    visible: boolean;
+    totalKeys: number;
+    currentKeyId: string | null;
+    currentProvider: string | null;
+    attempt: number;
+    failedKeys: string[];
+    statusMessage: string | null;
+  }>({
+    visible: false,
+    totalKeys: 0,
+    currentKeyId: null,
+    currentProvider: null,
+    attempt: 1,
+    failedKeys: [],
+    statusMessage: null
+  });
   const [loadingStepIdx, setLoadingStepIdx] = useState(0);
   const [isAllCopied, setIsAllCopied] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -1042,7 +1079,17 @@ export default function App() {
 
     const maxRetriesPerKey = 3;
     let lastError: any = null;
-    let toastId: string | null = null;
+    
+    setApiTrackerState(prev => ({
+      ...prev,
+      visible: true,
+      totalKeys: apiKeys.length,
+      currentKeyId: null,
+      currentProvider: null,
+      attempt: 1,
+      failedKeys: [],
+      statusMessage: 'ESTABLISHING CONNECTION...'
+    }));
 
     for (let keyIdx = 0; keyIdx < keysToTry.length; keyIdx++) {
       const keyRecord = keysToTry[keyIdx];
@@ -1059,14 +1106,12 @@ export default function App() {
 
       for (let attempt = 1; attempt <= maxRetriesPerKey; attempt++) {
         try {
-          if (toastId) {
-            removeToast(toastId);
-            toastId = null;
-          }
+          setApiTrackerState(prev => ({ ...prev, attempt }));
           const result = await operation(keyRecord, fallbackModel);
           if (keyRecord.id !== 'system' && keyRecord.id !== activeKeyId) {
             setActiveKeyId(keyRecord.id);
           }
+          setApiTrackerState(prev => ({ ...prev, statusMessage: 'TRANSMISSION COMPLETE.', visible: false }));
           return result;
         } catch (err: any) {
           lastError = err;
@@ -1074,35 +1119,26 @@ export default function App() {
           
           const isLastAttempt = attempt === maxRetriesPerKey;
           const isLastKey = keyIdx === keysToTry.length - 1;
+          
+          if (isLastAttempt) {
+             setApiTrackerState(prev => ({ ...prev, failedKeys: [...prev.failedKeys, keyRecord.id] }));
+          }
 
           if (!isLastAttempt) {
             const backoffMs = attempt * 1500; // Backoff of 1.5s, 3s
-            const statusMessage = `API request failed with ${keyRecord.provider}. Retrying (Attempt ${attempt + 1}/${maxRetriesPerKey}) in ${(backoffMs / 1000).toFixed(1)}s...`;
-            
-            if (toastId) {
-              updateToast(toastId, statusMessage, 'retry');
-            } else {
-              toastId = addToast(statusMessage, 'retry', 0);
-            }
+            setApiTrackerState(prev => ({ ...prev, statusMessage: `ERR: NODE OFFLINE. RETRYING (${attempt}/${maxRetriesPerKey}) IN ${(backoffMs / 1000).toFixed(1)}S...` }));
             
             await new Promise(resolve => setTimeout(resolve, backoffMs));
           } else if (!isLastKey) {
             // Rotate keys
-            const statusMessage = `API Key failed. Rotating to next available key...`;
-            if (toastId) {
-              updateToast(toastId, statusMessage, 'info');
-            } else {
-              toastId = addToast(statusMessage, 'info', 0);
-            }
+            setApiTrackerState(prev => ({ ...prev, statusMessage: 'ERR: NODE FAILED. REROUTING TO STANDBY NODE...' }));
             await new Promise(resolve => setTimeout(resolve, 800));
           }
         }
       }
     }
 
-    if (toastId) {
-      removeToast(toastId);
-    }
+    setApiTrackerState(prev => ({ ...prev, visible: false }));
     setIsModalOpen(true);
     const apiErrorDetail = lastError?.message ? `: ${lastError.message}` : '';
     throw new Error(apiKeys.length > 1 
@@ -1262,9 +1298,9 @@ export default function App() {
   const activeModelLabel = activeModelObj ? activeModelObj.label : options.model;
 
   return (
-    <div className={`flex h-screen overflow-hidden font-sans transition-colors duration-500 ${isDarkMode ? 'dark bg-[#0b1120] text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
+    <div className={`flex h-screen overflow-hidden font-sans transition-colors duration-500 ${isDarkMode ? 'dark bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
       
-      <header className="fixed top-0 left-0 right-0 h-16 bg-white dark:bg-[#0b1120] border-b border-slate-200 dark:border-slate-800/60 z-[100] flex items-center justify-between px-8">
+      <header className="fixed top-0 left-0 right-0 h-16 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 z-[100] flex items-center justify-between px-8">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-white dark:bg-white text-slate-900 rounded-xl flex items-center justify-center shadow-md">
             <Command size={22} strokeWidth={2.5} />
@@ -1274,17 +1310,18 @@ export default function App() {
             <div className="flex items-center gap-2 mt-1">
               <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">SYS V1.5</span>
               <span className="w-px h-2 bg-slate-300 dark:bg-slate-700"></span>
-              <div className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase border flex items-center gap-1 max-w-[180px] ${
-                activeProvider === 'gemini' ? 'bg-blue-500/10 border-blue-500/30 text-blue-500' :
-                activeProvider === 'groq' ? 'bg-orange-500/10 border-orange-500/30 text-orange-500' :
-                activeProvider === 'mistral' ? 'bg-amber-500/10 border-amber-500/30 text-amber-500' :
-                'bg-emerald-500/10 border-emerald-500/30 text-emerald-500'
-              }`}>
-                {activeProvider === 'gemini' ? <Sparkles size={8} className="shrink-0" /> : <Cpu size={8} className="shrink-0" />}
-                <span className="truncate" title={activeModelLabel}>{activeModelLabel}</span>
-              </div>
+              <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest max-w-[180px] truncate" title={activeModelLabel}>
+                {activeModelLabel}
+              </span>
             </div>
           </div>
+          <button 
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+            className="ml-2 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+            title="Toggle Sidebar"
+          >
+            {isSidebarOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
+          </button>
         </div>
 
         <div className="flex items-center gap-3">
@@ -1354,9 +1391,10 @@ export default function App() {
         </div>
       </header>
 
-      <aside className="w-[340px] border-r border-slate-200 dark:border-slate-800/60 bg-white dark:bg-[#0b1120] flex flex-col shrink-0 relative z-40 h-full overflow-hidden shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)]">
-        <div className="flex-1 overflow-y-auto custom-scrollbar pt-16 px-6">
-          <div className="py-8 flex flex-col gap-10 pb-32">
+      <aside className={`${isSidebarOpen ? 'w-[340px] border-r' : 'w-0 border-r-0'} transition-all duration-300 ease-in-out border-slate-200/50 dark:border-slate-800/50 bg-white/90 dark:bg-slate-950/80 backdrop-blur-2xl flex flex-col shrink-0 relative z-40 h-full overflow-hidden shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)]`}>
+        <div className="w-[339px] flex flex-col h-full shrink-0">
+          <div className="flex-1 overflow-y-auto custom-scrollbar pt-16 px-6">
+          <div className="py-8 flex flex-col gap-10 pb-8">
             
             {/* Quick Start Presets */}
             <div className="space-y-3">
@@ -1643,7 +1681,7 @@ export default function App() {
         </div>
 
         {/* Action Button */}
-        <div className="shrink-0 p-6 bg-white dark:bg-[#0b1120] border-t border-slate-200 dark:border-slate-800/60 z-50 flex flex-col gap-3">
+        <div className="shrink-0 p-6 bg-transparent border-t border-slate-200/50 dark:border-slate-800/50 z-50 flex flex-col gap-3">
           {errorMessage && (
             <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-xl text-red-600 dark:text-red-400 text-[11px] flex items-start gap-2 shadow-sm">
                <div className="mt-0.5"><X size={14} className="shrink-0" /></div>
@@ -1651,26 +1689,67 @@ export default function App() {
                <button onClick={() => setErrorMessage(null)} className="opacity-50 hover:opacity-100 shrink-0"><X size={14} /></button>
             </div>
           )}
-          <button onClick={handleGenerate} disabled={isGenerating} className="w-full py-4 rounded-full bg-gradient-to-r from-slate-900 to-slate-800 dark:from-white dark:to-slate-200 text-white dark:text-slate-900 font-black uppercase tracking-widest text-[13px] flex items-center justify-center gap-3 shadow-lg shadow-slate-900/20 hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-300 group">
-             {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} className="fill-current group-hover:scale-110 transition-transform" />}
-             <span>Run Architect</span>
-          </button>
+          <RunArchitectButton onClick={handleGenerate} isGenerating={isGenerating} label="Run Architect" disabled={isGenerating} />
+        </div>
         </div>
       </aside>
 
       {/* MAIN AREA */}
-      <main ref={mainScrollRef} className="flex-1 overflow-y-auto custom-scrollbar relative bg-slate-50 dark:bg-[#020617] pt-16" style={{ backgroundImage: isDarkMode ? 'radial-gradient(circle, #1e293b 1px, transparent 1px)' : 'radial-gradient(circle, #e2e8f0 1px, transparent 1px)', backgroundSize: '24px 24px' }}>
-        {isGenerating && (
-          <div className="fixed left-[340px] right-0 bottom-12 z-50 flex justify-center pointer-events-none">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 flex items-center gap-5 shadow-2xl pointer-events-auto">
-              <div className="relative w-10 h-10 shrink-0">
-                <div className="absolute inset-0 border-[3px] border-slate-100 dark:border-slate-800 rounded-full"></div>
-                <div className="absolute inset-0 border-[3px] border-transparent border-t-blue-500 rounded-full animate-spin"></div>
-                <div className="absolute inset-0 flex items-center justify-center text-blue-500"><Zap size={16} /></div>
+      <main ref={mainScrollRef} className="flex-1 overflow-y-auto custom-scrollbar relative bg-slate-50 dark:bg-slate-950 pt-16" style={{ backgroundImage: isDarkMode ? 'radial-gradient(circle, #1e293b 1px, transparent 1px)' : 'radial-gradient(circle, #e2e8f0 1px, transparent 1px)', backgroundSize: '24px 24px' }}>
+        {(isGenerating || apiTrackerState.visible) && (
+          <div className={`fixed ${isSidebarOpen ? 'left-[340px]' : 'left-0'} right-0 bottom-12 z-[9999] flex justify-center pointer-events-none transition-all duration-300`}>
+            <div className="bg-slate-900/60 dark:bg-slate-950/50 backdrop-blur-3xl saturate-150 border-y border-x border-solid border-t-blue-400/50 border-r-blue-500/20 border-b-blue-600/10 border-l-blue-500/20 rounded-2xl p-5 shadow-[0_16px_40px_rgba(0,0,0,0.3),_inset_0_1px_0_rgba(255,255,255,0.1)] dark:shadow-[0_16px_40px_rgba(0,0,0,0.6),_inset_0_1px_0_rgba(255,255,255,0.05)] shadow-blue-500/20 font-mono text-xs overflow-hidden animate-in slide-in-from-bottom-8 fade-in duration-300 pointer-events-auto min-w-[340px] relative">
+              <div className="absolute inset-0 bg-blue-500/5 pointer-events-none animate-pulse"></div>
+              <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-blue-400 to-transparent opacity-70 animate-pulse"></div>
+              
+              <div className="flex items-center gap-4 mb-4 pb-4 border-b border-blue-500/20 relative z-10">
+                <div className="relative w-10 h-10 shrink-0">
+                  <div className="absolute inset-0 border-[2px] border-blue-900/50 rounded-full"></div>
+                  <div className="absolute inset-0 border-[2px] border-transparent border-t-blue-400 rounded-full animate-spin" style={{ animationDuration: '1s' }}></div>
+                  <div className="absolute inset-0 border-[2px] border-transparent border-b-blue-500 rounded-full animate-spin" style={{ animationDuration: '1.5s', animationDirection: 'reverse' }}></div>
+                  <div className="absolute inset-0 flex items-center justify-center text-blue-400"><Cpu size={16} /></div>
+                </div>
+                <div className="flex flex-col flex-1">
+                  <h3 className="text-[13px] font-black text-white tracking-tight uppercase">{isGenerating ? LOADING_STEPS[loadingStepIdx] : 'System Diagnostic'}</h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                    </span>
+                    <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest">SYS.NET • ACTIVE</p>
+                  </div>
+                </div>
               </div>
-              <div className="flex flex-col min-w-[200px]">
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">{LOADING_STEPS[loadingStepIdx]}</h3>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest">Architect is processing...</p>
+
+              <div className="space-y-2 mb-4 relative z-10">
+                <div className="flex justify-between items-center text-slate-300 text-[11px]">
+                  <span className="opacity-70">TARGET NODE:</span>
+                  <span className="uppercase text-emerald-400 font-bold">{apiTrackerState.currentProvider || activeProvider.toUpperCase()}</span>
+                </div>
+                <div className="flex justify-between items-center text-slate-300 text-[11px]">
+                  <span className="opacity-70">AI MODEL:</span>
+                  <span className="uppercase text-blue-300 font-bold truncate max-w-[180px] text-right" title={activeModelLabel}>{activeModelLabel}</span>
+                </div>
+                {apiTrackerState.failedKeys.length > 0 && (
+                  <div className="flex justify-between items-center text-slate-300 text-[11px]">
+                    <span className="opacity-70">ERRORS:</span>
+                    <span className="text-orange-400 font-bold">{apiTrackerState.failedKeys.length}/{apiTrackerState.totalKeys}</span>
+                  </div>
+                )}
+                {apiTrackerState.attempt > 1 && (
+                   <div className="flex justify-between items-center text-slate-300 text-[11px]">
+                    <span className="opacity-70">CYCLE:</span>
+                    <span className="text-blue-300 font-bold">{apiTrackerState.attempt}/3</span>
+                  </div>
+                )}
+              </div>
+              
+              <div className="mt-3 text-[10px] text-emerald-400/90 border-t border-blue-500/20 pt-3 break-words relative z-10 flex items-start gap-2 font-bold leading-tight">
+                <span className="text-blue-500 shrink-0 mt-0.5">&gt;</span> 
+                <div className="flex-1">
+                  <span className="uppercase"><TerminalText text={isGenerating ? (apiTrackerState.statusMessage || 'ESTABLISHING SECURE CONNECTION...') : (apiTrackerState.statusMessage || 'ESTABLISHING SECURE HANDSHAKE...')} /></span>
+                  <span className="inline-block w-2 h-3.5 bg-emerald-400 animate-pulse ml-1 align-middle"></span>
+                </div>
               </div>
             </div>
           </div>
@@ -1690,7 +1769,7 @@ export default function App() {
                     </div>
                     <div className="grid gap-6">
                       {batch.prompts.map((p, pIdx) => (
-                        <div key={p.id} className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-[24px] p-8 flex flex-col gap-6 hover:shadow-xl transition-all">
+                        <div key={p.id} className="bg-gradient-to-br from-white/60 to-white/30 dark:from-slate-800/40 dark:to-slate-900/20 backdrop-blur-2xl border border-solid border-t-white/80 border-l-white/50 border-b-white/20 border-r-white/20 dark:border-t-white/20 dark:border-l-white/10 dark:border-b-transparent dark:border-r-transparent shadow-[0_8px_32px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] rounded-[24px] p-8 flex flex-col gap-6 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative">
                           <div className="flex justify-end">
                             <span className="text-2xl font-black opacity-10">#{pIdx+1}</span>
                           </div>
@@ -1714,12 +1793,12 @@ export default function App() {
               <h2 className="text-4xl font-black uppercase tracking-tightest leading-tight mb-4 bg-gradient-to-br from-slate-900 to-slate-500 dark:from-white dark:to-slate-500 bg-clip-text text-transparent">Ready to Architect</h2>
               <p className="text-[14px] font-medium text-slate-500 dark:text-slate-400 max-w-sm leading-relaxed mb-16 opacity-60">Configure your parameters in the sidebar to build high-performance commercial stock prompts.</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-2xl">
-                <div className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 p-8 rounded-[28px] text-left space-y-4 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group cursor-default">
+                <div className="bg-gradient-to-br from-white/60 to-white/30 dark:from-slate-800/40 dark:to-slate-900/20 backdrop-blur-2xl border border-solid border-t-white/80 border-l-white/50 border-b-white/20 border-r-white/20 dark:border-t-white/20 dark:border-l-white/10 dark:border-b-transparent dark:border-r-transparent shadow-[0_8px_32px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] p-8 rounded-[28px] text-left space-y-4 hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group cursor-default relative">
                   <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform duration-300"><Zap size={20} className="fill-current" /></div>
                   <h3 className="text-xs font-black uppercase tracking-widest group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">Production Grade</h3>
                   <p className="text-[13px] leading-relaxed text-slate-500 dark:text-slate-400">Prompts are algorithmically optimized for Adobe Stock and Freepik guidelines.</p>
                 </div>
-                <div className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 p-8 rounded-[28px] text-left space-y-4 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group cursor-default">
+                <div className="bg-gradient-to-br from-white/60 to-white/30 dark:from-slate-800/40 dark:to-slate-900/20 backdrop-blur-2xl border border-solid border-t-white/80 border-l-white/50 border-b-white/20 border-r-white/20 dark:border-t-white/20 dark:border-l-white/10 dark:border-b-transparent dark:border-r-transparent shadow-[0_8px_32px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] p-8 rounded-[28px] text-left space-y-4 hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group cursor-default relative">
                   <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform duration-300"><Shield size={20} className="fill-current" /></div>
                   <h3 className="text-xs font-black uppercase tracking-widest group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">Dual Intelligence</h3>
                   <p className="text-[13px] leading-relaxed text-slate-500 dark:text-slate-400">Seamlessly transition between Gemini Flash and Pro engines based on complexity.</p>
@@ -1746,7 +1825,7 @@ export default function App() {
 
       {isResetConfirmOpen && (
         <div className="fixed inset-0 z-[2500] flex items-center justify-center p-6 bg-black/50 backdrop-blur-md">
-           <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[32px] p-8 space-y-6 shadow-2xl relative">
+           <div className="bg-white/90 dark:bg-slate-900/80 backdrop-blur-2xl border border-white/50 dark:border-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.2)] dark:shadow-[0_32px_64px_rgba(0,0,0,0.6)] w-full max-w-sm rounded-[32px] p-8 space-y-6 shadow-2xl relative">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-red-50 dark:bg-red-500/10 text-red-500 rounded-2xl flex items-center justify-center"><Trash2 size={24} /></div>
                 <div>
@@ -1785,7 +1864,7 @@ export default function App() {
       
       {isModalOpen && (
         <div className="fixed inset-0 z-[2500] flex items-center justify-center p-6 bg-black/50 backdrop-blur-md">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-4xl rounded-[32px] p-0 shadow-2xl relative overflow-hidden flex flex-col">
+          <div className="bg-white/90 dark:bg-slate-900/80 backdrop-blur-2xl border border-white/50 dark:border-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.2)] dark:shadow-[0_32px_64px_rgba(0,0,0,0.6)] w-full max-w-4xl rounded-[32px] p-0 shadow-2xl relative overflow-hidden flex flex-col">
             
             {/* Header */}
             <div className="flex items-center justify-between p-8 pb-6 border-b border-slate-100 dark:border-slate-800">
@@ -1961,6 +2040,8 @@ export default function App() {
         </div>
       )}
 
+
+
       {/* Toast Notification Container */}
       {toasts.length > 0 && (
         <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3 max-w-sm w-full pointer-events-none">
@@ -1968,10 +2049,10 @@ export default function App() {
             <div 
               key={toast.id} 
               className={`pointer-events-auto p-4 rounded-2xl border shadow-2xl flex items-start gap-3 animate-in slide-in-from-bottom-5 fade-in duration-300 ${
-                toast.type === 'retry' ? 'bg-[#0f172a] text-blue-400 border-blue-500/30' :
-                toast.type === 'error' ? 'bg-red-950 text-red-400 border-red-500/30' :
-                toast.type === 'success' ? 'bg-emerald-950 text-emerald-400 border-emerald-500/30' :
-                'bg-slate-900 text-slate-300 border-slate-800'
+                toast.type === 'retry' ? 'bg-slate-900/80 backdrop-blur-xl border-y border-x border-solid border-t-blue-400/50 border-x-blue-500/20 border-b-transparent text-blue-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]' :
+                toast.type === 'error' ? 'bg-red-950/80 backdrop-blur-xl border-y border-x border-solid border-t-red-400/50 border-x-red-500/20 border-b-transparent text-red-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]' :
+                toast.type === 'success' ? 'bg-emerald-950/80 backdrop-blur-xl border-y border-x border-solid border-t-emerald-400/50 border-x-emerald-500/20 border-b-transparent text-emerald-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]' :
+                'bg-slate-900/80 backdrop-blur-xl border-y border-x border-solid border-t-slate-600/50 border-x-slate-700/20 border-b-transparent text-slate-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]'
               }`}
             >
               <div className="mt-0.5 shrink-0">
