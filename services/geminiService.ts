@@ -90,8 +90,8 @@ from the image. If a field cannot be determined, set it to "Default / Auto".
 
 2. "smartRefinement": a concise core description of the main subject and their specific action/appearance. Maximum 15 words. AVOID specifying age, gender, race, or ethnicity (e.g., use "person" instead of "young East Asian woman"), as these will be controlled separately by the UI settings. Focus only on the core action, concept, and distinctive props or attire. No framing, no lighting, no technical terms.
 
-3. "activeFields": A boolean map of the fields. Set to true if the field is prominently featured and should be explicitly toggled on, and false if it should be turned off or left as Default/Auto. Include keys: subject, characterBackground, ageRange, interaction, targetMarket, imageMedium, visualType, materialStyle, conceptFocus, authenticity, environment, colorMood, qualityCamera, framing, cameraAngle, lighting, shadowStyle.
-IMPORTANT LOGIC: If the image is a flat illustration or vector art, you MUST set photographic fields (qualityCamera, framing, cameraAngle, lighting, shadowStyle, authenticity) to false, as they do not apply to flat graphics.
+3. "activeFields": A boolean map of the fields. Set to true if the field is RELEVANT to the visual scene, even if not explicitly the main focus. Set to false ONLY if the field is completely irrelevant to the visual context. Include keys: subject, characterBackground, ageRange, interaction, targetMarket, imageMedium, visualType, materialStyle, conceptFocus, authenticity, environment, colorMood, qualityCamera, framing, cameraAngle, lighting, shadowStyle.
+IMPORTANT LOGIC: If there are people or characters shown in the image, 'subject', 'characterBackground', 'ageRange', and 'interaction' MUST be true. If there are NO people/characters, they MUST be false. If the image is a flat illustration or vector art, you MUST set photographic fields (qualityCamera, framing, cameraAngle, lighting, shadowStyle, authenticity) to false, as they do not apply to flat graphics.
 
 Return ONLY this JSON structure, no markdown:
 {
@@ -113,8 +113,8 @@ Return ONLY this JSON structure, no markdown:
   
   2. "smartRefinement": A concise core description of the main subject and their specific action/appearance based on the input. Maximum 15 words. AVOID specifying age, gender, race, or ethnicity (e.g., use "person" instead of "young East Asian woman"), as these will be controlled separately by the UI settings. Focus only on the core action, concept, and distinctive props or attire. No framing, no lighting, no technical terms.
   
-  3. "activeFields": A boolean map of the fields. Set to true ONLY if the field is explicitly mentioned or strongly implied in the description and should be toggled on. Set to false if the field should be turned off or kept as Default/Auto. You MUST provide a boolean value for ALL of these keys: subject, characterBackground, ageRange, interaction, targetMarket, imageMedium, visualType, materialStyle, conceptFocus, authenticity, environment, colorMood, qualityCamera, framing, cameraAngle, lighting, shadowStyle.
-  IMPORTANT LOGIC: If the concept is a flat illustration or 2D vector art, you MUST set photographic fields (qualityCamera, framing, cameraAngle, lighting, shadowStyle, authenticity) to false, as they do not apply to flat graphics.
+  3. "activeFields": A boolean map of the fields. Set to true if the field is RELEVANT to the scene, even if not explicitly described. Set to false ONLY if the field is completely irrelevant to the scene context. You MUST provide a boolean value for ALL of these keys: subject, characterBackground, ageRange, interaction, targetMarket, imageMedium, visualType, materialStyle, conceptFocus, authenticity, environment, colorMood, qualityCamera, framing, cameraAngle, lighting, shadowStyle.
+  IMPORTANT LOGIC: If there are people or characters in the scene, 'subject', 'characterBackground', 'ageRange', and 'interaction' MUST be true. If there are NO people/characters, they MUST be false. If the concept is a flat illustration or 2D vector art, you MUST set photographic fields (qualityCamera, framing, cameraAngle, lighting, shadowStyle, authenticity) to false, as they do not apply to flat graphics.
   
   {
     "settings": {
