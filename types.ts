@@ -30,6 +30,7 @@ export interface PromptOptions {
   colorMood?: string;
   model: string;
   activeFields: Record<string, boolean>;
+  lockedFields: Record<string, boolean>;
 }
 
 export interface GeneratedPrompt {

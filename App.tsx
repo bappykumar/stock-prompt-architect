@@ -7,7 +7,7 @@ import {
   Globe, Shield, Terminal, Calendar, 
   Layers, Camera, Box, Maximize, User, Moon, Sun,
   Layout, Fingerprint, Focus, Settings2, Download, MessageSquareCode, Send, AlertCircle, X, Cpu, Paintbrush,
-  ChevronUp, Key, Lock, Info, Settings, ToggleLeft, ToggleRight, Activity, Power, Video, Target, Lightbulb, Search, Shuffle, Image, Type, RefreshCw, ListX, PanelLeftClose, PanelLeftOpen
+  ChevronUp, Key, Lock, Unlock, Info, Settings, ToggleLeft, ToggleRight, Activity, Power, Video, Target, Lightbulb, Search, Shuffle, Image, Type, RefreshCw, ListX, PanelLeftClose, PanelLeftOpen
 } from 'lucide-react';
 import { PromptOptions, GeneratedPrompt, PromptBatch, HistoricalPrompt, ApiKeyRecord } from './types';
 import { generateStockPrompts, testApiKey, analyzeReferenceAndSuggestSettings } from './services/geminiService';
@@ -129,7 +129,8 @@ const getFreshDefaultOptions = (): PromptOptions => ({
     ageRange: true,
     colorMood: true,
     smartRefinement: false
-  }
+  },
+  lockedFields: {}
 });
 
 const DEFAULT_OPTIONS = getFreshDefaultOptions();
@@ -443,7 +444,9 @@ const CustomDropdown = ({
     onToggle,
     helperText,
     highlight,
-    deemphasize3DMaterials
+    deemphasize3DMaterials,
+    isLocked = false,
+    onToggleLock
   }: { 
     label: string; 
     value: string | number; 
@@ -457,6 +460,8 @@ const CustomDropdown = ({
     helperText?: string;
     highlight?: boolean;
     deemphasize3DMaterials?: boolean;
+    isLocked?: boolean;
+    onToggleLock?: (val: boolean) => void;
   }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
@@ -526,22 +531,41 @@ const CustomDropdown = ({
             )}
             {!isOpen && !isDefault && getVisualStyleBadge(value)}
           </div>
-          {canToggle && onToggle && (
-            <button 
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggle(!isActive);
-              }}
-              className="focus:outline-none transition-transform active:scale-95"
-            >
-              {isActive ? (
-                <ToggleRight size={18} className="text-blue-500 dark:text-blue-400 drop-shadow-sm" />
-              ) : (
-                <ToggleLeft size={18} className="text-slate-300 dark:text-slate-700" />
-              )}
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {onToggleLock && isActive && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleLock(!isLocked);
+                }}
+                className={`focus:outline-none transition-all active:scale-95 flex items-center justify-center p-0.5 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800 ${isLocked ? 'opacity-100' : 'opacity-30 hover:opacity-100'}`}
+                title={isLocked ? "Unlock setting from auto-fill" : "Lock setting against auto-fill"}
+              >
+                {isLocked ? (
+                  <Lock size={12} className="text-amber-500 drop-shadow-[0_0_2px_rgba(245,158,11,0.5)]" />
+                ) : (
+                  <Unlock size={12} className="text-slate-400 dark:text-slate-500" />
+                )}
+              </button>
+            )}
+            {canToggle && onToggle && (
+              <button 
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggle(!isActive);
+                }}
+                className="focus:outline-none transition-transform active:scale-95"
+              >
+                {isActive ? (
+                  <ToggleRight size={18} className="text-blue-500 dark:text-blue-400 drop-shadow-sm" />
+                ) : (
+                  <ToggleLeft size={18} className="text-slate-300 dark:text-slate-700" />
+                )}
+              </button>
+            )}
+          </div>
         </div>
         <div className={`relative transition-all duration-300 ${isInputDisabled ? 'opacity-40 grayscale pointer-events-none' : 'opacity-100'}`}>
           <button
@@ -1032,6 +1056,13 @@ export default function App() {
     }));
   };
 
+  const toggleLock = (field: string, isLocked: boolean) => {
+    setOptions(prev => ({
+      ...prev,
+      lockedFields: { ...(prev.lockedFields || {}), [field]: isLocked }
+    }));
+  };
+
   const scrollToTop = useCallback(() => {
     mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
@@ -1179,15 +1210,26 @@ export default function App() {
 
       const resetActiveFields = Object.keys(options.activeFields).reduce((acc, key) => ({...acc, [key]: false}), {});
       
+      const nextActiveFields = {
+        ...resetActiveFields,
+        ...(result.activeFields || {}),
+        smartRefinement: true
+      };
+
+      // Restore locked fields
+      const lockedKeys = Object.keys(options.lockedFields || {}).filter(k => options.lockedFields[k]);
+      lockedKeys.forEach(k => {
+        if (options[k as keyof PromptOptions] !== undefined) {
+          (newSettings as any)[k] = options[k as keyof PromptOptions];
+        }
+        nextActiveFields[k] = options.activeFields[k];
+      });
+      
       const newOptions = {
         ...options,
         ...newSettings,
         smartRefinementText: input.type === 'text' ? options.smartRefinementText : (result.smartRefinement || options.smartRefinementText),
-        activeFields: {
-          ...resetActiveFields,
-          ...(result.activeFields || {}),
-          smartRefinement: true
-        }
+        activeFields: nextActiveFields
       };
       
       setOptions(newOptions);
@@ -1602,13 +1644,13 @@ export default function App() {
                   <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Identity & Character</h3>
                 </header>
                 <div className="space-y-5">
-                   <CustomDropdown label="Primary Actor" value={options.subject} options={OPTIONS.subject} onChange={(val) => setOptions({...options, subject: val})} icon={User} canToggle={true} isActive={options.activeFields?.subject} onToggle={(val) => toggleField('subject', val)} />
+                   <CustomDropdown label="Primary Actor" value={options.subject} options={OPTIONS.subject} onChange={(val) => setOptions({...options, subject: val})} icon={User} canToggle={true} isActive={options.activeFields?.subject} onToggle={(val) => toggleField('subject', val)} isLocked={options.lockedFields?.subject} onToggleLock={(val) => toggleLock('subject', val)} />
                    {isAdvanced && isCulturalHeritageVisible && (
-                      <CustomDropdown label="Cultural Context" value={options.characterBackground} options={OPTIONS.characterBackground} onChange={(val) => setOptions({...options, characterBackground: val})} icon={Globe} canToggle={true} isActive={options.activeFields?.characterBackground} onToggle={(val) => toggleField('characterBackground', val)} />
+                      <CustomDropdown label="Cultural Context" value={options.characterBackground} options={OPTIONS.characterBackground} onChange={(val) => setOptions({...options, characterBackground: val})} icon={Globe} canToggle={true} isActive={options.activeFields?.characterBackground} onToggle={(val) => toggleField('characterBackground', val)} isLocked={options.lockedFields?.characterBackground} onToggleLock={(val) => toggleLock('characterBackground', val)} />
                    )}
-                   {isAdvanced && <CustomDropdown label="Age Range" value={options.ageRange || 'Default / Auto'} options={OPTIONS.ageRange} onChange={(val) => setOptions({...options, ageRange: val})} icon={User} canToggle={true} isActive={options.activeFields?.ageRange} onToggle={(val) => toggleField('ageRange', val)} />}
-                   {isAdvanced && <CustomDropdown label="Interaction" value={options.interaction || 'Default / Auto'} options={OPTIONS.interaction} onChange={(val) => setOptions({...options, interaction: val})} icon={User} canToggle={true} isActive={options.activeFields?.interaction} onToggle={(val) => toggleField('interaction', val)} />}
-                   {isAdvanced && <CustomDropdown label="Target Market" value={options.targetMarket || 'Default / Auto'} options={OPTIONS.targetMarket} onChange={(val) => setOptions({...options, targetMarket: val})} icon={Target} canToggle={true} isActive={options.activeFields?.targetMarket} onToggle={(val) => toggleField('targetMarket', val)} />}
+                   {isAdvanced && <CustomDropdown label="Age Range" value={options.ageRange || 'Default / Auto'} options={OPTIONS.ageRange} onChange={(val) => setOptions({...options, ageRange: val})} icon={User} canToggle={true} isActive={options.activeFields?.ageRange} onToggle={(val) => toggleField('ageRange', val)} isLocked={options.lockedFields?.ageRange} onToggleLock={(val) => toggleLock('ageRange', val)} />}
+                   {isAdvanced && <CustomDropdown label="Interaction" value={options.interaction || 'Default / Auto'} options={OPTIONS.interaction} onChange={(val) => setOptions({...options, interaction: val})} icon={User} canToggle={true} isActive={options.activeFields?.interaction} onToggle={(val) => toggleField('interaction', val)} isLocked={options.lockedFields?.interaction} onToggleLock={(val) => toggleLock('interaction', val)} />}
+                   {isAdvanced && <CustomDropdown label="Target Market" value={options.targetMarket || 'Default / Auto'} options={OPTIONS.targetMarket} onChange={(val) => setOptions({...options, targetMarket: val})} icon={Target} canToggle={true} isActive={options.activeFields?.targetMarket} onToggle={(val) => toggleField('targetMarket', val)} isLocked={options.lockedFields?.targetMarket} onToggleLock={(val) => toggleLock('targetMarket', val)} />}
                 </div>
               </section>
 
@@ -1621,9 +1663,9 @@ export default function App() {
                 </header>
                 <div className="space-y-5">
                    <div className="pb-5 border-b border-dashed border-slate-200 dark:border-slate-800/60 mb-2">
-                      <CustomDropdown label="Image Medium" value={options.imageMedium || 'Default / Auto'} options={OPTIONS.imageMedium} onChange={handleImageMediumChange} icon={Layers} canToggle={true} isActive={options.activeFields?.imageMedium} onToggle={(val) => toggleField('imageMedium', val)} />
+                      <CustomDropdown label="Image Medium" value={options.imageMedium || 'Default / Auto'} options={OPTIONS.imageMedium} onChange={handleImageMediumChange} icon={Layers} canToggle={true} isActive={options.activeFields?.imageMedium} onToggle={(val) => toggleField('imageMedium', val)} isLocked={options.lockedFields?.imageMedium} onToggleLock={(val) => toggleLock('imageMedium', val)} />
                    </div>
-                   <CustomDropdown label="Visual Style" value={options.visualType} options={filteredVisualStyles} onChange={(val) => setOptions({...options, visualType: val})} icon={Layers} canToggle={true} isActive={options.activeFields?.visualType} onToggle={(val) => toggleField('visualType', val)} />
+                   <CustomDropdown label="Visual Style" value={options.visualType} options={filteredVisualStyles} onChange={(val) => setOptions({...options, visualType: val})} icon={Layers} canToggle={true} isActive={options.activeFields?.visualType} onToggle={(val) => toggleField('visualType', val)} isLocked={options.lockedFields?.visualType} onToggleLock={(val) => toggleLock('visualType', val)} />
                    {isAdvanced && isMaterialFinishVisible && (
                       <CustomDropdown 
                         label="Material Finish" 
@@ -1633,16 +1675,16 @@ export default function App() {
                         icon={Paintbrush} 
                         canToggle={true} 
                         isActive={options.activeFields?.materialStyle} 
-                        onToggle={(val) => toggleField('materialStyle', val)}
+                        onToggle={(val) => toggleField('materialStyle', val)} isLocked={options.lockedFields?.materialStyle} onToggleLock={(val) => toggleLock('materialStyle', val)}
                         highlight={isMaterialHighlighted}
                         helperText={materialHelperText}
                         deemphasize3DMaterials={options.imageMedium === 'Photography' || options.imageMedium === 'Art & Illustration'}
                       />
                    )}
-                   {isAdvanced && <CustomDropdown label="Concept Focus" value={options.conceptFocus || 'Default / Auto'} options={OPTIONS.conceptFocus} onChange={(val) => setOptions({...options, conceptFocus: val})} icon={Lightbulb} canToggle={true} isActive={options.activeFields?.conceptFocus} onToggle={(val) => toggleField('conceptFocus', val)} />}
-                   {isAdvanced && <CustomDropdown label="Authenticity" value={options.authenticity || 'Default / Auto'} options={OPTIONS.authenticity} onChange={(val) => setOptions({...options, authenticity: val})} icon={Camera} canToggle={true} isActive={options.activeFields?.authenticity} onToggle={(val) => toggleField('authenticity', val)} />}
-                   <CustomDropdown label="Environment" value={options.environment} options={OPTIONS.environment} onChange={(val) => setOptions({...options, environment: val})} icon={Box} canToggle={true} isActive={options.activeFields?.environment} onToggle={(val) => toggleField('environment', val)} />
-                   <CustomDropdown label="Color Mood" value={options.colorMood || 'Default / Auto'} options={OPTIONS.colorMood} onChange={(val) => setOptions({...options, colorMood: val})} icon={Paintbrush} canToggle={true} isActive={options.activeFields?.colorMood} onToggle={(val) => toggleField('colorMood', val)} helperText="Overall color temperature of the image" />
+                   {isAdvanced && <CustomDropdown label="Concept Focus" value={options.conceptFocus || 'Default / Auto'} options={OPTIONS.conceptFocus} onChange={(val) => setOptions({...options, conceptFocus: val})} icon={Lightbulb} canToggle={true} isActive={options.activeFields?.conceptFocus} onToggle={(val) => toggleField('conceptFocus', val)} isLocked={options.lockedFields?.conceptFocus} onToggleLock={(val) => toggleLock('conceptFocus', val)} />}
+                   {isAdvanced && <CustomDropdown label="Authenticity" value={options.authenticity || 'Default / Auto'} options={OPTIONS.authenticity} onChange={(val) => setOptions({...options, authenticity: val})} icon={Camera} canToggle={true} isActive={options.activeFields?.authenticity} onToggle={(val) => toggleField('authenticity', val)} isLocked={options.lockedFields?.authenticity} onToggleLock={(val) => toggleLock('authenticity', val)} />}
+                   <CustomDropdown label="Environment" value={options.environment} options={OPTIONS.environment} onChange={(val) => setOptions({...options, environment: val})} icon={Box} canToggle={true} isActive={options.activeFields?.environment} onToggle={(val) => toggleField('environment', val)} isLocked={options.lockedFields?.environment} onToggleLock={(val) => toggleLock('environment', val)} />
+                   <CustomDropdown label="Color Mood" value={options.colorMood || 'Default / Auto'} options={OPTIONS.colorMood} onChange={(val) => setOptions({...options, colorMood: val})} icon={Paintbrush} canToggle={true} isActive={options.activeFields?.colorMood} onToggle={(val) => toggleField('colorMood', val)} isLocked={options.lockedFields?.colorMood} onToggleLock={(val) => toggleLock('colorMood', val)} helperText="Overall color temperature of the image" />
                 </div>
               </section>
 
@@ -1655,11 +1697,11 @@ export default function App() {
                       <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Optics & Technicals</h3>
                     </header>
                     <div className="space-y-5">
-                       <CustomDropdown label="Quality & Camera" value={options.qualityCamera} options={OPTIONS.qualityCamera} onChange={(val) => setOptions({...options, qualityCamera: val})} icon={Video} canToggle={true} isActive={options.activeFields?.qualityCamera} onToggle={(val) => toggleField('qualityCamera', val)} />
-                       <CustomDropdown label="Shot Framing" value={options.framing} options={OPTIONS.framing} onChange={(val) => setOptions({...options, framing: val})} icon={Maximize} canToggle={true} isActive={options.activeFields?.framing} onToggle={(val) => toggleField('framing', val)} />
-                       <CustomDropdown label="Camera Elevation" value={options.cameraAngle} options={OPTIONS.cameraAngle} onChange={(val) => setOptions({...options, cameraAngle: val})} icon={Camera} canToggle={true} isActive={options.activeFields?.cameraAngle} onToggle={(val) => toggleField('cameraAngle', val)} />
-                       <CustomDropdown label="Atmosphere" value={options.lighting} options={OPTIONS.lighting} onChange={(val) => setOptions({...options, lighting: val})} icon={Sparkles} canToggle={true} isActive={options.activeFields?.lighting} onToggle={(val) => toggleField('lighting', val)} />
-                       <CustomDropdown label="Shadows" value={options.shadowStyle} options={OPTIONS.shadowStyle} onChange={(val) => setOptions({...options, shadowStyle: val})} icon={Moon} canToggle={true} isActive={options.activeFields?.shadowStyle} onToggle={(val) => toggleField('shadowStyle', val)} />
+                       <CustomDropdown label="Quality & Camera" value={options.qualityCamera} options={OPTIONS.qualityCamera} onChange={(val) => setOptions({...options, qualityCamera: val})} icon={Video} canToggle={true} isActive={options.activeFields?.qualityCamera} onToggle={(val) => toggleField('qualityCamera', val)} isLocked={options.lockedFields?.qualityCamera} onToggleLock={(val) => toggleLock('qualityCamera', val)} />
+                       <CustomDropdown label="Shot Framing" value={options.framing} options={OPTIONS.framing} onChange={(val) => setOptions({...options, framing: val})} icon={Maximize} canToggle={true} isActive={options.activeFields?.framing} onToggle={(val) => toggleField('framing', val)} isLocked={options.lockedFields?.framing} onToggleLock={(val) => toggleLock('framing', val)} />
+                       <CustomDropdown label="Camera Elevation" value={options.cameraAngle} options={OPTIONS.cameraAngle} onChange={(val) => setOptions({...options, cameraAngle: val})} icon={Camera} canToggle={true} isActive={options.activeFields?.cameraAngle} onToggle={(val) => toggleField('cameraAngle', val)} isLocked={options.lockedFields?.cameraAngle} onToggleLock={(val) => toggleLock('cameraAngle', val)} />
+                       <CustomDropdown label="Atmosphere" value={options.lighting} options={OPTIONS.lighting} onChange={(val) => setOptions({...options, lighting: val})} icon={Sparkles} canToggle={true} isActive={options.activeFields?.lighting} onToggle={(val) => toggleField('lighting', val)} isLocked={options.lockedFields?.lighting} onToggleLock={(val) => toggleLock('lighting', val)} />
+                       <CustomDropdown label="Shadows" value={options.shadowStyle} options={OPTIONS.shadowStyle} onChange={(val) => setOptions({...options, shadowStyle: val})} icon={Moon} canToggle={true} isActive={options.activeFields?.shadowStyle} onToggle={(val) => toggleField('shadowStyle', val)} isLocked={options.lockedFields?.shadowStyle} onToggleLock={(val) => toggleLock('shadowStyle', val)} />
                     </div>
                   </section>
                 </>
