@@ -311,6 +311,7 @@ const OPTIONS = {
     { value: 'Oil Painting', label: 'Oil Painting' },
     { value: 'Minimalist Vector', label: 'Minimalist Vector' },
     { value: 'Flat Illustration', label: 'Flat Illustration' },
+    { value: 'Flat Line Icon', label: 'Flat Line Icon' },
     { value: 'Paper Cut Art', label: 'Paper Cut Art' },
     { value: 'Line Art', label: 'Line Art / Sketch' }
   ],
@@ -753,7 +754,7 @@ export default function App() {
       return OPTIONS.visualType.filter(opt => 
         opt.value === 'Default / Auto' || 
         opt.value === 'header_art' ||
-        ['Anime Style', 'Oil Painting', 'Minimalist Vector', 'Flat Illustration', 'Paper Cut Art', 'Line Art'].includes(opt.value as string)
+        ['Anime Style', 'Oil Painting', 'Minimalist Vector', 'Flat Illustration', 'Flat Line Icon', 'Paper Cut Art', 'Line Art'].includes(opt.value as string)
       );
     }
 
@@ -775,7 +776,7 @@ export default function App() {
         } else if (val === '3D & CGI') {
           isCompatible = ['Premium 3D Icon', '3D Render', '3D illustration', 'Isometric 3D', 'Claymorphism', 'Abstract Environmental 3D'].includes(currentVisual);
         } else if (val === 'Art & Illustration') {
-          isCompatible = ['Anime Style', 'Oil Painting', 'Minimalist Vector', 'Flat Illustration', 'Paper Cut Art', 'Line Art'].includes(currentVisual);
+          isCompatible = ['Anime Style', 'Oil Painting', 'Minimalist Vector', 'Flat Illustration', 'Flat Line Icon', 'Paper Cut Art', 'Line Art'].includes(currentVisual);
         }
 
         if (!isCompatible) {

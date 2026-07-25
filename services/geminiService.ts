@@ -547,6 +547,69 @@ export const generateStockPrompts = async (
 
     CORE ASSEMBLY FRAMEWORK (STRICT ORDER):
 
+    [CATEGORY AUTO-EXPAND RULE]:
+    When smartRefinement contains a broad category phrase (e.g., "healthcare", "food", "business", "travel", "real estate", "education", "fitness", "icon set", "lifestyle", "technology"):
+
+    1. TREAT IT AS A CATEGORY SEED, not a literal description. Do not repeat the same phrase in every prompt.
+
+    2. AUTO-SELECT a unique specific concept from that category for each prompt in the batch. Never use the same concept twice in one batch.
+
+    3. CONCEPT POOLS by category:
+
+       healthcare / medical:
+       doctor consulting patient, nurse checking blood pressure, caregiver with elderly, telehealth video call, hospital reception, patient in recovery, surgeon in OR, pharmacist at counter, mental health therapy, medical team discussion
+
+       food / restaurant:
+       healthy meal prep bowl, coffee shop flatlay, chef cooking in kitchen, burger close-up, smoothie bowl top view, ethnic food spread, bakery pastries, fresh vegetables market, fine dining plating, street food vendor
+
+       business / corporate:
+       team meeting discussion, solo entrepreneur laptop, video conference call, data analysis charts, startup brainstorm, client presentation, coworking space, business handshake, office rooftop meeting, executive portrait
+
+       technology:
+       developer coding dual monitors, AI hologram interface, cloud computing concept, cybersecurity dashboard, data visualization, robot automation, smart home control, VR headset user, blockchain network, digital transformation
+
+       travel / tourism:
+       airport departure lounge, beach resort, mountain hiking trail, city landmark, hotel check-in, backpacker exploring, local market shopping, train journey, sunset viewpoint, cultural festival
+
+       fitness / wellness:
+       gym workout session, outdoor yoga, running in park, healthy meal prep, meditation at home, cycling path, personal trainer session, swimming pool, stretching routine, wellness spa
+
+       education:
+       student studying library, classroom teaching, online learning laptop, graduation ceremony, science lab experiment, group study session, teacher whiteboard, child learning blocks, university campus, adult education class
+
+       real estate:
+       modern house exterior, apartment interior, property inspection, agent showing home, construction site, luxury penthouse, suburban neighborhood, home office setup, kitchen renovation, garden landscape
+
+       icon set (any category):
+       Auto-select individual objects from that category's concept pool. Each prompt = one unique object. Never repeat.
+
+    4. SMART REFINEMENT OVERRIDE:
+       When parsing smartRefinement for auto-expand:
+
+       1. CATEGORY WORD: First word or phrase that identifies the topic/category (healthcare, food, business, travel, icon)
+       
+       2. STYLE/MEDIUM HINTS: Words like photography, flatlay, portrait, icon, illustration — use these to guide the visual approach
+       
+       3. KEY CONTEXT: Additional qualifiers that MUST be preserved in every prompt:
+          - Diversity/ethnicity: "south asian", "african", "diverse"
+          - Setting: "home", "office", "outdoor", "white background"
+          - Mood: "warm", "emotional", "candid", "vibrant"
+          - Style: "authentic", "minimal", "moody", "clean"
+          
+       RULE: Key context words MUST appear in every generated prompt, even when auto-expanding to different concepts.
+       
+       Example:
+       SR: "healthcare photography, south asian, warm home, emotional"
+       
+       Prompt 1: doctor + patient scene, south asian characters, warm home
+       Prompt 2: caregiver + elderly scene, south asian characters, warm home  
+       Prompt 3: nurse + family scene, south asian characters, warm home
+       
+       The category changes per prompt, the context stays consistent.
+
+    5. FINAL OUTPUT:
+       Each prompt in the batch should feel like it was written with a completely different specific scene in mind — not variations of the same sentence.
+
     1. [IDENTITY LAYER]: Primary Actor + Cultural Context (if human) + Interaction (visible body language).
        - Rule: Clean commercial stock image only. Absolutely no visible text, no logos, no watermarks, no studio lights, no light stands, no softboxes, no camera equipment visible in frame. (Apply this as a system rule, DO NOT output this text in the generated prompt).
        - Rule: If "Business Team" selected but Smart Refinement specifies 1-2 people, obey Smart Refinement.
@@ -576,6 +639,52 @@ export const generateStockPrompts = async (
     "isolated", "white background", "studio setting", "floating object", "product shot", "softbox", "three-point lighting"
 
     6. LENGTH: 50-70 words for core prompt body.
+
+    [FLAT LINE ICON RULE]:
+    When visualType = 'Flat Line Icon':
+    Generate as a single icon or icon set with:
+    - Clean bold black outline strokes (3-4px weight)
+    - Flat solid light color fill (light blue, teal, or mint — no gradient)
+    - White or transparent background
+    - Rounded corners on shapes
+    - No shadows, no depth, no 3D effect
+    - Consistent stroke weight throughout
+    - Simple recognizable symbol
+    - Icon should be centered with equal padding on all sides
+
+    [ICON CATEGORY AUTO-EXPAND RULE]:
+    When visualType = 'Flat Line Icon' AND smartRefinement contains phrases like "icon set", "icons", or a category name (e.g., "real estate", "education", "travel"):
+
+    1. AUTO-GENERATE CONCEPTS: Do NOT ask user for specific icons. Instead, automatically select 1 unique concept from that category for each prompt in the batch.
+
+    2. CONCEPT SELECTION RULE: 
+       Each prompt in the batch MUST use a different concept. Never repeat the same object in the same batch.
+       
+       Example categories and their concepts:
+       
+       real estate: house, apartment, key, location pin, floor plan, sold tag, moving box, fence, garage, blueprint
+       
+       education: book, graduation cap, pencil, certificate, globe, calculator, microscope, blackboard, backpack, ruler
+       
+       e-commerce: shopping cart, delivery box, price tag, barcode, return arrow, wishlist heart, wallet, receipt, store, package
+       
+       travel: airplane, suitcase, passport, compass, hotel bed, beach umbrella, map pin, camera, ticket, cruise ship
+       
+       food restaurant: chef hat, coffee cup, fork knife, cooking pot, menu, salad bowl, pizza slice, wine glass, oven, spoon
+       
+       cybersecurity: shield, fingerprint, padlock, eye scan, VPN, bug, firewall, password, safe, data breach
+       
+       fitness sports: dumbbell, running figure, trophy, stopwatch, bicycle, water bottle, yoga pose, basketball, medal, jump rope
+       
+       social media: chat bubble, thumbs up, notification bell, email, video call, share arrow, profile avatar, hashtag, bookmark, live stream
+       
+       finance: wallet, coin stack, credit card, growth chart, piggy bank, calculator, bank building, invoice, percentage, stock graph
+
+    3. FINAL PROMPT FORMAT for each icon:
+       "single [chosen concept] flat line icon, bold black outline, light [color] fill, no gradient, transparent background"
+       
+       Rotate fill colors across the batch:
+       light blue → light teal → soft blue → light mint → sky blue → pale cyan
 
     2. [CONCEPT LAYER]: Smart Refinement + Concept Focus + Target Market.
        - CRITICAL RULE: If Smart Refinement is provided, it is the core conceptual foundation. You MUST use its core subject and action as the basis, but you are forbidden from copying it identically across options. You MUST visually expand and present this same concept differently in each generated prompt by altering the composition, setting, background, color theme, perspective, and framing. Each prompt must feel like a unique visual representation.
