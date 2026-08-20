@@ -1219,43 +1219,13 @@ export default function App() {
 
       // Restore locked fields
       const lockedKeys = Object.keys(options.lockedFields || {}).filter(k => options.lockedFields[k]);
-      const turnedOffFields: string[] = [];
-      const FIELD_LABELS: Record<string, string> = {
-        subject: 'Primary Actor',
-        characterBackground: 'Cultural Context',
-        ageRange: 'Age Range',
-        interaction: 'Interaction',
-        targetMarket: 'Target Market',
-        imageMedium: 'Image Medium',
-        visualType: 'Visual Style',
-        materialStyle: 'Material Finish',
-        conceptFocus: 'Concept Focus',
-        authenticity: 'Authenticity',
-        environment: 'Environment',
-        colorMood: 'Color Mood',
-        qualityCamera: 'Quality & Camera',
-        framing: 'Shot Framing',
-        cameraAngle: 'Camera Elevation',
-        lighting: 'Atmosphere',
-        shadowStyle: 'Shadows'
-      };
-
+      
       lockedKeys.forEach(k => {
         if (options[k as keyof PromptOptions] !== undefined) {
           (newSettings as any)[k] = options[k as keyof PromptOptions];
         }
         
-        const aiWantsItOff = result.activeFields && result.activeFields[k] === false;
-        const aiWantsItOn = result.activeFields && result.activeFields[k] === true;
-        
-        if (aiWantsItOff && options.activeFields[k]) {
-          nextActiveFields[k] = false;
-          turnedOffFields.push(FIELD_LABELS[k] || k);
-        } else if (aiWantsItOn && !options.activeFields[k]) {
-          nextActiveFields[k] = true;
-        } else {
-          nextActiveFields[k] = options.activeFields[k];
-        }
+        nextActiveFields[k] = options.activeFields[k];
       });
       
       const newOptions = {
@@ -1272,12 +1242,6 @@ export default function App() {
         addToast("Image analyzed and settings auto-filled successfully.", "success");
       } else {
         addToast("Reference text analyzed and settings auto-filled successfully.", "success");
-      }
-
-      if (turnedOffFields.length > 0) {
-        setTimeout(() => {
-          addToast(`Locked settings disabled (not applicable): ${turnedOffFields.join(', ')}`, "info");
-        }, 500);
       }
     } catch (err: any) {
       console.warn('Auto-fill failed:', err);
