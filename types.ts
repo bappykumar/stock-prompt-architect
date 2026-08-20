@@ -17,6 +17,7 @@ export interface PromptOptions {
   qualityCamera: string;
   quantity: number;
   smartRefinementText: string;
+  isFromImageReference?: boolean;
   extraContext?: string;
   useCalendar: boolean;
   calendarMonth: string;

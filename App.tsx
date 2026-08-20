@@ -1232,6 +1232,7 @@ export default function App() {
         ...options,
         ...newSettings,
         smartRefinementText: input.type === 'text' ? options.smartRefinementText : (result.smartRefinement || options.smartRefinementText),
+        isFromImageReference: input.type === 'image',
         activeFields: nextActiveFields
       };
       
@@ -1571,7 +1572,7 @@ export default function App() {
                         )}
                       </div>
                     ) : (
-                      <textarea value={options.smartRefinementText} onChange={(e) => setOptions({...options, smartRefinementText: e.target.value})} placeholder="Describe your concept (e.g. 'a moody cinematic shot of a businessman in rain')..." className="w-full h-24 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-[12px] outline-none focus:ring-2 focus:ring-blue-500/20 transition-all resize-none custom-scrollbar" />
+                      <textarea value={options.smartRefinementText} onChange={(e) => setOptions({...options, smartRefinementText: e.target.value, isFromImageReference: false})} placeholder="Describe your concept (e.g. 'a moody cinematic shot of a businessman in rain')..." className="w-full h-24 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-[12px] outline-none focus:ring-2 focus:ring-blue-500/20 transition-all resize-none custom-scrollbar" />
                     )}
 
                     {(() => {

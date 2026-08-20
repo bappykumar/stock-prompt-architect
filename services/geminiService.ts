@@ -525,6 +525,11 @@ export const generateStockPrompts = async (
 
     DIVERSITY & VARIATION RULES FOR INPUTS (CRITICAL FOR VISUAL VARIETY):
     - The 'INPUT CONFIGURATION' above shows the base settings selected by the user.
+    ${options.isFromImageReference ? `
+    [IMAGE REFERENCE EXACT MATCH RULE FOR OPTION 1]
+    - The Smart Refinement text was derived directly from an uploaded reference image. 
+    - CRITICAL REQUIREMENT: The FIRST prompt in the batch (Option 1) MUST be an exact, literal translation of the Smart Refinement text and the provided Input Configuration. Do NOT add variations, do NOT change the action, and do NOT alter the scene for Option 1. It must recreate the original image as closely as possible based on the text, while strictly adhering to commercial stock rules (no text, no logos, no trademarks, clean rendering).
+    - For Option 2 onwards (if quantity > 1), you may apply the dynamic variations described below.` : ''}
     - If quantity is greater than 1 (generating a batch of prompts), you MUST NOT apply the exact same values for lighting, framing, camera angle, subject position, shadow style, and color mood to every option in the batch! This is extremely important to prevent "cloned" or repetitive visual prompts.
     - Treat the user's 'INPUT CONFIGURATION' as the "Anchor/Reference Style" for the FIRST generated option.
     - For all other options (Option 2, Option 3, Option 4, etc.), you are REQUIRED to dynamically, creatively, and logically vary these visual attributes (lighting, framing, camera angle, subject position, shadow style) to provide a visually diverse suite of prompts.
@@ -551,6 +556,7 @@ export const generateStockPrompts = async (
     When smartRefinement contains a broad category phrase (e.g., "healthcare", "food", "business", "travel", "real estate", "education", "fitness", "icon set", "lifestyle", "technology"):
 
     1. TREAT IT AS A CATEGORY SEED, not a literal description. Do not repeat the same phrase in every prompt.
+       *EXCEPTION*: ${options.isFromImageReference ? `Since IMAGE REFERENCE EXACT MATCH RULE is active, DO NOT apply category auto-expansion to Option 1. Option 1 MUST strictly follow the Smart Refinement text exactly as provided to recreate the image. Apply auto-expansion only to Option 2 onwards.` : `Apply to all options in the batch.`}
 
     2. AUTO-SELECT a unique specific concept from that category for each prompt in the batch. Never use the same concept twice in one batch.
 
@@ -687,7 +693,7 @@ export const generateStockPrompts = async (
        light blue → light teal → soft blue → light mint → sky blue → pale cyan
 
     2. [CONCEPT LAYER]: Smart Refinement + Concept Focus + Target Market.
-       - CRITICAL RULE: If Smart Refinement is provided, it is the core conceptual foundation. You MUST use its core subject and action as the basis, but you are forbidden from copying it identically across options. You MUST visually expand and present this same concept differently in each generated prompt by altering the composition, setting, background, color theme, perspective, and framing. Each prompt must feel like a unique visual representation.
+       - CRITICAL RULE: If Smart Refinement is provided, it is the core conceptual foundation. ${options.isFromImageReference ? `Since IMAGE REFERENCE EXACT MATCH RULE is active, Option 1 MUST copy the Smart Refinement identically to recreate the image. For Option 2 onwards, you MUST visually expand and present this same concept differently...` : `You MUST use its core subject and action as the basis, but you are forbidden from copying it identically across options. You MUST visually expand and present this same concept differently in each generated prompt by altering the composition, setting, background, color theme, perspective, and framing. Each prompt must feel like a unique visual representation.`}
        - Rule: Concept Focus must influence tone (emotional/functional/aspirational).
     3. [ENVIRONMENT LAYER]: Environment + Seasonality (if enabled).
        - Rule: Replace vague wording with specific spatial descriptions.
