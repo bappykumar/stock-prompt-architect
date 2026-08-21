@@ -490,23 +490,24 @@ export const generateStockPrompts = async (
 
     // --- 8. GATHER INPUTS ---
     const isBackgroundMode = options.subject === 'Background / Landscape only';
+    const isIsolatedPngMode = options.subject === 'Isolated Object (PNG Ready)';
     
     const inputs = {
       subject: getFieldVal('subject', options.subject),
       background: getFieldVal('characterBackground', options.characterBackground),
-      environment: getFieldVal('environment', options.environment),
+      environment: isIsolatedPngMode ? 'Pure flat solid color (White or contrasting, NO environment details)' : getFieldVal('environment', options.environment),
       lighting: getFieldVal('lighting', options.lighting),
       // Ignore subject-specific framing/position if Background Mode is active
-      framing: isBackgroundMode ? null : getFieldVal('framing', options.framing),
+      framing: isBackgroundMode ? null : (isIsolatedPngMode ? 'Full Object in Frame (Centered, Uncropped)' : getFieldVal('framing', options.framing)),
       angle: getFieldVal('cameraAngle', options.cameraAngle),
-      position: isBackgroundMode ? null : getFieldVal('subjectPosition', options.subjectPosition),
-      shadows: getFieldVal('shadowStyle', options.shadowStyle),
+      position: isBackgroundMode ? null : (isIsolatedPngMode ? 'Perfectly Centered' : getFieldVal('subjectPosition', options.subjectPosition)),
+      shadows: isIsolatedPngMode ? 'No Shadow / Flat (No cast shadows on ground)' : getFieldVal('shadowStyle', options.shadowStyle),
       style: getFieldVal('visualType', options.visualType),
       material: getFieldVal('materialStyle', options.materialStyle),
       concept: getFieldVal('conceptFocus', options.conceptFocus || 'Default / Auto'),
       authenticity: getFieldVal('authenticity', options.authenticity || 'Default / Auto'),
       // Ignore interaction if Background Mode is active
-      interaction: isBackgroundMode ? null : getFieldVal('interaction', options.interaction || 'Default / Auto'),
+      interaction: (isBackgroundMode || isIsolatedPngMode) ? null : getFieldVal('interaction', options.interaction || 'Default / Auto'),
       target: getFieldVal('targetMarket', options.targetMarket || 'Default / Auto'),
       season: options.useCalendar ? `${options.calendarMonth} (${options.calendarEvent})` : null,
       smartRefinement: options.activeFields?.smartRefinement ? options.smartRefinementText : null,
@@ -620,6 +621,12 @@ export const generateStockPrompts = async (
        - Rule: If "Business Team" selected but Smart Refinement specifies 1-2 people, obey Smart Refinement.
        - Rule: Clearly define subject count and role.
        - Rule: If ageRange is specified, inject it directly after the subject description. Examples: 'Senior (60s+)' -> 'elderly woman in her 60s', 'Young Adult (20s-30s)' -> 'young woman in her late 20s', 'Middle-Aged (40s-50s)' -> 'middle-aged man in his 40s', 'Young Teen (13-17, school context only)' -> 'teenage girl, approximately 15 years old'.
+
+    [ISOLATED PNG MODE RULE]:
+    When subject = 'Isolated Object (PNG Ready)':
+    1. COMPOSITION & FRAMING: The object MUST be perfectly centered on the artboard/canvas. The entire object MUST be completely visible with clear margins (padding) on all sides. ABSOLUTELY NO CROPPING or cutting off at the edges.
+    2. BACKGROUND: The background MUST be a pure, flat, uniform solid color (e.g., pure white or a solid color that contrasts with the object) with NO gradients, NO textures, NO cast shadows on the ground, and NO environmental details. Do NOT generate a fake checkerboard PNG pattern.
+    3. PURPOSE: The output is designed for easy background removal, so edge contrast must be sharp and lighting must be contained to the object itself.
 
     [ENVIRONMENTAL 3D RULE]:
     When visualType = 'Abstract Environmental 3D':

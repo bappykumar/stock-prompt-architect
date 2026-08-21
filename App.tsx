@@ -208,6 +208,7 @@ const OPTIONS = {
     // --- Non-Human Content ---
     { value: 'Still life / Food & Drink', label: 'Still life / Food & Drink' },
     { value: 'No person (product)', label: 'Product / Object Only' },
+    { value: 'Isolated Object (PNG Ready)', label: 'Isolated Object (PNG Ready)' },
     { value: 'Abstract Shape / Graphic Element', label: 'Abstract Shape / Graphic Element' },
     { value: 'Icon / Logo Concept', label: 'Icon / Logo Concept' },
     { value: 'Background / Landscape only', label: 'Background / Landscape Only' }
@@ -1330,7 +1331,7 @@ export default function App() {
   };
 
   const isMaterialFinishVisible = true;
-  const isCulturalHeritageVisible = !['Domestic Pet', 'Wild Animal', 'Bird', 'Marine', 'Macro', 'Still life', 'No person', 'Background'].some(key => options.subject?.includes(key));
+  const isCulturalHeritageVisible = !['Domestic Pet', 'Wild Animal', 'Bird', 'Marine', 'Macro', 'Still life', 'No person', 'Isolated Object', 'Background'].some(key => options.subject?.includes(key));
   const currentQuantityOptions = PERSONAL_QUANTITY_OPTIONS;
 
   const stats = useMemo(() => {
