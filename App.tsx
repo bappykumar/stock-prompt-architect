@@ -413,6 +413,7 @@ const SYSTEM_QUANTITY_OPTIONS = [
 
 const PERSONAL_QUANTITY_OPTIONS = [
   { value: 1, label: '1 Prompt' },
+  { value: 2, label: '2 Prompts' },
   { value: 3, label: '3 Prompts' },
   { value: 5, label: '5 Prompts' },
   { value: 10, label: '10 Prompts' },
