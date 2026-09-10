@@ -526,6 +526,38 @@ export const generateStockPrompts = async (
       colorMood: getFieldVal('colorMood', options.colorMood || 'Default / Auto')
     };
 
+    const getLockedFieldsRule = () => {
+      const lockedNames: string[] = [];
+      const map: Record<string, string> = {
+        lighting: 'Lighting / Atmosphere',
+        framing: 'Shot Framing',
+        cameraAngle: 'Camera Elevation',
+        subjectPosition: 'Subject Position',
+        shadowStyle: 'Shadows',
+        environment: 'Environment',
+        colorMood: 'Color Mood',
+        subject: 'Subject',
+        characterBackground: 'Cultural Context',
+        visualType: 'Visual Style',
+        qualityCamera: 'Quality & Camera',
+        ageRange: 'Age',
+        conceptFocus: 'Concept Focus'
+      };
+
+      for (const [key, isLocked] of Object.entries(options.lockedFields || {})) {
+        if (isLocked && map[key]) {
+          lockedNames.push(map[key]);
+        }
+      }
+
+      if (lockedNames.length > 0) {
+        return `\n    - [CRITICAL LOCK RULE]: The user has explicitly LOCKED the following fields: [ ${lockedNames.join(', ')} ]. You are STRICTLY FORBIDDEN from varying these specific locked fields across the batch. Every single prompt in the batch MUST use the exact value provided in the INPUT CONFIGURATION for these locked fields. You may only vary the UNLOCKED fields.`;
+      }
+      return "";
+    };
+    
+    const lockedFieldsRule = getLockedFieldsRule();
+
     console.log("Final smartRefinement being used:", inputs.smartRefinement);
 
     const systemPrompt = `
@@ -536,15 +568,15 @@ export const generateStockPrompts = async (
     ${JSON.stringify(inputs, null, 2)}
 
     DIVERSITY & VARIATION RULES FOR INPUTS (CRITICAL FOR VISUAL VARIETY):
-    - The 'INPUT CONFIGURATION' above shows the base settings selected by the user.
+    - The 'INPUT CONFIGURATION' above shows the base settings selected by the user.${lockedFieldsRule}
     ${options.isFromImageReference ? `
     [IMAGE REFERENCE EXACT MATCH RULE]
     - The Smart Refinement text was derived directly from an uploaded reference image. 
     - CRITICAL REQUIREMENT FOR OPTION 1: The FIRST prompt in the batch (Option 1) MUST be an exact, literal translation of the Smart Refinement text and the provided Input Configuration. Do NOT add variations, do NOT change the action, and do NOT alter the scene for Option 1. It must recreate the original image as closely as possible based on the text, while strictly adhering to commercial stock rules (no text, no logos, no trademarks, clean rendering). If a person's body type/physique/stature (e.g., plus-size, heavy-set, slim, slender, athletic, tall, short, etc.) is in the Smart Refinement, you MUST faithfully preserve it in Option 1!
     - CRITICAL REQUIREMENT FOR OPTION 2 ONWARDS (if quantity > 1): You MUST KEEP THE EXACT SAME SUBJECT/OBJECT and THE EXACT SAME BODY BUILD/PHYSIQUE/STATURE from the Smart Refinement text for ALL prompts in the batch. You are STRICTLY FORBIDDEN from changing the core subject or their body build/stature to something else. You may ONLY apply the dynamic variations (lighting, framing, camera angle, subject position, shadow style) described below to provide visual diversity of the SAME subject.` : ''}
-    - If quantity is greater than 1 (generating a batch of prompts), you MUST NOT apply the exact same values for lighting, framing, camera angle, subject position, shadow style, and color mood to every option in the batch! This is extremely important to prevent "cloned" or repetitive visual prompts.
+    - If quantity is greater than 1 (generating a batch of prompts), you MUST NOT apply the exact same values for lighting, framing, camera angle, subject position, shadow style, and color mood to every option in the batch (UNLESS they are explicitly LOCKED above)! This is extremely important to prevent "cloned" or repetitive visual prompts.
     - Treat the user's 'INPUT CONFIGURATION' as the "Anchor/Reference Style" for the FIRST generated option.
-    - For all other options (Option 2, Option 3, Option 4, etc.), you are REQUIRED to dynamically, creatively, and logically vary these visual attributes (lighting, framing, camera angle, subject position, shadow style) to provide a visually diverse suite of prompts.
+    - For all other options (Option 2, Option 3, Option 4, etc.), you are REQUIRED to dynamically, creatively, and logically vary these visual attributes (lighting, framing, camera angle, subject position, shadow style) to provide a visually diverse suite of prompts—ONLY FOR THE UNLOCKED FIELDS.
     - Examples of dynamic variations to apply across options in the batch:
       - Lighting: If 'Golden Hour' is the input, use it for Option 1, but vary other options with 'moody overcast ambient daylight', 'dramatic high-contrast side-lighting', 'soft morning mist', 'warm rim-lighting', or 'split lighting with deep shadows'.
       - Framing: If 'Close-up' is the input, use it for Option 1, but vary other options with 'cinematic medium shot', 'asymmetrical tight macro focus', 'dynamic over-the-shoulder wide framing', or 'artistic profile composition'.
@@ -631,7 +663,8 @@ export const generateStockPrompts = async (
        - Rule: Clean commercial stock image only. Absolutely no visible text, no logos, no watermarks, no studio lights, no light stands, no softboxes, no camera equipment visible in frame. (Apply this as a system rule, DO NOT output this text in the generated prompt).
        - Rule: If "Business Team" selected but Smart Refinement specifies 1-2 people, obey Smart Refinement.
        - Rule: Clearly define subject count and role.
-       - Rule: CULTURAL IDENTITY INJECTION: If 'culturalContext' is specified in the inputs (e.g., 'South Asian', 'African / Black', 'European / Caucasian', etc.), you MUST explicitly describe this authentic ethnic background in the subject's physical description (e.g., "a South Asian woman in her 20s", "an East Asian male"). Do NOT confuse this cultural identity with the environmental background or backdrop.
+       - Rule: CULTURAL IDENTITY INJECTION (CRITICAL FOR AUTHENTICITY): If 'culturalContext' is specified, you MUST explicitly describe this authentic ethnic background in the subject's physical description. 
+         * IMPORTANT SOUTH ASIAN RULE: If 'South Asian' is selected, you MUST explicitly describe the subject as 'Indian / South Asian' and prioritize authentic Indian features, skin tones, and relevant styling (e.g., "an authentic Indian woman with traditional features, wearing a subtle bindi", "an Indian male with a warm brown skin tone"). HOWEVER, if the 'Smart Refinement' input specifically mentions another nationality (e.g., Bangladeshi, Pakistani, Nepali), prioritize that specific nationality instead. Do NOT output generic "brown-washing".
        - Rule: If ageRange is specified, inject it directly after the subject description. Examples: 'Senior (60s+)' -> 'elderly woman in her 60s', 'Young Adult (20s-30s)' -> 'young woman in her late 20s', 'Middle-Aged (40s-50s)' -> 'middle-aged man in his 40s', 'Young Teen (13-17, school context only)' -> 'teenage girl, approximately 15 years old'.
        - Rule: BODY BUILD, PHYSIQUE & STATURE PRESERVATION: If Smart Refinement or input specifies a body type, physical build, or stature for human subjects (e.g., plus-size, full-figured, chubby, curvy, heavy-set, slim, slender, thin, athletic, muscular, tall, short, petite, or average build), you MUST explicitly describe and preserve this body build and stature in the subject description for EVERY prompt in the batch. For example, if Smart Refinement mentions a plus-size, full-figured, or heavy-set person, describe them as "a plus-size [person/role]" or "full-figured [person/role]", NEVER alter them into an unrealistically slender or generic model figure. Similarly, if slim/slender, athletic, or tall/short, faithfully describe their physical build and stature.
 
