@@ -222,15 +222,16 @@ const OPTIONS = {
   ],
   characterBackground: [
     { value: 'Default / Auto', label: 'Default / Auto' },
-    { value: 'Global / Neutral', label: 'Global / Neutral' },
+    { value: 'Global / Neutral (Inclusive Casting)', label: 'Global / Neutral' },
     { value: 'South Asian', label: 'South Asian' },
     { value: 'East Asian', label: 'East Asian' },
-    { value: 'Middle Eastern', label: 'Middle Eastern' },
-    { value: 'African', label: 'African' },
-    { value: 'European', label: 'European' },
-    { value: 'North American', label: 'North American' },
-    { value: 'Latin American', label: 'Latin American' },
-    { value: 'Multiracial / Mixed', label: 'Multiracial / Mixed' }
+    { value: 'Southeast Asian', label: 'Southeast Asian' },
+    { value: 'Middle Eastern / North African', label: 'Middle Eastern / North African' },
+    { value: 'African / Black', label: 'African / Black' },
+    { value: 'Hispanic / Latin American', label: 'Hispanic / Latin American' },
+    { value: 'European / Caucasian', label: 'European / Caucasian' },
+    { value: 'North American / Diverse', label: 'North American / Diverse' },
+    { value: 'Multiracial / Mixed Heritage', label: 'Multiracial / Mixed Heritage' }
   ],
   conceptFocus: [
     { value: 'Default / Auto', label: 'Default / Auto' },

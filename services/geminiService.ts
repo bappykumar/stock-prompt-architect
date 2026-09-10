@@ -86,9 +86,11 @@ with three parts:
 available options:
 ${JSON.stringify(availableOptions)}
 Only include fields you can confidently determine 
-from the image. If a field cannot be determined, set it to "Default / Auto".
+from the image. If a field cannot be determined, set it to "Default / Auto". For 'characterBackground', carefully observe the subject's apparent ethnicity/cultural background and select the best match from the options.
 
-2. "smartRefinement": a concise core description of the main subject and their specific action/appearance. Maximum 15 words. AVOID specifying age, gender, race, or ethnicity (e.g., use "person" instead of "young East Asian woman"), as these will be controlled separately by the UI settings. Focus only on the core action, concept, and distinctive props or attire. No framing, no lighting, no technical terms.
+2. "smartRefinement": a concise core description of the main subject and their specific action/appearance. Maximum 20 words.
+CRITICAL PERSON & BODY BUILD / PHYSIQUE / STATURE RULE: If there is a person/human in the image, you MUST carefully observe and include their body build / physique / stature (e.g., "plus-size", "full-figured", "heavy-set", "curvy", "slim", "slender", "thin", "athletic", "fit", "muscular", "tall", "short", "petite", or "average build"). DO NOT omit their body type or stature!
+AVOID specifying age, gender, race, or ethnicity IN THIS FIELD (e.g., use "plus-size person" or "slim tall person" instead of "young East Asian woman"), because age and ethnicity are mapped to the 'settings' object separately. Focus on the core action, concept, body build/physique/stature, and distinctive props or attire. No framing, no lighting, no technical terms.
 
 3. "activeFields": A boolean map of the fields. Set to true if the field is RELEVANT to the visual scene, even if not explicitly the main focus. Set to false ONLY if the field is completely irrelevant to the visual context. Include keys: subject, characterBackground, ageRange, interaction, targetMarket, imageMedium, visualType, materialStyle, conceptFocus, authenticity, environment, colorMood, qualityCamera, framing, cameraAngle, lighting, shadowStyle.
 IMPORTANT LOGIC: If there are people or characters shown in the image, 'subject', 'characterBackground', 'ageRange', and 'interaction' MUST be true. If there are NO people/characters, they MUST be false. If the image is a flat illustration or vector art, you MUST set photographic fields (qualityCamera, framing, cameraAngle, lighting, shadowStyle, authenticity) to false, as they do not apply to flat graphics.
@@ -109,9 +111,9 @@ Return ONLY this JSON structure, no markdown:
   with your best-guess values for each field based 
   on what you observe.
   
-  1. "settings": The values for the fields. If you cannot determine a field, set it to "Default / Auto".
+  1. "settings": The values for the fields. If you cannot determine a field, set it to "Default / Auto". For 'characterBackground', select the best matching cultural/ethnic background if implied by the text.
   
-  2. "smartRefinement": A concise core description of the main subject and their specific action/appearance based on the input. Maximum 15 words. AVOID specifying age, gender, race, or ethnicity (e.g., use "person" instead of "young East Asian woman"), as these will be controlled separately by the UI settings. Focus only on the core action, concept, and distinctive props or attire. No framing, no lighting, no technical terms.
+  2. "smartRefinement": A concise core description of the main subject and their specific action/appearance based on the input. Maximum 20 words. If a person/human is described, observe and include their body build / physique / stature (e.g., plus-size/full-figured/heavy-set, slim/slender, athletic/fit, tall, short, petite, or average build) if indicated. AVOID specifying age, gender, race, or ethnicity IN THIS FIELD (e.g., use "plus-size person" or "slim tall person"), because age and ethnicity are mapped to the 'settings' object separately. Focus on the core action, concept, body build/physique/stature, and distinctive props or attire. No framing, no lighting, no technical terms.
   
   3. "activeFields": A boolean map of the fields. Set to true if the field is RELEVANT to the scene, even if not explicitly described. Set to false ONLY if the field is completely irrelevant to the scene context. You MUST provide a boolean value for ALL of these keys: subject, characterBackground, ageRange, interaction, targetMarket, imageMedium, visualType, materialStyle, conceptFocus, authenticity, environment, colorMood, qualityCamera, framing, cameraAngle, lighting, shadowStyle.
   IMPORTANT LOGIC: If there are people or characters in the scene, 'subject', 'characterBackground', 'ageRange', and 'interaction' MUST be true. If there are NO people/characters, they MUST be false. If the concept is a flat illustration or 2D vector art, you MUST set photographic fields (qualityCamera, framing, cameraAngle, lighting, shadowStyle, authenticity) to false, as they do not apply to flat graphics.
@@ -413,6 +415,10 @@ export const generateStockPrompts = async (
        - Photography: Apply realistic perspective language.
        - 3D: Apply lens simulation language (No real camera brand unless DSLR mode active).
        - Illustration: Compositional perspective only (No camera physics).
+
+    6. SHARPNESS & CLARITY RULE (CRITICAL FOR BLUR PREVENTION):
+       - ALWAYS explicitly inject sharpness modifiers into the prompt: "razor-sharp focus on subject", "crisp details", "ultra-high resolution", "tack sharp".
+       - NEVER use words that imply softness on the main subject (e.g., avoid "soft focus", "dreamy blur").
     `;
 
     // --- 5. COMMERCIAL SAFETY BLOCK ---
@@ -427,10 +433,15 @@ export const generateStockPrompts = async (
     ];
     const isHumanSubject = !nonHumanSubjects.some(key => options.subject?.includes(key));
     
-    let NEGATIVE_BLOCK = "no artificial symmetry, no obvious AI look, no floating objects, no visible studio lights, no light stands, no softboxes, no reflectors, no photography equipment, no text overlay, no logos, no watermarks, no brand elements,";
+    let NEGATIVE_BLOCK = "blurry subject, out of focus subject, poorly drawn, low resolution, no artificial symmetry, no obvious AI look, no floating objects, no visible studio lights, no light stands, no softboxes, no reflectors, no photography equipment, no text overlay, no logos, no watermarks, no brand elements,";
     if (isHumanSubject) {
       NEGATIVE_BLOCK = "no extra fingers, no distorted hands, no plastic skin texture, no staged unnatural pose, no blurry eyes, " + NEGATIVE_BLOCK;
     }
+    
+    if (isIsolatedPngMode) {
+      NEGATIVE_BLOCK = "no background, no environment, no landscape, no floor, no shadows on ground, no ground plane, no horizon line, no scenery, no props, no reflections, checkerboard background, transparency grid, " + NEGATIVE_BLOCK;
+    }
+
     const SAFETY_BLOCK = "no copyright elements, no signature, no labels, no UI overlay, no visible trademarks, no studio equipment visible, brand-neutral environment, clean commercial stock image";
 
     // --- 6. BACKGROUND MODE ENGINE (v1.4) ---
@@ -494,7 +505,7 @@ export const generateStockPrompts = async (
     
     const inputs = {
       subject: getFieldVal('subject', options.subject),
-      background: getFieldVal('characterBackground', options.characterBackground),
+      culturalContext: getFieldVal('characterBackground', options.characterBackground),
       environment: isIsolatedPngMode ? 'Pure flat solid color (White or contrasting, NO environment details)' : getFieldVal('environment', options.environment),
       lighting: getFieldVal('lighting', options.lighting),
       // Ignore subject-specific framing/position if Background Mode is active
@@ -529,8 +540,8 @@ export const generateStockPrompts = async (
     ${options.isFromImageReference ? `
     [IMAGE REFERENCE EXACT MATCH RULE]
     - The Smart Refinement text was derived directly from an uploaded reference image. 
-    - CRITICAL REQUIREMENT FOR OPTION 1: The FIRST prompt in the batch (Option 1) MUST be an exact, literal translation of the Smart Refinement text and the provided Input Configuration. Do NOT add variations, do NOT change the action, and do NOT alter the scene for Option 1. It must recreate the original image as closely as possible based on the text, while strictly adhering to commercial stock rules (no text, no logos, no trademarks, clean rendering).
-    - CRITICAL REQUIREMENT FOR OPTION 2 ONWARDS (if quantity > 1): You MUST KEEP THE EXACT SAME SUBJECT/OBJECT from the Smart Refinement text for ALL prompts in the batch. You are STRICTLY FORBIDDEN from changing the core subject to something else. You may ONLY apply the dynamic variations (lighting, framing, camera angle, subject position, shadow style) described below to provide visual diversity of the SAME subject.` : ''}
+    - CRITICAL REQUIREMENT FOR OPTION 1: The FIRST prompt in the batch (Option 1) MUST be an exact, literal translation of the Smart Refinement text and the provided Input Configuration. Do NOT add variations, do NOT change the action, and do NOT alter the scene for Option 1. It must recreate the original image as closely as possible based on the text, while strictly adhering to commercial stock rules (no text, no logos, no trademarks, clean rendering). If a person's body type/physique/stature (e.g., plus-size, heavy-set, slim, slender, athletic, tall, short, etc.) is in the Smart Refinement, you MUST faithfully preserve it in Option 1!
+    - CRITICAL REQUIREMENT FOR OPTION 2 ONWARDS (if quantity > 1): You MUST KEEP THE EXACT SAME SUBJECT/OBJECT and THE EXACT SAME BODY BUILD/PHYSIQUE/STATURE from the Smart Refinement text for ALL prompts in the batch. You are STRICTLY FORBIDDEN from changing the core subject or their body build/stature to something else. You may ONLY apply the dynamic variations (lighting, framing, camera angle, subject position, shadow style) described below to provide visual diversity of the SAME subject.` : ''}
     - If quantity is greater than 1 (generating a batch of prompts), you MUST NOT apply the exact same values for lighting, framing, camera angle, subject position, shadow style, and color mood to every option in the batch! This is extremely important to prevent "cloned" or repetitive visual prompts.
     - Treat the user's 'INPUT CONFIGURATION' as the "Anchor/Reference Style" for the FIRST generated option.
     - For all other options (Option 2, Option 3, Option 4, etc.), you are REQUIRED to dynamically, creatively, and logically vary these visual attributes (lighting, framing, camera angle, subject position, shadow style) to provide a visually diverse suite of prompts.
@@ -620,13 +631,16 @@ export const generateStockPrompts = async (
        - Rule: Clean commercial stock image only. Absolutely no visible text, no logos, no watermarks, no studio lights, no light stands, no softboxes, no camera equipment visible in frame. (Apply this as a system rule, DO NOT output this text in the generated prompt).
        - Rule: If "Business Team" selected but Smart Refinement specifies 1-2 people, obey Smart Refinement.
        - Rule: Clearly define subject count and role.
+       - Rule: CULTURAL IDENTITY INJECTION: If 'culturalContext' is specified in the inputs (e.g., 'South Asian', 'African / Black', 'European / Caucasian', etc.), you MUST explicitly describe this authentic ethnic background in the subject's physical description (e.g., "a South Asian woman in her 20s", "an East Asian male"). Do NOT confuse this cultural identity with the environmental background or backdrop.
        - Rule: If ageRange is specified, inject it directly after the subject description. Examples: 'Senior (60s+)' -> 'elderly woman in her 60s', 'Young Adult (20s-30s)' -> 'young woman in her late 20s', 'Middle-Aged (40s-50s)' -> 'middle-aged man in his 40s', 'Young Teen (13-17, school context only)' -> 'teenage girl, approximately 15 years old'.
+       - Rule: BODY BUILD, PHYSIQUE & STATURE PRESERVATION: If Smart Refinement or input specifies a body type, physical build, or stature for human subjects (e.g., plus-size, full-figured, chubby, curvy, heavy-set, slim, slender, thin, athletic, muscular, tall, short, petite, or average build), you MUST explicitly describe and preserve this body build and stature in the subject description for EVERY prompt in the batch. For example, if Smart Refinement mentions a plus-size, full-figured, or heavy-set person, describe them as "a plus-size [person/role]" or "full-figured [person/role]", NEVER alter them into an unrealistically slender or generic model figure. Similarly, if slim/slender, athletic, or tall/short, faithfully describe their physical build and stature.
 
     [ISOLATED PNG MODE RULE]:
     When subject = 'Isolated Object (PNG Ready)':
-    1. COMPOSITION & FRAMING: The object MUST be perfectly centered on the artboard/canvas. The entire object MUST be completely visible with clear margins (padding) on all sides. ABSOLUTELY NO CROPPING or cutting off at the edges.
-    2. BACKGROUND: The background MUST be a pure, flat, uniform solid color (e.g., pure white or a solid color that contrasts with the object) with NO gradients, NO textures, NO cast shadows on the ground, and NO environmental details. Do NOT generate a fake checkerboard PNG pattern.
-    3. PURPOSE: The output is designed for easy background removal, so edge contrast must be sharp and lighting must be contained to the object itself.
+    1. COMPOSITION & FRAMING: The object MUST be perfectly centered on the artboard/canvas. The entire object MUST be completely visible with clear margins (padding) on all sides. ABSOLUTELY NO CROPPING or cutting off at the edges. The object must appear "floating in a void" without resting on a surface.
+    2. BACKGROUND & GROUND PLANE: The background MUST be a pure, flat, uniform solid color (e.g., pure white or a solid color that heavily contrasts with the object) with NO gradients, NO textures, and NO environmental details. ABSOLUTELY NO HORIZON LINE AND NO GROUND PLANE. Do NOT generate a fake checkerboard PNG pattern.
+    3. LIGHTING & SHADOWS: Lighting MUST be flat, even studio illumination. ABSOLUTELY NO CAST SHADOWS on the ground or background. No harsh directional rim lights that bleed into the background.
+    4. PURPOSE & EDGES: The output is designed for instant background removal. Edge contrast must be razor-sharp with a completely clean silhouette.
 
     [ENVIRONMENTAL 3D RULE]:
     When visualType = 'Abstract Environmental 3D':
