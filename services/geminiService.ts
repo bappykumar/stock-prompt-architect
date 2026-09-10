@@ -431,6 +431,8 @@ export const generateStockPrompts = async (
       'Domestic Pet',
       'Wild Animal'
     ];
+    const isBackgroundMode = options.subject === 'Background / Landscape only';
+    const isIsolatedPngMode = options.subject === 'Isolated Object (PNG Ready)';
     const isHumanSubject = !nonHumanSubjects.some(key => options.subject?.includes(key));
     
     let NEGATIVE_BLOCK = "blurry subject, out of focus subject, poorly drawn, low resolution, no artificial symmetry, no obvious AI look, no floating objects, no visible studio lights, no light stands, no softboxes, no reflectors, no photography equipment, no text overlay, no logos, no watermarks, no brand elements,";
@@ -500,8 +502,6 @@ export const generateStockPrompts = async (
       : `VARIATION MANDATE: Ensure each prompt in this batch explores a distinctly different angle, action, or micro-scenario within the given parameters. Do not make them clones of each other. Represent the core concept/Smart Refinement from a completely different visual angle, composition style, lighting setup, framing, background details, and mood for each option in the batch to maximize visual diversity.`;
 
     // --- 8. GATHER INPUTS ---
-    const isBackgroundMode = options.subject === 'Background / Landscape only';
-    const isIsolatedPngMode = options.subject === 'Isolated Object (PNG Ready)';
     
     const inputs = {
       subject: getFieldVal('subject', options.subject),
