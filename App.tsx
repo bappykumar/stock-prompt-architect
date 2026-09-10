@@ -882,6 +882,7 @@ export default function App() {
   const [isAllCopied, setIsAllCopied] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [showScrollBottom, setShowScrollBottom] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [testAllSummary, setTestAllSummary] = useState<{valid: number, invalid: number, total: number} | null>(null);
@@ -1071,6 +1072,13 @@ export default function App() {
     mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
+  const scrollToBottom = useCallback(() => {
+    const scrollContainer = mainScrollRef.current;
+    if (scrollContainer) {
+      scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
+    }
+  }, []);
+
   const resetWorkspace = useCallback(() => {
     setIsResetConfirmOpen(true);
   }, []);
@@ -1078,10 +1086,18 @@ export default function App() {
   useEffect(() => {
     const scrollContainer = mainScrollRef.current;
     if (!scrollContainer) return;
-    const handleScroll = () => setShowScrollTop(scrollContainer.scrollTop > 400);
+    
+    const handleScroll = () => {
+      setShowScrollTop(scrollContainer.scrollTop > 400);
+      setShowScrollBottom(
+        scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight > 100
+      );
+    };
+    
+    handleScroll();
     scrollContainer.addEventListener('scroll', handleScroll);
     return () => scrollContainer.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [batches]);
 
   const executeWithKeyRotation = async <T,>(
     operation: (keyRecord: { id: string, key: string, provider: 'gemini'|'groq'|'mistral'|'openrouter' }, fallbackModel?: string) => Promise<T>,
@@ -1867,9 +1883,14 @@ export default function App() {
             </a>
           </footer>
         </div>
-        <button onClick={scrollToTop} className={`fixed bottom-10 right-10 z-[90] p-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full shadow-2xl transition-all duration-500 ease-out transform ${showScrollTop ? 'translate-y-0 opacity-100 rotate-0' : 'translate-y-20 opacity-0 rotate-45 pointer-events-none'}`}>
-          <ChevronUp size={24} strokeWidth={3} />
-        </button>
+        <div className="fixed bottom-10 right-10 z-[90] flex flex-col gap-3 pointer-events-none">
+          <button onClick={scrollToTop} className={`pointer-events-auto p-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full shadow-2xl transition-all duration-500 ease-out transform hover:scale-110 ${showScrollTop ? 'translate-y-0 opacity-100 rotate-0' : 'translate-y-10 opacity-0 pointer-events-none'}`}>
+            <ChevronUp size={24} strokeWidth={3} />
+          </button>
+          <button onClick={scrollToBottom} className={`pointer-events-auto p-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full shadow-2xl transition-all duration-500 ease-out transform hover:scale-110 ${showScrollBottom ? 'translate-y-0 opacity-100 rotate-0' : '-translate-y-10 opacity-0 pointer-events-none'}`}>
+            <ChevronDown size={24} strokeWidth={3} />
+          </button>
+        </div>
       </main>
 
       {isResetConfirmOpen && (
