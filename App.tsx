@@ -1247,7 +1247,13 @@ export default function App() {
           (newSettings as any)[k] = options[k as keyof PromptOptions];
         }
         
-        nextActiveFields[k] = options.activeFields[k];
+        // Force locked fields to be active ONLY IF the Gemini analysis didn't explicitly set it to false
+        // (e.g. if 'ageRange' is locked but Gemini says "no person", it should stay false/invisible)
+        if (result.activeFields && result.activeFields[k] === false) {
+           nextActiveFields[k] = false;
+        } else {
+           nextActiveFields[k] = true;
+        }
       });
       
       const newOptions = {
