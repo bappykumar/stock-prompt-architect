@@ -7,7 +7,7 @@ import {
   Globe, Shield, Terminal, Calendar, 
   Layers, Camera, Box, Maximize, User, Moon, Sun,
   Layout, Fingerprint, Focus, Settings2, Download, MessageSquareCode, Send, AlertCircle, X, Cpu, Paintbrush,
-  ChevronUp, Key, Lock, Unlock, Info, Settings, ToggleLeft, ToggleRight, Activity, Power, Video, Target, Lightbulb, Search, Shuffle, Image, Type, RefreshCw, ListX, PanelLeftClose, PanelLeftOpen
+  ChevronUp, Key, Lock, Unlock, Info, Settings, ToggleLeft, ToggleRight, Activity, Power, Video, Target, Lightbulb, Search, Shuffle, Image, Type, RefreshCw, ListX, PanelLeftClose, PanelLeftOpen, Upload
 } from 'lucide-react';
 import { PromptOptions, GeneratedPrompt, PromptBatch, HistoricalPrompt, ApiKeyRecord } from './types';
 import { generateStockPrompts, testApiKey, analyzeReferenceAndSuggestSettings } from './services/geminiService';
@@ -880,6 +880,9 @@ export default function App() {
   });
   const [loadingStepIdx, setLoadingStepIdx] = useState(0);
   const [isAllCopied, setIsAllCopied] = useState(false);
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [showScrollBottom, setShowScrollBottom] = useState(true);
@@ -1339,7 +1342,59 @@ export default function App() {
     setIsAllCopied(true);
     setBatches(prev => prev.map(batch => ({...batch, prompts: batch.prompts.map(p => ({ ...p, copied: true }))})));
     setTimeout(() => setIsAllCopied(false), 2000);
+    setIsExportMenuOpen(false);
   };
+
+  const handleExportFile = () => {
+    if (batches.length === 0) return;
+    const data = JSON.stringify(batches, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `promptcraft-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setIsExportMenuOpen(false);
+  };
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const content = event.target?.result as string;
+        const parsed = JSON.parse(content);
+        if (Array.isArray(parsed) && parsed.every(b => b.id && Array.isArray(b.prompts))) {
+          setBatches(parsed);
+          setErrorMessage(null);
+        } else {
+          setErrorMessage('Invalid backup file format.');
+        }
+      } catch (err) {
+        setErrorMessage('Failed to read backup file.');
+      }
+    };
+    reader.readAsText(file);
+    setIsExportMenuOpen(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+        setIsExportMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const clearCopiedPrompts = () => {
     setBatches(prev => prev.map(batch => ({
@@ -1445,14 +1500,34 @@ export default function App() {
             <span>Clear Copied</span>
           </button>
           
-          <button 
-            onClick={copyAllWorkspacePrompts}
-            disabled={batches.length === 0}
-            className={`flex items-center gap-3 px-5 py-2 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all shadow-sm active:scale-[0.96] ${batches.length === 0 ? 'bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 cursor-not-allowed' : isAllCopied ? 'bg-emerald-500 text-white border border-emerald-500' : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:opacity-90 border border-transparent'}`}
-          >
-            {isAllCopied ? <Check size={14} strokeWidth={3} /> : <Download size={14} />}
-            <span>{isAllCopied ? 'Copied' : 'Export All'}</span>
-          </button>
+          <div className="relative" ref={exportMenuRef}>
+            <button 
+              onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+              className={`flex items-center gap-3 px-5 py-2 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all shadow-sm active:scale-[0.96] bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:opacity-90 border border-transparent`}
+            >
+              <Download size={14} />
+              <span>Export / Import</span>
+              <ChevronDown size={14} className={`transition-transform ${isExportMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+            
+            {isExportMenuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-slate-900 rounded-xl shadow-[0_16px_40px_-12px_rgba(0,0,0,0.3)] border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col z-50 animate-in fade-in slide-in-from-top-2">
+                <button onClick={copyAllWorkspacePrompts} disabled={batches.length === 0} className="flex items-center gap-3 px-4 py-3 text-[12px] font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed">
+                  {isAllCopied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                  <span>{isAllCopied ? 'Copied' : 'Copy All'}</span>
+                </button>
+                <button onClick={handleExportFile} disabled={batches.length === 0} className="flex items-center gap-3 px-4 py-3 text-[12px] font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed border-t border-slate-100 dark:border-slate-800/50">
+                  <Download size={14} />
+                  <span>Export JSON Backup</span>
+                </button>
+                <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-3 px-4 py-3 text-[12px] font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 border-t border-slate-100 dark:border-slate-800/50">
+                  <Upload size={14} />
+                  <span>Import JSON Backup</span>
+                </button>
+              </div>
+            )}
+            <input type="file" accept=".json" className="hidden" ref={fileInputRef} onChange={handleImportFile} />
+          </div>
         </div>
       </header>
 
