@@ -92,12 +92,22 @@ from the image. If a field cannot be determined, set it to "Default / Auto". For
 CRITICAL GENDER RULE: If there is a person/human in the image, you MUST explicitly state their GENDER (e.g., "man", "woman", "boy", "girl", "baby"). If the person's gender is completely indiscernible due to clothing or cropping, use "person". DO NOT specify age categories (like "young adult" or "elderly") in this field, as age is mapped to the 'settings' object separately.
 BODY BUILD RULE: ONLY mention body build if they are distinctly outside the average/standard norm (e.g., "plus-size", "heavy-set", "muscular"). If they have an average/slim body, DO NOT mention their body type at all.
 FACELESS & ACTION CROP RULE (CRITICAL FOR CROPPED/DETAIL SHOTS): If the person's head, face, or eyes are cropped out of frame (e.g. focused on hands cleaning, wrist pain, holding a glass, passing an envelope, typing on keyboard), you MUST explicitly describe this framing, such as: "close-up on hands and torso, head out of frame" or "faceless shot focused on hands and action". In such cases, DO NOT describe eye direction or facial gaze!
+CONCEPTUAL FLAT-LAY & TABLETOP STILL LIFE RULE (CRITICAL FOR BUSINESS/METAPHOR PROPS): If the image is a conceptual business/abstract tabletop still life (such as wooden blocks/cubes, tokens, magnifying glasses, puzzle pieces, checklists, or progress bars with minimalist 2D line icons/symbols on a clean solid pastel or studio background, with or without a cropped hand/fingers interacting):
+- Describe the core physical props and interaction clearly (e.g., "wooden tokens with minimalist line icons representing safety and workflow", "hand placing wooden block into progress bar on pastel blue surface", "magnifying glass focusing on a checkmark icon with ample copy space").
+- DO NOT invent full-body characters, corporate business suits, or facial features when only a hand or fingers are visible!
+- Mention "minimalist 2D line icons / infographic symbols" if present on the blocks/props.
+- Mention "clean solid pastel background with ample copy space" to preserve commercial versatility.
 CAMERA DIRECTION RULE: ONLY if the subject's face/eyes are visible in the frame, describe where they are looking (e.g., "looking forward", "making eye contact", "looking down", "looking away"), but DO NOT use the word "camera". If their head/eyes are cropped out or not visible, completely omit gaze descriptions.
 FLEXIBLE COLOR RULE: For attire or objects, describe the item generically WITHOUT locking in specific colors (e.g., say "a sphere" instead of "a blue sphere", or "in a business suit" instead of "in a blue suit") unless that exact color is strictly central to the action or meaning. This allows the prompt generator to create diverse stock variations.
 AVOID specifying race, ethnicity, or age IN THIS FIELD. Focus on gender, notable body build (if any), core action, key props, and expression (if face is visible). No technical camera terms or lighting terms.
 
 3. "activeFields": A boolean map of the fields. Set to true if the field is RELEVANT to the visual scene, even if not explicitly the main focus. Set to false ONLY if the field is completely irrelevant to the visual context. Include keys: subject, characterBackground, ageRange, interaction, targetMarket, imageMedium, visualType, materialStyle, conceptFocus, authenticity, environment, colorMood, qualityCamera, framing, cameraAngle, lighting, shadowStyle.
 IMPORTANT LOGIC: If there are people or characters shown in the image, 'characterBackground', 'ageRange', and 'interaction' MUST be true. If there are NO people/characters, 'characterBackground', 'ageRange', and 'interaction' MUST be false, and 'subject' MUST be mapped to a non-human category (like "No person", "Isolated Object", "Background"). If the image is a flat illustration or vector art, you MUST set photographic fields (qualityCamera, framing, cameraAngle, lighting, shadowStyle, authenticity) to false, as they do not apply to flat graphics.
+SPECIAL RULE FOR HAND-ONLY CROPS & TABLETOP PROPS: If ONLY a hand, fingers, or arm is interacting with tabletop props/objects (faceless conceptual flat-lay or still life):
+- Set 'subject' to "Still life / Food & Drink" or "No person (product)".
+- Set 'characterBackground' and 'ageRange' to FALSE in 'activeFields' (and 'Default / Auto' in settings) because demographic casting does not apply to a faceless hand interacting with props.
+- Set 'framing' to "Top View / Flat Lay" or "Close-up / Cropped Action (Faceless)".
+- Set 'environment' to "Solid Color / Studio Background" or clean tabletop surface.
 
 Return ONLY this JSON structure, no markdown:
 {
@@ -117,10 +127,11 @@ Return ONLY this JSON structure, no markdown:
   
   1. "settings": The values for the fields. If you cannot determine a field, set it to "Default / Auto". For 'characterBackground', select the best matching cultural/ethnic background if implied by the text.
   
-  2. "smartRefinement": A concise core description of the main subject and their specific action/appearance based on the input. Maximum 25 words. If a person/human is described, observe and explicitly state their GENDER (e.g., "man", "woman", "boy", "girl", "baby"). If the gender is completely unspecified or neutral, use "person". DO NOT specify age categories (like "young adult" or "senior") in this field, as age is mapped to the 'settings' object separately. For BODY BUILD, ONLY mention it if they are distinctly outside the average/standard norm (e.g., "plus-size", "heavy-set", "muscular"). If they have an average/slim body, DO NOT mention their body type at all. FACELESS & ACTION CROP RULE: If the concept focuses on hands, gestures, or cropped body parts without showing a face (e.g. holding a product, typing, wrist pain, cleaning surface), describe this framing clearly (e.g. "close-up on hands and torso, faceless composition") and omit eye gaze direction. CAMERA DIRECTION RULE: If the face is visible and the text mentions looking at the camera, rephrase it to "looking forward" or "making eye contact"; DO NOT use the word "camera". FLEXIBLE COLOR RULE: For attire or objects, describe the item generically WITHOUT locking in specific colors (e.g., say "a sphere" instead of "a blue sphere") unless strictly central to the action, to allow for diverse stock variations. AVOID specifying race, ethnicity, or age IN THIS FIELD. Focus on gender, notable body build, core action, and props. No technical camera or lighting terms.
+  2. "smartRefinement": A concise core description of the main subject and their specific action/appearance based on the input. Maximum 25 words. If a person/human is described, observe and explicitly state their GENDER (e.g., "man", "woman", "boy", "girl", "baby"). If the gender is completely unspecified or neutral, use "person". DO NOT specify age categories (like "young adult" or "senior") in this field, as age is mapped to the 'settings' object separately. For BODY BUILD, ONLY mention it if they are distinctly outside the average/standard norm (e.g., "plus-size", "heavy-set", "muscular"). If they have an average/slim body, DO NOT mention their body type at all. FACELESS & ACTION CROP RULE: If the concept focuses on hands, gestures, or cropped body parts without showing a face (e.g. holding a product, typing, wrist pain, cleaning surface), describe this framing clearly (e.g. "close-up on hands and torso, faceless composition") and omit eye gaze direction. CONCEPTUAL FLAT-LAY & TABLETOP STILL LIFE RULE: If the concept is a conceptual business/abstract tabletop still life (wooden blocks, tokens, magnifying glasses, puzzle pieces, checklists, or progress bars with minimalist 2D line icons/symbols on a solid pastel or studio background, with or without a cropped hand/fingers interacting), focus on the physical props, minimalist 2D icons, and clean composition with ample copy space. Do NOT invent full-body characters or business suits. CAMERA DIRECTION RULE: If the face is visible and the text mentions looking at the camera, rephrase it to "looking forward" or "making eye contact"; DO NOT use the word "camera". FLEXIBLE COLOR RULE: For attire or objects, describe the item generically WITHOUT locking in specific colors (e.g., say "a sphere" instead of "a blue sphere") unless strictly central to the action, to allow for diverse stock variations. AVOID specifying race, ethnicity, or age IN THIS FIELD. Focus on gender, notable body build, core action, and props. No technical camera or lighting terms.
   
   3. "activeFields": A boolean map of the fields. Set to true if the field is RELEVANT to the scene, even if not explicitly described. Set to false ONLY if the field is completely irrelevant to the scene context. You MUST provide a boolean value for ALL of these keys: subject, characterBackground, ageRange, interaction, targetMarket, imageMedium, visualType, materialStyle, conceptFocus, authenticity, environment, colorMood, qualityCamera, framing, cameraAngle, lighting, shadowStyle.
   IMPORTANT LOGIC: If there are people or characters in the scene, 'characterBackground', 'ageRange', and 'interaction' MUST be true. If there are NO people/characters, 'characterBackground', 'ageRange', and 'interaction' MUST be false, and 'subject' MUST be mapped to a non-human category (like "No person", "Isolated Object", "Background"). If the concept is a flat illustration or 2D vector art, you MUST set photographic fields (qualityCamera, framing, cameraAngle, lighting, shadowStyle, authenticity) to false, as they do not apply to flat graphics.
+  SPECIAL RULE FOR HAND-ONLY CROPS & TABLETOP PROPS: If ONLY a hand or fingers interact with tabletop props/objects (faceless conceptual flat-lay or still life): set 'subject' to "Still life / Food & Drink" or "No person (product)", set 'characterBackground' and 'ageRange' to FALSE in 'activeFields' (and 'Default / Auto' in settings), set 'framing' to "Top View / Flat Lay" or "Close-up / Cropped Action (Faceless)", and set 'environment' to "Solid Color / Studio Background".
   
   {
     "settings": {
@@ -531,7 +542,7 @@ export const generateStockPrompts = async (
     };
 
     const getLockedFieldsRule = () => {
-      const lockedNames: string[] = [];
+      const lockedRules: string[] = [];
       const map: Record<string, string> = {
         lighting: 'Lighting / Atmosphere',
         framing: 'Shot Framing',
@@ -548,14 +559,22 @@ export const generateStockPrompts = async (
         conceptFocus: 'Concept Focus'
       };
 
+      const lockedPools = (options as any).lockedPools || {};
+
       for (const [key, isLocked] of Object.entries(options.lockedFields || {})) {
         if (isLocked && map[key]) {
-          lockedNames.push(map[key]);
+          const pool: string[] = lockedPools[key] || [];
+          if (pool.length > 1) {
+            lockedRules.push(`${map[key]} is RESTRICTED to ONLY these allowed options: [ ${pool.join(', ')} ] (any dynamic variation across prompts in the batch MUST choose strictly from this pool)`);
+          } else {
+            const singleVal = (options as any)[key] || pool[0];
+            lockedRules.push(`${map[key]} is LOCKED strictly to "${singleVal}" (must not be varied across the batch)`);
+          }
         }
       }
 
-      if (lockedNames.length > 0) {
-        return `\n    - [CRITICAL LOCK RULE]: The user has explicitly LOCKED the following fields: [ ${lockedNames.join(', ')} ]. You are STRICTLY FORBIDDEN from varying these specific locked fields across the batch. Every single prompt in the batch MUST use the exact value provided in the INPUT CONFIGURATION for these locked fields. You may only vary the UNLOCKED fields.`;
+      if (lockedRules.length > 0) {
+        return `\n    - [CRITICAL LOCK & RESTRICTION RULE]: The user has explicitly set field locks:\n      * ${lockedRules.join('\n      * ')}\n      You are STRICTLY FORBIDDEN from choosing options outside these locked constraints.`;
       }
       return "";
     };
@@ -675,6 +694,11 @@ export const generateStockPrompts = async (
          * You MUST enforce a tight, cropped composition focusing on the hands, action, or body gesture with the head/face deliberately excluded or out of frame (e.g., "close-up cropped shot focused on hands", "head cropped out of frame", "faceless commercial composition").
          * NEVER add facial expressions, eye contact, or gaze direction for faceless crops.
          * The focus must remain crisply on the interaction, hands, tools, or objects (e.g. cleaning cloth, painful joint, paperwork, coffee cup).
+       - Rule: CONCEPTUAL STILL LIFE & FLAT-LAY RULE: When Smart Refinement describes conceptual tabletop props, business metaphors, or flat-lays (e.g., wooden blocks/tokens, magnifying glasses, progress bars, checklists, with or without cropped hands/fingers):
+         * Maintain a clean tabletop flat-lay or high-angle perspective with generous negative space (copy space) on a solid pastel or studio surface.
+         * Explicitly describe the minimalist 2D line icons or infographic symbols on the props (e.g., checkmarks, shields, gears, lightbulb idea icons, search symbols).
+         * If a hand is interacting, describe ONLY the focused action of the hand/fingers (e.g., "hand placing wooden block", "hand holding magnifying glass"). NEVER invent full-body characters, corporate business suits, or facial features. Keep the person completely faceless and out of frame.
+         * Emphasize clean, soft diffused studio lighting, authentic material textures (natural wood grain, glass clarity), and crisp commercial clarity.
 
     [ISOLATED PNG MODE RULE]:
     When subject = 'Isolated Object (PNG Ready)':

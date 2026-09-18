@@ -32,6 +32,7 @@ export interface PromptOptions {
   model: string;
   activeFields: Record<string, boolean>;
   lockedFields: Record<string, boolean>;
+  lockedPools?: Record<string, string[]>;
 }
 
 export interface GeneratedPrompt {
