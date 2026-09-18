@@ -359,7 +359,8 @@ const OPTIONS = {
     { value: 'Default / Auto', label: 'Default / Auto' },
     { value: 'Portrait', label: 'Portrait' },
     { value: 'Mid shot (waist-up)', label: 'Mid Shot (waist-up)' },
-    { value: 'Full shot (full body)', label: 'Full Shot (full body)' }
+    { value: 'Full shot (full body)', label: 'Full Shot (full body)' },
+    { value: 'Close-up / Cropped Action (Faceless)', label: 'Close-up / Cropped Action (Faceless)' }
   ],
   cameraAngle: [
     { value: 'Default / Auto', label: 'Default / Auto' },
@@ -1542,58 +1543,6 @@ export default function App() {
           <div className="flex-1 overflow-y-auto custom-scrollbar pt-16 px-6">
           <div className="py-8 flex flex-col gap-10 pb-8">
             
-            {/* Quick Start Presets */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between px-1">
-                <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Quick Start</h3>
-                <button 
-                  onClick={() => setDisplayedPresets(getRandomPresets(4))}
-                  className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-blue-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                >
-                  <Shuffle className="w-3 h-3" />
-                  Shuffle
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {displayedPresets.map((preset, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => {
-                      const defaults = getFreshDefaultOptions();
-                      
-                      const getRandom = (key: keyof typeof OPTIONS) => {
-                         // @ts-ignore
-                         const opts = OPTIONS[key]?.filter(o => o.value !== 'Default / Auto') || [];
-                         return opts.length > 0 ? opts[Math.floor(Math.random() * opts.length)].value : 'Default / Auto';
-                      };
-
-                      setOptions({
-                        ...defaults, // Reset all visual fields
-                        // Randomize some fields to ensure variety if the preset doesn't set them
-                        lighting: getRandom('lighting'),
-                        cameraAngle: getRandom('cameraAngle'),
-                        framing: getRandom('framing'),
-                        qualityCamera: getRandom('qualityCamera'),
-                        characterBackground: getRandom('characterBackground'),
-                        colorMood: getRandom('colorMood'),
-                        ageRange: getRandom('ageRange'),
-                        quantity: options.quantity, // Preserve user config
-                        smartRefinementText: options.smartRefinementText,
-                        useCalendar: options.useCalendar,
-                        calendarMonth: options.calendarMonth,
-                        calendarEvent: options.calendarEvent,
-                        model: options.model,
-                        ...preset.settings // Apply the preset over the defaults (preset will override random if specified)
-                      });
-                    }}
-                    className="py-2 px-3 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/50 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 transition-colors text-left truncate"
-                  >
-                    {preset.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* Mode Toggle */}
             <div className="flex bg-gray-100 dark:bg-slate-800 rounded-lg p-1 gap-1">
               <button
@@ -1613,6 +1562,60 @@ export default function App() {
                 Advanced
               </button>
             </div>
+
+            {/* Quick Start Presets (Basic mode only) */}
+            {!isAdvanced && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between px-1">
+                  <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Quick Start</h3>
+                  <button 
+                    onClick={() => setDisplayedPresets(getRandomPresets(4))}
+                    className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-blue-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                  >
+                    <Shuffle className="w-3 h-3" />
+                    Shuffle
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {displayedPresets.map((preset, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        const defaults = getFreshDefaultOptions();
+                        
+                        const getRandom = (key: keyof typeof OPTIONS) => {
+                           // @ts-ignore
+                           const opts = OPTIONS[key]?.filter(o => o.value !== 'Default / Auto') || [];
+                           return opts.length > 0 ? opts[Math.floor(Math.random() * opts.length)].value : 'Default / Auto';
+                        };
+
+                        setOptions({
+                          ...defaults, // Reset all visual fields
+                          // Randomize some fields to ensure variety if the preset doesn't set them
+                          lighting: getRandom('lighting'),
+                          cameraAngle: getRandom('cameraAngle'),
+                          framing: getRandom('framing'),
+                          qualityCamera: getRandom('qualityCamera'),
+                          characterBackground: getRandom('characterBackground'),
+                          colorMood: getRandom('colorMood'),
+                          ageRange: getRandom('ageRange'),
+                          quantity: options.quantity, // Preserve user config
+                          smartRefinementText: options.smartRefinementText,
+                          useCalendar: options.useCalendar,
+                          calendarMonth: options.calendarMonth,
+                          calendarEvent: options.calendarEvent,
+                          model: options.model,
+                          ...preset.settings // Apply the preset over the defaults (preset will override random if specified)
+                        });
+                      }}
+                      className="py-2 px-3 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/50 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 transition-colors text-left truncate"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Feature Cards */}
             <div className="space-y-5">
