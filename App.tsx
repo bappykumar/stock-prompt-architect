@@ -550,9 +550,6 @@ const CustomDropdown = ({
             {!isDefault && !isInputDisabled && !isLocked && (
               <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_4px_rgba(59,130,246,0.5)] animate-in fade-in zoom-in duration-300" />
             )}
-            {isLocked && (
-              <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_4px_rgba(245,158,11,0.5)] animate-in fade-in zoom-in duration-300" />
-            )}
             {!isOpen && !isDefault && getVisualStyleBadge(value)}
           </div>
           <div className="flex items-center gap-2">
@@ -567,14 +564,14 @@ const CustomDropdown = ({
                     setIsOpen(true);
                   }
                 }}
-                className={`focus:outline-none transition-all active:scale-95 flex items-center gap-1 px-1 py-0.5 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800 ${isLocked ? 'opacity-100' : 'opacity-30 hover:opacity-100'}`}
+                className={`focus:outline-none transition-all active:scale-95 flex items-center gap-1.5 px-1.5 py-0.5 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800 ${isLocked ? 'opacity-100' : 'opacity-30 hover:opacity-100'}`}
                 title={isLocked ? "Unlock setting (returns to standard single selection)" : "Lock setting (multi-select restriction pool)"}
               >
                 {isLocked ? (
                   <>
                     <Lock size={12} className="text-amber-500 drop-shadow-[0_0_2px_rgba(245,158,11,0.5)]" />
                     {currentSelectedValues.length > 1 && (
-                      <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/20 px-1 py-0.2 rounded font-mono">
+                      <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/20 px-1.5 py-0.5 rounded font-mono leading-none">
                         {currentSelectedValues.length}
                       </span>
                     )}
@@ -612,31 +609,26 @@ const CustomDropdown = ({
               ${isDefault && !isLocked ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-slate-100'}
               disabled:cursor-not-allowed`}
           >
-            <div className="flex items-center gap-2 truncate">
+            <div className="min-w-0 flex-1 overflow-hidden pr-2">
               {isLocked && currentSelectedValues.length > 1 ? (
-                <div className="flex items-center gap-1.5 truncate">
-                  <span className="truncate">
-                    {currentSelectedValues
-                      .map(v => safeOptions.find(o => String(o.value) === String(v))?.label || v)
-                      .join(', ')}
-                  </span>
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 shrink-0 font-mono">
-                    {currentSelectedValues.length} allowed
-                  </span>
-                </div>
+                <span className="block truncate text-slate-800 dark:text-slate-200 font-medium">
+                  {currentSelectedValues
+                    .map(v => safeOptions.find(o => String(o.value) === String(v))?.label || v)
+                    .join(', ')}
+                </span>
               ) : isLocked && currentSelectedValues.length === 1 ? (
-                <span className="truncate">
+                <span className="block truncate text-slate-800 dark:text-slate-200 font-medium">
                   {safeOptions.find(o => String(o.value) === String(currentSelectedValues[0]))?.label || currentSelectedValues[0]}
                 </span>
               ) : isLocked && currentSelectedValues.length === 0 ? (
-                <span className="text-amber-500/80 italic text-[12px] truncate">
+                <span className="block text-amber-500/80 italic text-[12px] truncate">
                   Click to select allowed options...
                 </span>
               ) : (
-                <span className="truncate">{selectedOption.label}</span>
+                <span className="block truncate">{selectedOption.label}</span>
               )}
             </div>
-            <ChevronDown size={14} className={`text-slate-400 transition-transform duration-300 ${isOpen ? 'rotate-180 text-blue-500' : ''}`} />
+            <ChevronDown size={14} className={`shrink-0 text-slate-400 transition-transform duration-300 ${isOpen ? 'rotate-180 text-blue-500' : ''}`} />
           </button>
   
           {helperText && (
