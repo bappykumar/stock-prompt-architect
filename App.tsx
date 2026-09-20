@@ -471,7 +471,7 @@ const CustomDropdown = ({
     isLocked?: boolean;
     onToggleLock?: (val: boolean) => void;
     lockedPool?: string[];
-    onUpdateLockedPool?: (vals: string[]) => void;
+    onUpdateLockedPool?: (vals: string[], activePick?: string) => void;
   }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
@@ -567,20 +567,24 @@ const CustomDropdown = ({
                     setIsOpen(true);
                   }
                 }}
-                className={`focus:outline-none transition-all active:scale-95 flex items-center gap-1.5 px-1.5 py-0.5 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800 ${isLocked ? 'opacity-100' : 'opacity-30 hover:opacity-100'}`}
-                title={isLocked ? "Unlock setting (returns to standard single selection)" : "Lock setting (multi-select restriction pool)"}
+                className={`focus:outline-none transition-all active:scale-95 flex items-center gap-1.5 px-2 py-0.5 rounded-md ${
+                  isLocked 
+                    ? 'opacity-100 text-amber-600 dark:text-amber-400 bg-amber-500/15 border border-amber-500/30 shadow-xs' 
+                    : 'opacity-60 hover:opacity-100 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+                title={isLocked ? "Unlock setting (single-select)" : "Lock setting (enable multiple select pool)"}
               >
                 {isLocked ? (
                   <>
                     <Lock size={12} className="text-amber-500 drop-shadow-[0_0_2px_rgba(245,158,11,0.5)]" />
-                    {currentSelectedValues.length > 1 && (
-                      <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/20 px-1.5 py-0.5 rounded font-mono leading-none">
-                        {currentSelectedValues.length}
-                      </span>
-                    )}
+                    <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 font-mono leading-none">
+                      {currentSelectedValues.length > 0 ? currentSelectedValues.length : '0'}
+                    </span>
                   </>
                 ) : (
-                  <Unlock size={12} className="text-slate-400 dark:text-slate-500" />
+                  <div className="flex items-center gap-1 text-[10px]">
+                    <Unlock size={12} />
+                  </div>
                 )}
               </button>
             )}
@@ -632,15 +636,44 @@ const CustomDropdown = ({
   
           {isOpen && (
             <div className="absolute z-[200] w-full mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top">
-              {isLocked && (
+              {isLocked ? (
                 <div className="px-3.5 py-2 bg-amber-500/10 border-b border-amber-500/20 flex items-center justify-between text-[11px] text-amber-700 dark:text-amber-300 select-none">
                   <div className="flex items-center gap-1.5 font-semibold">
                     <Lock size={11} className="text-amber-500 shrink-0" />
                     <span>Multi-Lock Active (click to add/remove)</span>
                   </div>
-                  <span className="text-[10px] font-black bg-amber-500/20 px-1.5 py-0.5 rounded text-amber-700 dark:text-amber-300 font-mono">
-                    {currentSelectedValues.length} selected
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black bg-amber-500/20 px-1.5 py-0.5 rounded text-amber-700 dark:text-amber-300 font-mono">
+                      {currentSelectedValues.length} selected
+                    </span>
+                    {onToggleLock && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleLock(false);
+                        }}
+                        className="text-[10px] text-amber-600 dark:text-amber-400 hover:underline cursor-pointer ml-1 font-medium"
+                      >
+                        Single
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : onToggleLock && (
+                <div className="px-3.5 py-1.5 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 select-none">
+                  <span className="text-[11px] text-slate-400">Single selection</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleLock(true);
+                    }}
+                    className="flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 px-2 py-0.5 rounded transition-all cursor-pointer"
+                  >
+                    <Lock size={10} />
+                    <span>Enable Multi-Lock</span>
+                  </button>
                 </div>
               )}
               {showSearch && (
@@ -692,16 +725,18 @@ const CustomDropdown = ({
                             e.stopPropagation();
                             const optVal = String(opt.value);
                             let nextPool: string[];
+                            let nextActive = value;
                             if (currentSelectedValues.includes(optVal)) {
                               nextPool = currentSelectedValues.filter(v => v !== optVal);
+                              if (String(value) === optVal) {
+                                nextActive = nextPool.length > 0 ? nextPool[0] : 'Default / Auto';
+                              }
                             } else {
                               nextPool = [...currentSelectedValues, optVal];
+                              nextActive = opt.value;
                             }
                             if (onUpdateLockedPool) {
-                              onUpdateLockedPool(nextPool);
-                            }
-                            if (nextPool.includes(optVal)) {
-                              onChange(opt.value);
+                              onUpdateLockedPool(nextPool, String(nextActive));
                             }
                           } else {
                             onChange(opt.value);
@@ -1170,11 +1205,13 @@ export default function App() {
     });
   };
 
-  const updateLockedPool = (field: string, values: string[]) => {
+  const updateLockedPool = (field: string, values: string[], activePick?: string) => {
     setOptions(prev => {
       const nextLockedPools = { ...(prev.lockedPools || {}), [field]: values };
       const currentVal = (prev as any)[field];
-      const nextVal = values.includes(currentVal) ? currentVal : (values.length > 0 ? values[0] : currentVal);
+      const nextVal = activePick && values.includes(activePick)
+        ? activePick
+        : (values.includes(currentVal) ? currentVal : (values.length > 0 ? values[0] : currentVal));
       return {
         ...prev,
         [field]: nextVal,
@@ -1894,13 +1931,13 @@ export default function App() {
                   <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Identity & Character</h3>
                 </header>
                 <div className="space-y-5">
-                   <CustomDropdown label="Primary Actor" value={options.subject} options={OPTIONS.subject} onChange={(val) => setOptions({...options, subject: val})} icon={User} canToggle={true} isActive={options.activeFields?.subject} onToggle={(val) => toggleField('subject', val)} isLocked={options.lockedFields?.subject} onToggleLock={(val) => toggleLock('subject', val)} lockedPool={options.lockedPools?.subject} onUpdateLockedPool={(vals) => updateLockedPool('subject', vals)} />
+                   <CustomDropdown label="Primary Actor" value={options.subject} options={OPTIONS.subject} onChange={(val) => setOptions(prev => ({...prev, subject: val}))} icon={User} canToggle={true} isActive={options.activeFields?.subject} onToggle={(val) => toggleField('subject', val)} isLocked={options.lockedFields?.subject} onToggleLock={(val) => toggleLock('subject', val)} lockedPool={options.lockedPools?.subject} onUpdateLockedPool={(vals, pick) => updateLockedPool('subject', vals, pick)} />
                    {isAdvanced && isCulturalHeritageVisible && (
-                      <CustomDropdown label="Cultural Context" value={options.characterBackground} options={OPTIONS.characterBackground} onChange={(val) => setOptions({...options, characterBackground: val})} icon={Globe} canToggle={true} isActive={options.activeFields?.characterBackground} onToggle={(val) => toggleField('characterBackground', val)} isLocked={options.lockedFields?.characterBackground} onToggleLock={(val) => toggleLock('characterBackground', val)} lockedPool={options.lockedPools?.characterBackground} onUpdateLockedPool={(vals) => updateLockedPool('characterBackground', vals)} />
+                      <CustomDropdown label="Cultural Context" value={options.characterBackground} options={OPTIONS.characterBackground} onChange={(val) => setOptions(prev => ({...prev, characterBackground: val}))} icon={Globe} canToggle={true} isActive={options.activeFields?.characterBackground} onToggle={(val) => toggleField('characterBackground', val)} isLocked={options.lockedFields?.characterBackground} onToggleLock={(val) => toggleLock('characterBackground', val)} lockedPool={options.lockedPools?.characterBackground} onUpdateLockedPool={(vals, pick) => updateLockedPool('characterBackground', vals, pick)} />
                    )}
-                   {isAdvanced && <CustomDropdown label="Age Range" value={options.ageRange || 'Default / Auto'} options={OPTIONS.ageRange} onChange={(val) => setOptions({...options, ageRange: val})} icon={User} canToggle={true} isActive={options.activeFields?.ageRange} onToggle={(val) => toggleField('ageRange', val)} isLocked={options.lockedFields?.ageRange} onToggleLock={(val) => toggleLock('ageRange', val)} lockedPool={options.lockedPools?.ageRange} onUpdateLockedPool={(vals) => updateLockedPool('ageRange', vals)} />}
-                   {isAdvanced && <CustomDropdown label="Interaction" value={options.interaction || 'Default / Auto'} options={OPTIONS.interaction} onChange={(val) => setOptions({...options, interaction: val})} icon={User} canToggle={true} isActive={options.activeFields?.interaction} onToggle={(val) => toggleField('interaction', val)} isLocked={options.lockedFields?.interaction} onToggleLock={(val) => toggleLock('interaction', val)} lockedPool={options.lockedPools?.interaction} onUpdateLockedPool={(vals) => updateLockedPool('interaction', vals)} />}
-                   {isAdvanced && <CustomDropdown label="Target Market" value={options.targetMarket || 'Default / Auto'} options={OPTIONS.targetMarket} onChange={(val) => setOptions({...options, targetMarket: val})} icon={Target} canToggle={true} isActive={options.activeFields?.targetMarket} onToggle={(val) => toggleField('targetMarket', val)} isLocked={options.lockedFields?.targetMarket} onToggleLock={(val) => toggleLock('targetMarket', val)} lockedPool={options.lockedPools?.targetMarket} onUpdateLockedPool={(vals) => updateLockedPool('targetMarket', vals)} />}
+                   {isAdvanced && <CustomDropdown label="Age Range" value={options.ageRange || 'Default / Auto'} options={OPTIONS.ageRange} onChange={(val) => setOptions(prev => ({...prev, ageRange: val}))} icon={User} canToggle={true} isActive={options.activeFields?.ageRange} onToggle={(val) => toggleField('ageRange', val)} isLocked={options.lockedFields?.ageRange} onToggleLock={(val) => toggleLock('ageRange', val)} lockedPool={options.lockedPools?.ageRange} onUpdateLockedPool={(vals, pick) => updateLockedPool('ageRange', vals, pick)} />}
+                   {isAdvanced && <CustomDropdown label="Interaction" value={options.interaction || 'Default / Auto'} options={OPTIONS.interaction} onChange={(val) => setOptions(prev => ({...prev, interaction: val}))} icon={User} canToggle={true} isActive={options.activeFields?.interaction} onToggle={(val) => toggleField('interaction', val)} isLocked={options.lockedFields?.interaction} onToggleLock={(val) => toggleLock('interaction', val)} lockedPool={options.lockedPools?.interaction} onUpdateLockedPool={(vals, pick) => updateLockedPool('interaction', vals, pick)} />}
+                   {isAdvanced && <CustomDropdown label="Target Market" value={options.targetMarket || 'Default / Auto'} options={OPTIONS.targetMarket} onChange={(val) => setOptions(prev => ({...prev, targetMarket: val}))} icon={Target} canToggle={true} isActive={options.activeFields?.targetMarket} onToggle={(val) => toggleField('targetMarket', val)} isLocked={options.lockedFields?.targetMarket} onToggleLock={(val) => toggleLock('targetMarket', val)} lockedPool={options.lockedPools?.targetMarket} onUpdateLockedPool={(vals, pick) => updateLockedPool('targetMarket', vals, pick)} />}
                 </div>
               </section>
 
@@ -1913,30 +1950,30 @@ export default function App() {
                 </header>
                 <div className="space-y-5">
                    <div className="pb-5 border-b border-dashed border-slate-200 dark:border-slate-800/60 mb-2">
-                      <CustomDropdown label="Image Medium" value={options.imageMedium || 'Default / Auto'} options={OPTIONS.imageMedium} onChange={handleImageMediumChange} icon={Layers} canToggle={true} isActive={options.activeFields?.imageMedium} onToggle={(val) => toggleField('imageMedium', val)} isLocked={options.lockedFields?.imageMedium} onToggleLock={(val) => toggleLock('imageMedium', val)} lockedPool={options.lockedPools?.imageMedium} onUpdateLockedPool={(vals) => updateLockedPool('imageMedium', vals)} />
+                      <CustomDropdown label="Image Medium" value={options.imageMedium || 'Default / Auto'} options={OPTIONS.imageMedium} onChange={handleImageMediumChange} icon={Layers} canToggle={true} isActive={options.activeFields?.imageMedium} onToggle={(val) => toggleField('imageMedium', val)} isLocked={options.lockedFields?.imageMedium} onToggleLock={(val) => toggleLock('imageMedium', val)} lockedPool={options.lockedPools?.imageMedium} onUpdateLockedPool={(vals, pick) => updateLockedPool('imageMedium', vals, pick)} />
                    </div>
-                   <CustomDropdown label="Visual Style" value={options.visualType} options={filteredVisualStyles} onChange={(val) => setOptions({...options, visualType: val})} icon={Layers} canToggle={true} isActive={options.activeFields?.visualType} onToggle={(val) => toggleField('visualType', val)} isLocked={options.lockedFields?.visualType} onToggleLock={(val) => toggleLock('visualType', val)} lockedPool={options.lockedPools?.visualType} onUpdateLockedPool={(vals) => updateLockedPool('visualType', vals)} />
+                   <CustomDropdown label="Visual Style" value={options.visualType} options={filteredVisualStyles} onChange={(val) => setOptions(prev => ({...prev, visualType: val}))} icon={Layers} canToggle={true} isActive={options.activeFields?.visualType} onToggle={(val) => toggleField('visualType', val)} isLocked={options.lockedFields?.visualType} onToggleLock={(val) => toggleLock('visualType', val)} lockedPool={options.lockedPools?.visualType} onUpdateLockedPool={(vals, pick) => updateLockedPool('visualType', vals, pick)} />
                    {isAdvanced && isMaterialFinishVisible && (
                       <CustomDropdown 
                         label="Material Finish" 
                         value={options.materialStyle} 
                         options={OPTIONS.materialStyle} 
-                        onChange={(val) => setOptions({...options, materialStyle: val})} 
+                        onChange={(val) => setOptions(prev => ({...prev, materialStyle: val}))} 
                         icon={Paintbrush} 
                         canToggle={true} 
                         isActive={options.activeFields?.materialStyle} 
                         onToggle={(val) => toggleField('materialStyle', val)} isLocked={options.lockedFields?.materialStyle} onToggleLock={(val) => toggleLock('materialStyle', val)}
                         lockedPool={options.lockedPools?.materialStyle}
-                        onUpdateLockedPool={(vals) => updateLockedPool('materialStyle', vals)}
+                        onUpdateLockedPool={(vals, pick) => updateLockedPool('materialStyle', vals, pick)}
                         highlight={isMaterialHighlighted}
                         helperText={materialHelperText}
                         deemphasize3DMaterials={options.imageMedium === 'Photography' || options.imageMedium === 'Art & Illustration'}
                       />
                    )}
-                   {isAdvanced && <CustomDropdown label="Concept Focus" value={options.conceptFocus || 'Default / Auto'} options={OPTIONS.conceptFocus} onChange={(val) => setOptions({...options, conceptFocus: val})} icon={Lightbulb} canToggle={true} isActive={options.activeFields?.conceptFocus} onToggle={(val) => toggleField('conceptFocus', val)} isLocked={options.lockedFields?.conceptFocus} onToggleLock={(val) => toggleLock('conceptFocus', val)} lockedPool={options.lockedPools?.conceptFocus} onUpdateLockedPool={(vals) => updateLockedPool('conceptFocus', vals)} />}
-                   {isAdvanced && <CustomDropdown label="Authenticity" value={options.authenticity || 'Default / Auto'} options={OPTIONS.authenticity} onChange={(val) => setOptions({...options, authenticity: val})} icon={Camera} canToggle={true} isActive={options.activeFields?.authenticity} onToggle={(val) => toggleField('authenticity', val)} isLocked={options.lockedFields?.authenticity} onToggleLock={(val) => toggleLock('authenticity', val)} lockedPool={options.lockedPools?.authenticity} onUpdateLockedPool={(vals) => updateLockedPool('authenticity', vals)} />}
-                   <CustomDropdown label="Environment" value={options.environment} options={OPTIONS.environment} onChange={(val) => setOptions({...options, environment: val})} icon={Box} canToggle={true} isActive={options.activeFields?.environment} onToggle={(val) => toggleField('environment', val)} isLocked={options.lockedFields?.environment} onToggleLock={(val) => toggleLock('environment', val)} lockedPool={options.lockedPools?.environment} onUpdateLockedPool={(vals) => updateLockedPool('environment', vals)} />
-                   <CustomDropdown label="Color Mood" value={options.colorMood || 'Default / Auto'} options={OPTIONS.colorMood} onChange={(val) => setOptions({...options, colorMood: val})} icon={Paintbrush} canToggle={true} isActive={options.activeFields?.colorMood} onToggle={(val) => toggleField('colorMood', val)} isLocked={options.lockedFields?.colorMood} onToggleLock={(val) => toggleLock('colorMood', val)} lockedPool={options.lockedPools?.colorMood} onUpdateLockedPool={(vals) => updateLockedPool('colorMood', vals)} helperText="Overall color temperature of the image" />
+                   {isAdvanced && <CustomDropdown label="Concept Focus" value={options.conceptFocus || 'Default / Auto'} options={OPTIONS.conceptFocus} onChange={(val) => setOptions(prev => ({...prev, conceptFocus: val}))} icon={Lightbulb} canToggle={true} isActive={options.activeFields?.conceptFocus} onToggle={(val) => toggleField('conceptFocus', val)} isLocked={options.lockedFields?.conceptFocus} onToggleLock={(val) => toggleLock('conceptFocus', val)} lockedPool={options.lockedPools?.conceptFocus} onUpdateLockedPool={(vals, pick) => updateLockedPool('conceptFocus', vals, pick)} />}
+                   {isAdvanced && <CustomDropdown label="Authenticity" value={options.authenticity || 'Default / Auto'} options={OPTIONS.authenticity} onChange={(val) => setOptions(prev => ({...prev, authenticity: val}))} icon={Camera} canToggle={true} isActive={options.activeFields?.authenticity} onToggle={(val) => toggleField('authenticity', val)} isLocked={options.lockedFields?.authenticity} onToggleLock={(val) => toggleLock('authenticity', val)} lockedPool={options.lockedPools?.authenticity} onUpdateLockedPool={(vals, pick) => updateLockedPool('authenticity', vals, pick)} />}
+                   <CustomDropdown label="Environment" value={options.environment} options={OPTIONS.environment} onChange={(val) => setOptions(prev => ({...prev, environment: val}))} icon={Box} canToggle={true} isActive={options.activeFields?.environment} onToggle={(val) => toggleField('environment', val)} isLocked={options.lockedFields?.environment} onToggleLock={(val) => toggleLock('environment', val)} lockedPool={options.lockedPools?.environment} onUpdateLockedPool={(vals, pick) => updateLockedPool('environment', vals, pick)} />
+                   <CustomDropdown label="Color Mood" value={options.colorMood || 'Default / Auto'} options={OPTIONS.colorMood} onChange={(val) => setOptions(prev => ({...prev, colorMood: val}))} icon={Paintbrush} canToggle={true} isActive={options.activeFields?.colorMood} onToggle={(val) => toggleField('colorMood', val)} isLocked={options.lockedFields?.colorMood} onToggleLock={(val) => toggleLock('colorMood', val)} lockedPool={options.lockedPools?.colorMood} onUpdateLockedPool={(vals, pick) => updateLockedPool('colorMood', vals, pick)} helperText="Overall color temperature of the image" />
                 </div>
               </section>
 
@@ -1949,11 +1986,11 @@ export default function App() {
                       <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Optics & Technicals</h3>
                     </header>
                     <div className="space-y-5">
-                       <CustomDropdown label="Quality & Camera" value={options.qualityCamera} options={OPTIONS.qualityCamera} onChange={(val) => setOptions({...options, qualityCamera: val})} icon={Video} canToggle={true} isActive={options.activeFields?.qualityCamera} onToggle={(val) => toggleField('qualityCamera', val)} isLocked={options.lockedFields?.qualityCamera} onToggleLock={(val) => toggleLock('qualityCamera', val)} lockedPool={options.lockedPools?.qualityCamera} onUpdateLockedPool={(vals) => updateLockedPool('qualityCamera', vals)} />
-                       <CustomDropdown label="Shot Framing" value={options.framing} options={OPTIONS.framing} onChange={(val) => setOptions({...options, framing: val})} icon={Maximize} canToggle={true} isActive={options.activeFields?.framing} onToggle={(val) => toggleField('framing', val)} isLocked={options.lockedFields?.framing} onToggleLock={(val) => toggleLock('framing', val)} lockedPool={options.lockedPools?.framing} onUpdateLockedPool={(vals) => updateLockedPool('framing', vals)} />
-                       <CustomDropdown label="Camera Elevation" value={options.cameraAngle} options={OPTIONS.cameraAngle} onChange={(val) => setOptions({...options, cameraAngle: val})} icon={Camera} canToggle={true} isActive={options.activeFields?.cameraAngle} onToggle={(val) => toggleField('cameraAngle', val)} isLocked={options.lockedFields?.cameraAngle} onToggleLock={(val) => toggleLock('cameraAngle', val)} lockedPool={options.lockedPools?.cameraAngle} onUpdateLockedPool={(vals) => updateLockedPool('cameraAngle', vals)} />
-                       <CustomDropdown label="Atmosphere" value={options.lighting} options={OPTIONS.lighting} onChange={(val) => setOptions({...options, lighting: val})} icon={Sparkles} canToggle={true} isActive={options.activeFields?.lighting} onToggle={(val) => toggleField('lighting', val)} isLocked={options.lockedFields?.lighting} onToggleLock={(val) => toggleLock('lighting', val)} lockedPool={options.lockedPools?.lighting} onUpdateLockedPool={(vals) => updateLockedPool('lighting', vals)} />
-                       <CustomDropdown label="Shadows" value={options.shadowStyle} options={OPTIONS.shadowStyle} onChange={(val) => setOptions({...options, shadowStyle: val})} icon={Moon} canToggle={true} isActive={options.activeFields?.shadowStyle} onToggle={(val) => toggleField('shadowStyle', val)} isLocked={options.lockedFields?.shadowStyle} onToggleLock={(val) => toggleLock('shadowStyle', val)} lockedPool={options.lockedPools?.shadowStyle} onUpdateLockedPool={(vals) => updateLockedPool('shadowStyle', vals)} />
+                       <CustomDropdown label="Quality & Camera" value={options.qualityCamera} options={OPTIONS.qualityCamera} onChange={(val) => setOptions(prev => ({...prev, qualityCamera: val}))} icon={Video} canToggle={true} isActive={options.activeFields?.qualityCamera} onToggle={(val) => toggleField('qualityCamera', val)} isLocked={options.lockedFields?.qualityCamera} onToggleLock={(val) => toggleLock('qualityCamera', val)} lockedPool={options.lockedPools?.qualityCamera} onUpdateLockedPool={(vals, pick) => updateLockedPool('qualityCamera', vals, pick)} />
+                       <CustomDropdown label="Shot Framing" value={options.framing} options={OPTIONS.framing} onChange={(val) => setOptions(prev => ({...prev, framing: val}))} icon={Maximize} canToggle={true} isActive={options.activeFields?.framing} onToggle={(val) => toggleField('framing', val)} isLocked={options.lockedFields?.framing} onToggleLock={(val) => toggleLock('framing', val)} lockedPool={options.lockedPools?.framing} onUpdateLockedPool={(vals, pick) => updateLockedPool('framing', vals, pick)} />
+                       <CustomDropdown label="Camera Elevation" value={options.cameraAngle} options={OPTIONS.cameraAngle} onChange={(val) => setOptions(prev => ({...prev, cameraAngle: val}))} icon={Camera} canToggle={true} isActive={options.activeFields?.cameraAngle} onToggle={(val) => toggleField('cameraAngle', val)} isLocked={options.lockedFields?.cameraAngle} onToggleLock={(val) => toggleLock('cameraAngle', val)} lockedPool={options.lockedPools?.cameraAngle} onUpdateLockedPool={(vals, pick) => updateLockedPool('cameraAngle', vals, pick)} />
+                       <CustomDropdown label="Atmosphere" value={options.lighting} options={OPTIONS.lighting} onChange={(val) => setOptions(prev => ({...prev, lighting: val}))} icon={Sparkles} canToggle={true} isActive={options.activeFields?.lighting} onToggle={(val) => toggleField('lighting', val)} isLocked={options.lockedFields?.lighting} onToggleLock={(val) => toggleLock('lighting', val)} lockedPool={options.lockedPools?.lighting} onUpdateLockedPool={(vals, pick) => updateLockedPool('lighting', vals, pick)} />
+                       <CustomDropdown label="Shadows" value={options.shadowStyle} options={OPTIONS.shadowStyle} onChange={(val) => setOptions(prev => ({...prev, shadowStyle: val}))} icon={Moon} canToggle={true} isActive={options.activeFields?.shadowStyle} onToggle={(val) => toggleField('shadowStyle', val)} isLocked={options.lockedFields?.shadowStyle} onToggleLock={(val) => toggleLock('shadowStyle', val)} lockedPool={options.lockedPools?.shadowStyle} onUpdateLockedPool={(vals, pick) => updateLockedPool('shadowStyle', vals, pick)} />
                     </div>
                   </section>
                 </>
@@ -1967,7 +2004,7 @@ export default function App() {
                   <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Output Parameters</h3>
                 </header>
                 <div className="space-y-5">
-                   <CustomDropdown label="Batch Quantity" value={options.quantity} options={currentQuantityOptions} onChange={(val) => setOptions({...options, quantity: val})} icon={Settings2} />
+                   <CustomDropdown label="Batch Quantity" value={options.quantity} options={currentQuantityOptions} onChange={(val) => setOptions(prev => ({...prev, quantity: val}))} icon={Settings2} />
                 </div>
               </section>
             </div>
