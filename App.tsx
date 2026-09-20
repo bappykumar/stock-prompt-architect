@@ -479,7 +479,10 @@ const CustomDropdown = ({
     const searchInputRef = useRef<HTMLInputElement>(null);
     
     const safeOptions = Array.isArray(options) ? options : [];
-    const selectedOption = safeOptions.find(opt => opt.value === value) || safeOptions[0] || { label: 'Select...', value: '' };
+    const selectedOption = safeOptions.find(opt => opt.value === value) 
+      || (Array.isArray(lockedPool) && lockedPool.length > 0 ? safeOptions.find(opt => String(opt.value) === String(lockedPool[0])) : null)
+      || safeOptions[0] 
+      || { label: 'Select...', value: '' };
     
     const isInputDisabled = disabled || (canToggle && !isActive);
     const isDefault = value === 'Default / Auto';
@@ -610,22 +613,14 @@ const CustomDropdown = ({
               disabled:cursor-not-allowed`}
           >
             <div className="min-w-0 flex-1 overflow-hidden pr-2">
-              {isLocked && currentSelectedValues.length > 1 ? (
-                <span className="block truncate text-slate-800 dark:text-slate-200 font-medium">
-                  {currentSelectedValues
-                    .map(v => safeOptions.find(o => String(o.value) === String(v))?.label || v)
-                    .join(', ')}
-                </span>
-              ) : isLocked && currentSelectedValues.length === 1 ? (
-                <span className="block truncate text-slate-800 dark:text-slate-200 font-medium">
-                  {safeOptions.find(o => String(o.value) === String(currentSelectedValues[0]))?.label || currentSelectedValues[0]}
-                </span>
-              ) : isLocked && currentSelectedValues.length === 0 ? (
+              {isLocked && currentSelectedValues.length === 0 ? (
                 <span className="block text-amber-500/80 italic text-[12px] truncate">
                   Click to select allowed options...
                 </span>
               ) : (
-                <span className="block truncate">{selectedOption.label}</span>
+                <span className="block truncate text-slate-900 dark:text-slate-100 font-medium">
+                  {selectedOption.label}
+                </span>
               )}
             </div>
             <ChevronDown size={14} className={`shrink-0 text-slate-400 transition-transform duration-300 ${isOpen ? 'rotate-180 text-blue-500' : ''}`} />
@@ -678,6 +673,7 @@ const CustomDropdown = ({
                     const isSelected = isLocked
                       ? currentSelectedValues.includes(String(opt.value))
                       : opt.value === value;
+                    const isActiveChoice = isLocked && String(opt.value) === String(value);
                     const isDefaultOption = opt.value === 'Default / Auto';
                     
                     // Contextual opacity for Material Finish
@@ -704,6 +700,9 @@ const CustomDropdown = ({
                             if (onUpdateLockedPool) {
                               onUpdateLockedPool(nextPool);
                             }
+                            if (nextPool.includes(optVal)) {
+                              onChange(opt.value);
+                            }
                           } else {
                             onChange(opt.value);
                             setIsOpen(false);
@@ -711,13 +710,20 @@ const CustomDropdown = ({
                         }}
                         className={`w-full px-4 py-2.5 text-left text-[13px] flex items-center justify-between group transition-all duration-150
                           ${isSelected 
-                            ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-semibold' 
+                            ? (isLocked ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300 font-semibold' : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-semibold')
                             : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200'}
                           ${hasGroups && !isDefaultOption ? 'pl-8' : ''}
                         `}
                       >
                         <span className={`truncate ${opacityClass}`}>{opt.label}</span>
-                        {isSelected && <Check size={14} className="shrink-0 text-blue-500" />}
+                        <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                          {isActiveChoice && (
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-500/15 px-1.5 py-0.5 rounded leading-none">
+                              Active
+                            </span>
+                          )}
+                          {isSelected && <Check size={14} className={isLocked ? "text-amber-500" : "text-blue-500"} />}
+                        </div>
                       </button>
                     );
                   })
