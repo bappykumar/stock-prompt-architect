@@ -10,7 +10,7 @@ import {
   ChevronUp, Key, Lock, Unlock, Info, Settings, ToggleLeft, ToggleRight, Activity, Power, Video, Target, Lightbulb, Search, Shuffle, Image, Type, RefreshCw, ListX, PanelLeftClose, PanelLeftOpen, Upload
 } from 'lucide-react';
 import { PromptOptions, GeneratedPrompt, PromptBatch, HistoricalPrompt, ApiKeyRecord } from './types';
-import { generateStockPrompts, testApiKey, analyzeReferenceAndSuggestSettings, normalizeSettingsAgainstOptions } from './services/geminiService';
+import { generateStockPrompts, testApiKey, analyzeReferenceAndSuggestSettings } from './services/geminiService';
 import { QUICK_START_PRESETS } from './presets';
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -22,8 +22,8 @@ const fileToBase64 = (file: File): Promise<{data: string, mimeType: string}> => 
     reader.onload = (e) => {
       const img = new window.Image();
       img.onload = () => {
-        const MAX_WIDTH = 1024;
-        const MAX_HEIGHT = 1024;
+        const MAX_WIDTH = 512;
+        const MAX_HEIGHT = 512;
         let width = img.width;
         let height = img.height;
 
@@ -49,7 +49,7 @@ const fileToBase64 = (file: File): Promise<{data: string, mimeType: string}> => 
         }
         
         ctx.drawImage(img, 0, 0, width, height);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
         resolve({data: dataUrl.split(',')[1], mimeType: 'image/jpeg'});
       };
       img.onerror = () => {
@@ -1391,8 +1391,7 @@ export default function App() {
         return analyzeReferenceAndSuggestSettings(input, passedOptions, keyRecord.key, keyRecord.provider);
       }, providerToUse);
       
-      const normalizedSettings = normalizeSettingsAgainstOptions(result.settings, visualOptions);
-      const newSettings = { ...normalizedSettings };
+      const newSettings = { ...result.settings };
       delete newSettings.model;
 
       const resetActiveFields = Object.keys(options.activeFields).reduce((acc, key) => ({...acc, [key]: false}), {});
@@ -1439,7 +1438,8 @@ export default function App() {
       setOptions(newOptions);
       
       if (autoFillMode === 'image') {
-        addToast("Image analyzed! Options & visual concept matched successfully.", "success");
+        setAutoFillMode('text');
+        addToast("Image analyzed and settings auto-filled successfully.", "success");
       } else {
         addToast("Reference text analyzed and settings auto-filled successfully.", "success");
       }
@@ -1832,21 +1832,10 @@ export default function App() {
                     </div>
 
                     {autoFillMode === 'image' ? (
-                      <div className="relative border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden text-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex items-center justify-center min-h-[8.5rem]">
-                        <input 
-                          type="file" 
-                          accept="image/jpeg, image/png, image/webp" 
-                          onChange={(e) => {
-                            const file = e.target.files?.[0] || null;
-                            setReferenceImage(file);
-                            if (!file) {
-                              setOptions(prev => ({ ...prev, isFromImageReference: false }));
-                            }
-                          }} 
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-30" 
-                        />
+                      <div className="relative border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden text-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex items-center justify-center min-h-[8rem]">
+                        <input type="file" accept="image/jpeg, image/png" onChange={(e) => setReferenceImage(e.target.files?.[0] || null)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-30" />
                         {referenceImage ? (
-                          <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-slate-900/5 dark:bg-slate-900/50 group">
+                          <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-slate-900/5 dark:bg-slate-900/50">
                             <img src={URL.createObjectURL(referenceImage)} alt="Preview Background" className="absolute inset-0 w-full h-full object-cover opacity-20 blur-sm pointer-events-none" />
                             <img src={URL.createObjectURL(referenceImage)} alt="Preview" className="relative z-10 w-full h-full object-contain pointer-events-none" />
                             
@@ -1856,28 +1845,12 @@ export default function App() {
                                 <div className="w-full h-0.5 bg-blue-500 shadow-[0_0_20px_4px_rgba(59,130,246,0.8)] absolute animate-[scan_1.5s_ease-in-out_infinite]" />
                               </div>
                             )}
-
-                            {/* Remove image button */}
-                            {!isAnalyzing && (
-                              <button 
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setReferenceImage(null);
-                                  setOptions(prev => ({ ...prev, isFromImageReference: false }));
-                                }}
-                                className="absolute top-2 right-2 z-40 p-1.5 rounded-lg bg-black/60 hover:bg-black/80 text-white transition-all text-[10px] flex items-center gap-1 shadow-md hover:scale-105"
-                                title="Remove Image"
-                              >
-                                <X size={12} />
-                              </button>
-                            )}
                           </div>
                         ) : (
                           <div className="text-[11px] font-medium text-slate-500 flex flex-col items-center gap-1 p-6 relative z-10">
                             <Image size={18} className="text-slate-400 mb-1" />
                             <span>Drop, click, or paste (Ctrl+V) image anywhere</span>
-                            <span className="text-[9px] text-slate-400">JPG, PNG, WebP up to 10MB</span>
+                            <span className="text-[9px] text-slate-400">JPG, PNG up to 10MB</span>
                           </div>
                         )}
                       </div>
@@ -1898,25 +1871,13 @@ export default function App() {
                             ${!hasSrContent
                                ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500' 
                                : isSrUsed 
-                                 ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20' 
-                                 : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-500/20'}`}
+                                 ? 'bg-red-500 hover:bg-red-600 text-white shadow-md shadow-red-500/20' 
+                                 : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-md shadow-emerald-500/20'}`}
                         >
-                          {isAnalyzing ? (
-                            <>
-                              <Loader2 size={14} className="animate-spin" />
-                              Analyzing with Gemini...
-                            </>
-                          ) : isSrUsed ? (
-                            <>
-                              <Check size={14} />
-                              {autoFillMode === 'image' ? 'Re-Analyze Image' : 'Re-Analyze Text'}
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles size={14} />
-                              {autoFillMode === 'image' ? 'Analyze Image & Auto-Fill' : 'Auto-Fill Settings from Text'}
-                            </>
-                          )}
+                          {isAnalyzing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                          {isSrUsed 
+                            ? (autoFillMode === 'image' ? 'Image Reference Applied' : 'Text Reference Applied') 
+                            : (autoFillMode === 'image' ? 'Analyze Image & Auto-Fill' : 'Auto-Fill Settings from Text')}
                         </button>
                       );
                     })()}

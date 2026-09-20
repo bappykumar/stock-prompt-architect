@@ -1,6 +1,5 @@
 {
   "name": "Prompt Master",
   "description": "Professional Stock Prompt Architect for generating optimized image prompts.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "requestFramePermissions": []
 }
