@@ -85,8 +85,37 @@ with three parts:
 1. "settings": best matching values from these 
 available options:
 ${JSON.stringify(availableOptions)}
-Only include fields you can confidently determine 
-from the image. If a field cannot be determined, set it to "Default / Auto". For 'characterBackground', carefully observe the subject's apparent ethnicity/cultural background and select the best match from the options.
+
+CRITICAL VALUE SELECTION RULE:
+For every field in "settings", you MUST pick and return the EXACT "value" string from the provided options (do NOT return the "label", and NEVER return header titles). If a field cannot be determined, set it to "Default / Auto". For 'characterBackground', carefully observe the subject's apparent ethnicity/cultural background and select the best match from the options.
+
+COHERENCE & MEDIUM RULES:
+- If the image is a real camera photo, set 'imageMedium' to "Photography".
+  Then 'visualType' MUST be one of: "Standard photo", "Ultra Realistic", "Cinematic", "Cinematic Film (Kodak Portra)", "Minimalist Studio Photo", "Hyper Detailed", "Documentary / Editorial".
+- If the image is a 3D render, CGI, digital render, or clay model, set 'imageMedium' to "3D & CGI".
+  Then 'visualType' MUST be one of: "Premium 3D Icon", "3D Render", "3D illustration", "Isometric 3D", "Claymorphism", "Abstract Environmental 3D".
+- If the image is an illustration, drawing, painting, cartoon, or vector art, set 'imageMedium' to "Art & Illustration".
+  Then 'visualType' MUST be one of: "Anime Style", "Oil Painting", "Minimalist Vector", "Flat Illustration", "Flat Line Icon", "Paper Cut Art", "Line Art".
+
+SUBJECT & CONTENT RECOGNITION RULES:
+- Animals / Pets: Set 'subject' to "Domestic Pet (Cat, Dog, etc.)". Set 'characterBackground', 'ageRange', 'interaction' to FALSE in 'activeFields'.
+- Food, Beverage & Culinary: Set 'subject' to "Still life / Food & Drink". Set 'characterBackground', 'ageRange', 'interaction' to FALSE in 'activeFields'.
+- Physical Products, Isolated Objects & Gadgets: Set 'subject' to "No person (product)" or "Isolated Object (PNG Ready)". Set human fields to FALSE.
+- Landscapes, Nature & Cityscapes (without prominent humans): Set 'subject' to "Background / Landscape only". Set human fields to FALSE.
+- Framing & Camera Angle:
+  * Head / Face focus -> 'framing': "Portrait"
+  * Waist-up view -> 'framing': "Mid shot (waist-up)"
+  * Full human body visible -> 'framing': "Full shot (full body)"
+  * Hands, cropped gestures or product detail -> 'framing': "Close-up / Cropped Action (Faceless)"
+  * Overhead tabletop view -> 'cameraAngle': "Top View / Flat Lay"
+  * Straight on -> 'cameraAngle': "Eye Level"
+  * Looking upwards -> 'cameraAngle': "Low Angle"
+- Environment & Background:
+  * Pure white or transparent cutout -> 'environment': "White Background"
+  * Solid studio backdrop -> 'environment': "Solid Color / Studio"
+  * Black background -> 'environment': "Pitch Black / Void"
+  * Office / workplace -> 'environment': "Modern Office"
+  * Outdoor / nature / park -> 'environment': "Nature / Outdoor"
 
 2. "smartRefinement": a concise core description of the main subject and their specific action/appearance. Maximum 25 words.
 CRITICAL GENDER RULE: If there is a person/human in the image, you MUST explicitly state their GENDER (e.g., "man", "woman", "boy", "girl", "baby"). If the person's gender is completely indiscernible due to clothing or cropping, use "person". DO NOT specify age categories (like "young adult" or "elderly") in this field, as age is mapped to the 'settings' object separately.

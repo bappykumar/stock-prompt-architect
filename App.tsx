@@ -22,8 +22,8 @@ const fileToBase64 = (file: File): Promise<{data: string, mimeType: string}> => 
     reader.onload = (e) => {
       const img = new window.Image();
       img.onload = () => {
-        const MAX_WIDTH = 512;
-        const MAX_HEIGHT = 512;
+        const MAX_WIDTH = 1024;
+        const MAX_HEIGHT = 1024;
         let width = img.width;
         let height = img.height;
 
@@ -1349,6 +1349,33 @@ export default function App() {
       : `Your API key failed${apiErrorDetail}. Please add a new API key.`);
   };
 
+  // Option Value Normalizer to map Gemini predictions (whether value or label) safely to valid option values
+  const normalizeOptionValue = (field: string, rawValue: any): string => {
+    if (!rawValue || rawValue === 'Default / Auto') return 'Default / Auto';
+    const valStr = String(rawValue).trim();
+    const fieldOptions = (OPTIONS as any)[field];
+    if (!Array.isArray(fieldOptions)) return valStr;
+
+    // 1. Direct match with opt.value (ignoring category headers)
+    const exactMatch = fieldOptions.find((opt: any) => opt.value === valStr && !String(opt.value).startsWith('header_'));
+    if (exactMatch) return String(exactMatch.value);
+
+    // 2. Direct match with opt.label
+    const labelMatch = fieldOptions.find((opt: any) => opt.label === valStr && !String(opt.value).startsWith('header_'));
+    if (labelMatch) return String(labelMatch.value);
+
+    // 3. Case-insensitive / punctuation-insensitive match (handling en-dashes, hyphens, extra spaces)
+    const clean = (s: string) => s.toLowerCase().replace(/[\u2013\u2014-]/g, '-').replace(/\s+/g, ' ').trim();
+    const cleanedVal = clean(valStr);
+    const looseMatch = fieldOptions.find((opt: any) => 
+      !String(opt.value).startsWith('header_') && 
+      (clean(String(opt.value)) === cleanedVal || clean(String(opt.label)) === cleanedVal)
+    );
+    if (looseMatch) return String(looseMatch.value);
+
+    return 'Default / Auto';
+  };
+
   const handleAutoFill = async () => {
     setIsAnalyzing(true);
     try {
@@ -1367,8 +1394,17 @@ export default function App() {
         providerToUse = 'gemini'; // Force Gemini for image processing
       }
 
-      const visualOptions = { ...OPTIONS };
-      delete (visualOptions as any).model;
+      // Prepare visual options, stripping non-selectable headers and model
+      const visualOptions: any = {};
+      Object.keys(OPTIONS).forEach(k => {
+        if (k === 'model') return;
+        const opts = (OPTIONS as any)[k];
+        if (Array.isArray(opts)) {
+          visualOptions[k] = opts.filter((opt: any) => !String(opt.value).startsWith('header_'));
+        } else {
+          visualOptions[k] = opts;
+        }
+      });
 
       // Filter available options for any locked fields with restricted pools so Gemini picks from allowed options
       const lockedPools = options.lockedPools || {};
@@ -1391,8 +1427,33 @@ export default function App() {
         return analyzeReferenceAndSuggestSettings(input, passedOptions, keyRecord.key, keyRecord.provider);
       }, providerToUse);
       
-      const newSettings = { ...result.settings };
-      delete newSettings.model;
+      const rawSettings = { ...result.settings };
+      delete rawSettings.model;
+
+      // Normalize all settings against OPTIONS definitions
+      const newSettings: Record<string, any> = {};
+      Object.keys(rawSettings).forEach(k => {
+        newSettings[k] = normalizeOptionValue(k, rawSettings[k]);
+      });
+
+      // Ensure Medium and Visual Type compatibility
+      if (newSettings.imageMedium && newSettings.imageMedium !== 'Default / Auto') {
+        const medium = newSettings.imageMedium;
+        const currentVisual = newSettings.visualType;
+        if (currentVisual && currentVisual !== 'Default / Auto') {
+          let isCompatible = true;
+          if (medium === 'Photography') {
+            isCompatible = ['Standard photo', 'Ultra Realistic', 'Cinematic', 'Cinematic Film (Kodak Portra)', 'Minimalist Studio Photo', 'Hyper Detailed', 'Documentary / Editorial'].includes(currentVisual);
+          } else if (medium === '3D & CGI') {
+            isCompatible = ['Premium 3D Icon', '3D Render', '3D illustration', 'Isometric 3D', 'Claymorphism', 'Abstract Environmental 3D'].includes(currentVisual);
+          } else if (medium === 'Art & Illustration') {
+            isCompatible = ['Anime Style', 'Oil Painting', 'Minimalist Vector', 'Flat Illustration', 'Flat Line Icon', 'Paper Cut Art', 'Line Art'].includes(currentVisual);
+          }
+          if (!isCompatible) {
+            newSettings.visualType = 'Default / Auto';
+          }
+        }
+      }
 
       const resetActiveFields = Object.keys(options.activeFields).reduce((acc, key) => ({...acc, [key]: false}), {});
       
