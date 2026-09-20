@@ -1832,82 +1832,52 @@ export default function App() {
                     </div>
 
                     {autoFillMode === 'image' ? (
-                      <div className="space-y-3">
-                        <div className="relative border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden text-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex items-center justify-center min-h-[8.5rem]">
-                          <input 
-                            type="file" 
-                            accept="image/jpeg, image/png, image/webp" 
-                            onChange={(e) => {
-                              const file = e.target.files?.[0] || null;
-                              setReferenceImage(file);
-                              if (!file) {
-                                setOptions(prev => ({ ...prev, isFromImageReference: false }));
-                              }
-                            }} 
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-30" 
-                          />
-                          {referenceImage ? (
-                            <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-slate-900/5 dark:bg-slate-900/50 group">
-                              <img src={URL.createObjectURL(referenceImage)} alt="Preview Background" className="absolute inset-0 w-full h-full object-cover opacity-20 blur-sm pointer-events-none" />
-                              <img src={URL.createObjectURL(referenceImage)} alt="Preview" className="relative z-10 w-full h-full object-contain pointer-events-none" />
-                              
-                              {/* Scanning Animation */}
-                              {isAnalyzing && (
-                                <div className="absolute inset-0 z-20 pointer-events-none overflow-hidden">
-                                  <div className="w-full h-0.5 bg-blue-500 shadow-[0_0_20px_4px_rgba(59,130,246,0.8)] absolute animate-[scan_1.5s_ease-in-out_infinite]" />
-                                  <div className="absolute inset-0 bg-blue-900/20 backdrop-blur-[1px] flex items-center justify-center">
-                                    <div className="bg-black/75 backdrop-blur-md text-white px-3 py-1.5 rounded-lg text-[10px] font-semibold flex items-center gap-2 shadow-lg">
-                                      <Loader2 size={12} className="animate-spin text-blue-400" />
-                                      Analyzing image details...
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
+                      <div className="relative border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden text-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex items-center justify-center min-h-[8.5rem]">
+                        <input 
+                          type="file" 
+                          accept="image/jpeg, image/png, image/webp" 
+                          onChange={(e) => {
+                            const file = e.target.files?.[0] || null;
+                            setReferenceImage(file);
+                            if (!file) {
+                              setOptions(prev => ({ ...prev, isFromImageReference: false }));
+                            }
+                          }} 
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-30" 
+                        />
+                        {referenceImage ? (
+                          <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-slate-900/5 dark:bg-slate-900/50 group">
+                            <img src={URL.createObjectURL(referenceImage)} alt="Preview Background" className="absolute inset-0 w-full h-full object-cover opacity-20 blur-sm pointer-events-none" />
+                            <img src={URL.createObjectURL(referenceImage)} alt="Preview" className="relative z-10 w-full h-full object-contain pointer-events-none" />
+                            
+                            {/* Scanning Animation */}
+                            {isAnalyzing && (
+                              <div className="absolute inset-0 z-20 pointer-events-none overflow-hidden">
+                                <div className="w-full h-0.5 bg-blue-500 shadow-[0_0_20px_4px_rgba(59,130,246,0.8)] absolute animate-[scan_1.5s_ease-in-out_infinite]" />
+                              </div>
+                            )}
 
-                              {/* Remove image button */}
-                              {!isAnalyzing && (
-                                <button 
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setReferenceImage(null);
-                                    setOptions(prev => ({ ...prev, isFromImageReference: false, smartRefinementText: '' }));
-                                  }}
-                                  className="absolute top-2 right-2 z-40 p-1.5 rounded-lg bg-black/60 hover:bg-black/80 text-white transition-all text-[10px] flex items-center gap-1 shadow-md hover:scale-105"
-                                  title="Remove Image"
-                                >
-                                  <X size={12} />
-                                </button>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="text-[11px] font-medium text-slate-500 flex flex-col items-center gap-1 p-6 relative z-10">
-                              <Image size={18} className="text-slate-400 mb-1" />
-                              <span>Drop, click, or paste (Ctrl+V) image anywhere</span>
-                              <span className="text-[9px] text-slate-400">JPG, PNG, WebP up to 10MB</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Extracted Concept from Image Preview */}
-                        {options.isFromImageReference && options.smartRefinementText && (
-                          <div className="bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/50 rounded-xl p-2.5 text-[11px]">
-                            <div className="flex items-center justify-between gap-2 mb-1.5">
-                              <span className="font-semibold text-blue-800 dark:text-blue-300 flex items-center gap-1.5">
-                                <Sparkles size={12} className="text-blue-600 dark:text-blue-400" />
-                                Detected Visual Concept
-                              </span>
-                              <span className="text-[9px] font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50 px-1.5 py-0.5 rounded">
-                                Image Refined
-                              </span>
-                            </div>
-                            <textarea 
-                              value={options.smartRefinementText}
-                              onChange={(e) => setOptions(prev => ({ ...prev, smartRefinementText: e.target.value }))}
-                              placeholder="Extracted visual concept..."
-                              className="w-full bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800/60 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-800 dark:text-slate-200 outline-none focus:ring-1 focus:ring-blue-500 transition-all resize-none custom-scrollbar min-h-[3.5rem]"
-                              rows={2}
-                            />
+                            {/* Remove image button */}
+                            {!isAnalyzing && (
+                              <button 
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setReferenceImage(null);
+                                  setOptions(prev => ({ ...prev, isFromImageReference: false }));
+                                }}
+                                className="absolute top-2 right-2 z-40 p-1.5 rounded-lg bg-black/60 hover:bg-black/80 text-white transition-all text-[10px] flex items-center gap-1 shadow-md hover:scale-105"
+                                title="Remove Image"
+                              >
+                                <X size={12} />
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-[11px] font-medium text-slate-500 flex flex-col items-center gap-1 p-6 relative z-10">
+                            <Image size={18} className="text-slate-400 mb-1" />
+                            <span>Drop, click, or paste (Ctrl+V) image anywhere</span>
+                            <span className="text-[9px] text-slate-400">JPG, PNG, WebP up to 10MB</span>
                           </div>
                         )}
                       </div>
