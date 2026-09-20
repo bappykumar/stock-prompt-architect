@@ -97,6 +97,20 @@ CONCEPTUAL FLAT-LAY & TABLETOP STILL LIFE RULE (CRITICAL FOR BUSINESS/METAPHOR P
 - DO NOT invent full-body characters, corporate business suits, or facial features when only a hand or fingers are visible!
 - Mention "minimalist 2D line icons / infographic symbols" if present on the blocks/props.
 - Mention "clean solid pastel background with ample copy space" to preserve commercial versatility.
+ABSTRACT 3D TEXTURE, FLUTED GLASS & RIBBED BACKGROUND RULE (CRITICAL FOR 3D TEXTURES & WALLPAPERS): If the image is an abstract geometric background, texture, or wallpaper featuring vertical ribbed slats, fluted glass, linear architectural louvers, translucent acrylic panels, or dual-tone linear light gradients:
+- In 'smartRefinement': Concisely describe the core 3D geometry and luminous optical effects using professional stock terms (e.g., "abstract 3D vertical ribbed slats with dual-tone neon gradient lighting and luminous refraction waves", or "symmetrical vertical architectural louvers with warm ambient center backlight glow"). Max 25 words. DO NOT invent human subjects, products, or room furniture!
+- In 'settings':
+  * 'subject': "Abstract Shape / Graphic Element" or "Background / Landscape only"
+  * 'imageMedium': "3D & CGI"
+  * 'visualType': "Abstract Environmental 3D"
+  * 'materialStyle': "Glossy / Shiny" (for glass/acrylic/refractions) or "Matte / Soft" (for diffuse slats/louvers)
+  * 'colorMood': "Vibrant & Bold" or "Moody & Dark"
+  * 'lighting': "Cinematic Lighting"
+  * 'environment': "Solid Color / Studio" or "Pitch Black / Void"
+  * 'shadowStyle': "Minimal Base Shadow" or "No Shadow / Flat"
+- In 'activeFields':
+  * Set 'subject', 'imageMedium', 'visualType', 'materialStyle', 'colorMood', 'lighting' to TRUE.
+  * Set ALL human/demographic fields ('characterBackground', 'ageRange', 'interaction', 'authenticity') strictly to FALSE.
 CAMERA DIRECTION RULE: ONLY if the subject's face/eyes are visible in the frame, describe where they are looking (e.g., "looking forward", "making eye contact", "looking down", "looking away"), but DO NOT use the word "camera". If their head/eyes are cropped out or not visible, completely omit gaze descriptions.
 FLEXIBLE COLOR RULE: For attire or objects, describe the item generically WITHOUT locking in specific colors (e.g., say "a sphere" instead of "a blue sphere", or "in a business suit" instead of "in a blue suit") unless that exact color is strictly central to the action or meaning. This allows the prompt generator to create diverse stock variations.
 AVOID specifying race, ethnicity, or age IN THIS FIELD. Focus on gender, notable body build (if any), core action, key props, and expression (if face is visible). No technical camera terms or lighting terms.
@@ -132,6 +146,7 @@ Return ONLY this JSON structure, no markdown:
   3. "activeFields": A boolean map of the fields. Set to true if the field is RELEVANT to the scene, even if not explicitly described. Set to false ONLY if the field is completely irrelevant to the scene context. You MUST provide a boolean value for ALL of these keys: subject, characterBackground, ageRange, interaction, targetMarket, imageMedium, visualType, materialStyle, conceptFocus, authenticity, environment, colorMood, qualityCamera, framing, cameraAngle, lighting, shadowStyle.
   IMPORTANT LOGIC: If there are people or characters in the scene, 'characterBackground', 'ageRange', and 'interaction' MUST be true. If there are NO people/characters, 'characterBackground', 'ageRange', and 'interaction' MUST be false, and 'subject' MUST be mapped to a non-human category (like "No person", "Isolated Object", "Background"). If the concept is a flat illustration or 2D vector art, you MUST set photographic fields (qualityCamera, framing, cameraAngle, lighting, shadowStyle, authenticity) to false, as they do not apply to flat graphics.
   SPECIAL RULE FOR HAND-ONLY CROPS & TABLETOP PROPS: If ONLY a hand or fingers interact with tabletop props/objects (faceless conceptual flat-lay or still life): set 'subject' to "Still life / Food & Drink" or "No person (product)", set 'characterBackground' and 'ageRange' to FALSE in 'activeFields' (and 'Default / Auto' in settings), set 'framing' to "Top View / Flat Lay" or "Close-up / Cropped Action (Faceless)", and set 'environment' to "Solid Color / Studio Background".
+  ABSTRACT 3D TEXTURE, FLUTED GLASS & RIBBED BACKGROUND RULE: If describing an abstract geometric background, texture, or wallpaper with vertical ribbed slats, fluted glass, linear louvers, translucent acrylic panels, or dual-tone neon gradients: set 'subject' to "Abstract Shape / Graphic Element" or "Background / Landscape only", 'imageMedium' to "3D & CGI", 'visualType' to "Abstract Environmental 3D", 'materialStyle' to "Glossy / Shiny" or "Matte / Soft", 'lighting' to "Cinematic Lighting", 'colorMood' to "Vibrant & Bold" or "Moody & Dark", and set all human fields ('characterBackground', 'ageRange', 'interaction', 'authenticity') to FALSE.
   
   {
     "settings": {
@@ -715,16 +730,16 @@ export const generateStockPrompts = async (
     Camera is positioned INSIDE or EXTREMELY CLOSE TO the structure. The 3D form fills the entire frame edge-to-edge. No empty background visible.
 
     2. SUBJECT LANGUAGE:
-    Describe as architecture or landscape — NOT as a floating object. Use terms like:
-    "sweeping curved surface", "repeating geometric panels", "parametric ribbed structure", "architectural wave form", "infinite corridor", "repeating pattern receding to vanishing point"
+    Describe as architecture, geometric texture, or landscape — NOT as a floating object. Use terms like:
+    "repeating vertical ribbed slats", "fluted glass texture with luminous refraction waves", "linear architectural louvers", "sweeping curved surface", "repeating geometric panels", "parametric ribbed structure", "architectural wave form", "infinite corridor", "repeating pattern receding to vanishing point"
 
     3. CAMERA LANGUAGE:
-    Always include perspective depth. Use terms like:
-    "deep perspective vanishing point", "camera looking along the curve", "perspective depth receding into distance", "immersive first-person viewpoint"
+    Always include perspective depth or full edge-to-edge frame coverage:
+    "full-frame edge-to-edge composition with geometric rhythm", "deep perspective vanishing point", "camera looking along the curve", "perspective depth receding into distance", "immersive first-person viewpoint"
 
-    4. LIGHTING:
-    Ambient self-illumination from within the structure. Never use studio lighting language.
-    Use: "ambient glow from within", "self-lit geometric form", "integrated environmental lighting", "cool ambient fill"
+    4. LIGHTING & MATERIALS:
+    Ambient self-illumination, dual-tone neon gradients, or translucent refraction from within the structure.
+    Use: "dual-tone neon gradient lighting (electric blue, vibrant orange, magenta)", "translucent luminous refraction through ribbed panels", "soft ambient backlight glow emanating through slats", "ambient glow from within", "self-lit geometric form", "integrated environmental lighting"
 
     5. NEVER USE for this visual type:
     "isolated", "white background", "studio setting", "floating object", "product shot", "softbox", "three-point lighting"
