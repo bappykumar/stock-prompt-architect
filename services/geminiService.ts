@@ -52,6 +52,82 @@ export const testApiKey = async (apiKey: string, provider: 'gemini' | 'groq' | '
   }
 };
 
+export function normalizeSettingsAgainstOptions(rawSettings: any, availableOptions: any): any {
+  if (!rawSettings || typeof rawSettings !== 'object') return {};
+  const normalized: Record<string, any> = {};
+
+  const cleanStr = (s: string) => 
+    s.toLowerCase()
+      .replace(/[–—]/g, '-')
+      .replace(/[()]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  for (const [key, rawVal] of Object.entries(rawSettings)) {
+    const opts = availableOptions[key];
+    if (!Array.isArray(opts) || opts.length === 0) {
+      normalized[key] = rawVal;
+      continue;
+    }
+
+    const valStr = String(rawVal || '').trim();
+    if (!valStr || valStr === 'Default / Auto') {
+      normalized[key] = 'Default / Auto';
+      continue;
+    }
+
+    // 1. Exact value match
+    const exact = opts.find((o: any) => (typeof o === 'string' ? o : o.value) === valStr);
+    if (exact) {
+      normalized[key] = typeof exact === 'string' ? exact : exact.value;
+      continue;
+    }
+
+    // 2. Case-insensitive value match
+    const targetClean = cleanStr(valStr);
+
+    const caseMatch = opts.find((o: any) => {
+      const v = typeof o === 'string' ? o : o.value;
+      return cleanStr(String(v)) === targetClean;
+    });
+    if (caseMatch) {
+      normalized[key] = typeof caseMatch === 'string' ? caseMatch : caseMatch.value;
+      continue;
+    }
+
+    // 3. Label match
+    const labelMatch = opts.find((o: any) => {
+      if (typeof o === 'string') return false;
+      return cleanStr(String(o.label || '')) === targetClean;
+    });
+    if (labelMatch) {
+      normalized[key] = labelMatch.value;
+      continue;
+    }
+
+    // 4. Substring / partial match
+    const subMatch = opts.find((o: any) => {
+      const v = typeof o === 'string' ? o : o.value;
+      const l = typeof o === 'string' ? '' : (o.label || '');
+      if (String(v).startsWith('header_')) return false;
+      const cV = cleanStr(String(v));
+      const cL = cleanStr(String(l));
+      return (cV.length > 3 && targetClean.includes(cV)) ||
+             (targetClean.length > 3 && cV.includes(targetClean)) ||
+             (cL.length > 3 && targetClean.includes(cL)) ||
+             (targetClean.length > 3 && cL.includes(targetClean));
+    });
+    if (subMatch) {
+      normalized[key] = typeof subMatch === 'string' ? subMatch : subMatch.value;
+      continue;
+    }
+
+    normalized[key] = valStr;
+  }
+
+  return normalized;
+}
+
 export async function analyzeReferenceAndSuggestSettings(
   input: { type: 'image', data: string, mimeType: string } 
        | { type: 'text', description: string },
@@ -66,62 +142,89 @@ export async function analyzeReferenceAndSuggestSettings(
   }
   const ai = new GoogleGenAI({ apiKey: finalKey });
 
+  // Clean available options to extract exact allowed value strings and remove non-selectable headers
+  const cleanAllowedOptions: Record<string, string[]> = {};
+  for (const [key, opts] of Object.entries(availableOptions)) {
+    if (Array.isArray(opts)) {
+      cleanAllowedOptions[key] = opts
+        .map((o: any) => (typeof o === 'string' ? o : o.value))
+        .filter((v: string) => v && !String(v).startsWith('header_'));
+    }
+  }
+
   let analysisPrompt = '';
 
   if (input.type === 'image') {
     if (provider !== 'gemini') {
       throw new Error("Image analysis requires a Gemini API key.");
     }
-    analysisPrompt = `Analyze this image's VISUAL 
-CONTENT ONLY — completely ignore and ignore any text, 
-watermarks, logos, captions, or written words that 
-may appear in the image. Focus purely on the visual 
-scene: who/what is shown, their appearance, the 
-setting, lighting, and mood.
+    analysisPrompt = `You are a world-class commercial stock photography art director, computer vision analyst, and commercial visual prompt engineer.
+Analyze this image's VISUAL CONTENT ONLY.
+Ignore all watermarks, logos, brand names, captions, or typography that might appear as overlaid text. Focus purely on what is visually shown: the primary subject, attire/appearance, setting/environment, camera framing, camera elevation/angle, lighting atmosphere, shadow characteristics, medium, and aesthetic style.
 
-Based on the visual content, return a JSON object 
-with three parts:
+Based on your visual analysis of the image, return a JSON object with three parts:
 
-1. "settings": best matching values from these 
-available options:
-${JSON.stringify(availableOptions)}
-Only include fields you can confidently determine 
-from the image. If a field cannot be determined, set it to "Default / Auto". For 'characterBackground', carefully observe the subject's apparent ethnicity/cultural background and select the best match from the options.
+1. "settings": Best matching values chosen STRICTLY from these allowed options:
+${JSON.stringify(cleanAllowedOptions, null, 2)}
 
-2. "smartRefinement": a concise core description of the main subject and their specific action/appearance. Maximum 25 words.
-CRITICAL GENDER RULE: If there is a person/human in the image, you MUST explicitly state their GENDER (e.g., "man", "woman", "boy", "girl", "baby"). If the person's gender is completely indiscernible due to clothing or cropping, use "person". DO NOT specify age categories (like "young adult" or "elderly") in this field, as age is mapped to the 'settings' object separately.
-BODY BUILD RULE: ONLY mention body build if they are distinctly outside the average/standard norm (e.g., "plus-size", "heavy-set", "muscular"). If they have an average/slim body, DO NOT mention their body type at all.
-FACELESS & ACTION CROP RULE (CRITICAL FOR CROPPED/DETAIL SHOTS): If the person's head, face, or eyes are cropped out of frame (e.g. focused on hands cleaning, wrist pain, holding a glass, passing an envelope, typing on keyboard), you MUST explicitly describe this framing, such as: "close-up on hands and torso, head out of frame" or "faceless shot focused on hands and action". In such cases, DO NOT describe eye direction or facial gaze!
-CONCEPTUAL FLAT-LAY & TABLETOP STILL LIFE RULE (CRITICAL FOR BUSINESS/METAPHOR PROPS): If the image is a conceptual business/abstract tabletop still life (such as wooden blocks/cubes, tokens, magnifying glasses, puzzle pieces, checklists, or progress bars with minimalist 2D line icons/symbols on a clean solid pastel or studio background, with or without a cropped hand/fingers interacting):
-- Describe the core physical props and interaction clearly (e.g., "wooden tokens with minimalist line icons representing safety and workflow", "hand placing wooden block into progress bar on pastel blue surface", "magnifying glass focusing on a checkmark icon with ample copy space").
-- DO NOT invent full-body characters, corporate business suits, or facial features when only a hand or fingers are visible!
-- Mention "minimalist 2D line icons / infographic symbols" if present on the blocks/props.
-- Mention "clean solid pastel background with ample copy space" to preserve commercial versatility.
-ABSTRACT 3D TEXTURE, FLUTED GLASS & RIBBED BACKGROUND RULE (CRITICAL FOR 3D TEXTURES & WALLPAPERS): If the image is an abstract geometric background, texture, or wallpaper featuring vertical ribbed slats, fluted glass, linear architectural louvers, translucent acrylic panels, or dual-tone linear light gradients:
-- In 'smartRefinement': Concisely describe the core 3D geometry and luminous optical effects using professional stock terms (e.g., "abstract 3D vertical ribbed slats with dual-tone neon gradient lighting and luminous refraction waves", or "symmetrical vertical architectural louvers with warm ambient center backlight glow"). Max 25 words. DO NOT invent human subjects, products, or room furniture!
-- In 'settings':
-  * 'subject': "Abstract Shape / Graphic Element" or "Background / Landscape only"
-  * 'imageMedium': "3D & CGI"
-  * 'visualType': "Abstract Environmental 3D"
-  * 'materialStyle': "Glossy / Shiny" (for glass/acrylic/refractions) or "Matte / Soft" (for diffuse slats/louvers)
-  * 'colorMood': "Vibrant & Bold" or "Moody & Dark"
-  * 'lighting': "Cinematic Lighting"
-  * 'environment': "Solid Color / Studio" or "Pitch Black / Void"
-  * 'shadowStyle': "Minimal Base Shadow" or "No Shadow / Flat"
-- In 'activeFields':
-  * Set 'subject', 'imageMedium', 'visualType', 'materialStyle', 'colorMood', 'lighting' to TRUE.
-  * Set ALL human/demographic fields ('characterBackground', 'ageRange', 'interaction', 'authenticity') strictly to FALSE.
-CAMERA DIRECTION RULE: ONLY if the subject's face/eyes are visible in the frame, describe where they are looking (e.g., "looking forward", "making eye contact", "looking down", "looking away"), but DO NOT use the word "camera". If their head/eyes are cropped out or not visible, completely omit gaze descriptions.
-FLEXIBLE COLOR RULE: For attire or objects, describe the item generically WITHOUT locking in specific colors (e.g., say "a sphere" instead of "a blue sphere", or "in a business suit" instead of "in a blue suit") unless that exact color is strictly central to the action or meaning. This allows the prompt generator to create diverse stock variations.
-AVOID specifying race, ethnicity, or age IN THIS FIELD. Focus on gender, notable body build (if any), core action, key props, and expression (if face is visible). No technical camera terms or lighting terms.
+CRITICAL OPTION SELECTION RULES:
+- For every field in "settings", you MUST choose an EXACT string value from the allowed options list for that field above. Never invent custom strings. If unsure or not discernible, use "Default / Auto".
+- 'imageMedium':
+  * Choose "Photography" for real-world photographic scenes.
+  * Choose "3D & CGI" for 3D renders, CGI, isometric digital renders, claymorphism, or abstract 3D textures.
+  * Choose "Art & Illustration" for flat vectors, 2D illustrations, line art, or digital paintings.
+- 'visualType': Match the specific visual aesthetic (e.g. "Standard photo", "Ultra Realistic", "Cinematic", "Cinematic Film (Kodak Portra)", "Minimalist Studio Photo", "3D Render", "Isometric 3D", "Claymorphism", "Abstract Environmental 3D", "Flat Illustration", "Minimalist Vector", "Flat Line Icon", etc.).
+- 'subject':
+  * For people: Pick the specific persona (e.g., "Business professional", "Casual person", "Creative person", "Student / Academic", "Senior citizen", "Fitness enthusiast", "Tech developer", "Doctor / Medical Team", "Healthcare professional", "Chef / Kitchen Staff", "Teacher / Educator", "Scientist / Researcher", "Construction Worker", "Delivery Person / Logistics", etc.).
+  * For multiple people: "Romantic Couple", "Group of Friends", "Business Team", "Parent & Child", "Family group".
+  * For non-human scenes: "Still life / Food & Drink" (for food, beverages, tabletop arrangements), "No person (product)" or "Isolated Object (PNG Ready)" (for products, tools, single objects), "Domestic Pet (Cat, Dog, etc.)", "Abstract Shape / Graphic Element", "Icon / Logo Concept", "Background / Landscape only".
+- 'characterBackground' (Ethnicity/Culture): Observe facial and cultural cues carefully and select the best fit from the allowed list (e.g., "South Asian", "East Asian", "Southeast Asian", "Middle Eastern / North African", "African / Black", "Hispanic / Latin American", "European / Caucasian", "Global / Neutral (Inclusive Casting)"). If no person is present or only faceless hands, use "Default / Auto".
+- 'ageRange': Observe the subject's visible age: "Baby / Toddler", "Young Teen (13-17, school context only)", "Young Adult (20s-30s)", "Middle-Aged (40s-50s)", "Senior (60s+)". If no person or faceless hand, use "Default / Auto".
+- 'interaction': If people are interacting: "Eye Contact", "Side by Side", "Support Gesture", "Caring / Comforting", "Examining / Consulting", "Independent / Reflective".
+- 'environment': Select the closest setting (e.g. "White Background", "Solid Color / Studio", "Pitch Black / Void", "Modern Office", "Home Interior", "Zen Minimalist Room", "Nature / Outdoor", "City Street", "Hospital / Clinic", "Cafe / Restaurant", "Scientific Research Lab", "Classroom / University", "Gym / Fitness Center", "Retail Store / Shopping Mall", "Industrial / Factory Floor", etc.).
+- 'framing':
+  * "Portrait" for head and shoulders.
+  * "Mid shot (waist-up)" for waist-up composition.
+  * "Full shot (full body)" for entire body visible.
+  * "Close-up / Cropped Action (Faceless)" for tight focus on hands, objects, gestures, or details where the face is not visible.
+- 'cameraAngle':
+  * "Top View / Flat Lay" for overhead view looking straight down at surface/tabletop.
+  * "Eye Level" for direct horizontal perspective.
+  * "High Angle" for looking down at ~45-60 degrees.
+  * "Low Angle" for looking up from below.
+  * "Bird's Eye View" for high aerial view.
+  * "Side View" for profile view.
+- 'lighting': Identify the lighting mood ("Natural daylight", "Soft studio", "Cinematic Lighting", "Professional Studio Lighting", "Warm indoor", "Golden hour", "Overcast / Diffused").
+- 'shadowStyle': Identify shadows ("Natural Shadow", "No Shadow / Flat", "Soft Studio Shadow", "Strong / Bold Shadow", "Minimal Base Shadow").
+- 'materialStyle' (primarily for 3D/products): "Realistic", "Glossy / Shiny", "Metallic / Chrome", "Matte / Soft", "Clay / Pastel".
+- 'colorMood': "Warm & Golden", "Cool & Clinical", "Soft Pastel", "Neutral & Earthy", "Vibrant & Bold", "Moody & Dark", "Monochromatic".
 
-3. "activeFields": A boolean map of the fields. Set to true if the field is RELEVANT to the visual scene, even if not explicitly the main focus. Set to false ONLY if the field is completely irrelevant to the visual context. Include keys: subject, characterBackground, ageRange, interaction, targetMarket, imageMedium, visualType, materialStyle, conceptFocus, authenticity, environment, colorMood, qualityCamera, framing, cameraAngle, lighting, shadowStyle.
-IMPORTANT LOGIC: If there are people or characters shown in the image, 'characterBackground', 'ageRange', and 'interaction' MUST be true. If there are NO people/characters, 'characterBackground', 'ageRange', and 'interaction' MUST be false, and 'subject' MUST be mapped to a non-human category (like "No person", "Isolated Object", "Background"). If the image is a flat illustration or vector art, you MUST set photographic fields (qualityCamera, framing, cameraAngle, lighting, shadowStyle, authenticity) to false, as they do not apply to flat graphics.
-SPECIAL RULE FOR HAND-ONLY CROPS & TABLETOP PROPS: If ONLY a hand, fingers, or arm is interacting with tabletop props/objects (faceless conceptual flat-lay or still life):
-- Set 'subject' to "Still life / Food & Drink" or "No person (product)".
-- Set 'characterBackground' and 'ageRange' to FALSE in 'activeFields' (and 'Default / Auto' in settings) because demographic casting does not apply to a faceless hand interacting with props.
-- Set 'framing' to "Top View / Flat Lay" or "Close-up / Cropped Action (Faceless)".
-- Set 'environment' to "Solid Color / Studio Background" or clean tabletop surface.
+2. "smartRefinement": A concise core description of the main subject and their specific action/appearance (maximum 25 words).
+- CRITICAL GENDER RULE: If there is a person/human in the image, you MUST explicitly state their GENDER (e.g., "man", "woman", "boy", "girl", "baby"). If the person's gender is completely indiscernible due to clothing or cropping, use "person". DO NOT specify age categories (like "young adult" or "elderly") in this field, as age is mapped to the 'settings' object separately.
+- BODY BUILD RULE: ONLY mention body build if they are distinctly outside the average/standard norm (e.g., "plus-size", "heavy-set", "muscular"). If they have an average/slim body, DO NOT mention their body type at all.
+- FACELESS & ACTION CROP RULE (CRITICAL FOR CROPPED/DETAIL SHOTS): If the person's head, face, or eyes are cropped out of frame (e.g. focused on hands cleaning, wrist pain, holding a glass, passing an envelope, typing on keyboard), you MUST explicitly describe this framing, such as: "close-up on hands and torso, head out of frame" or "faceless shot focused on hands and action". In such cases, DO NOT describe eye direction or facial gaze!
+- CONCEPTUAL FLAT-LAY & TABLETOP STILL LIFE RULE: If the image is a conceptual business/abstract tabletop still life (such as wooden blocks/cubes, tokens, magnifying glasses, puzzle pieces, checklists, or progress bars with minimalist 2D line icons/symbols on a clean solid pastel or studio background, with or without a cropped hand/fingers interacting):
+  * Describe the core physical props and interaction clearly (e.g., "wooden tokens with minimalist line icons representing safety and workflow", "hand placing wooden block into progress bar on pastel blue surface", "magnifying glass focusing on a checkmark icon with ample copy space").
+  * DO NOT invent full-body characters, corporate business suits, or facial features when only a hand or fingers are visible!
+  * Mention "minimalist 2D line icons / infographic symbols" if present on the blocks/props.
+  * Mention "clean solid pastel background with ample copy space" to preserve commercial versatility.
+- ABSTRACT 3D TEXTURE, FLUTED GLASS & RIBBED BACKGROUND RULE: If the image is an abstract geometric background, texture, or wallpaper featuring vertical ribbed slats, fluted glass, linear architectural louvers, translucent acrylic panels, or dual-tone linear light gradients:
+  * In 'smartRefinement': Concisely describe the core 3D geometry and luminous optical effects (e.g., "abstract 3D vertical ribbed slats with dual-tone neon gradient lighting and luminous refraction waves", or "symmetrical vertical architectural louvers with warm ambient center backlight glow"). Max 25 words. DO NOT invent human subjects, products, or room furniture!
+  * In 'settings': 'subject': "Abstract Shape / Graphic Element", 'imageMedium': "3D & CGI", 'visualType': "Abstract Environmental 3D", 'materialStyle': "Glossy / Shiny" or "Matte / Soft", 'lighting': "Cinematic Lighting", 'colorMood': "Vibrant & Bold" or "Moody & Dark", 'environment': "Solid Color / Studio" or "Pitch Black / Void".
+  * In 'activeFields': Set 'subject', 'imageMedium', 'visualType', 'materialStyle', 'colorMood', 'lighting' to TRUE. Set ALL human/demographic fields ('characterBackground', 'ageRange', 'interaction', 'authenticity') strictly to FALSE.
+- CAMERA DIRECTION RULE: ONLY if the subject's face/eyes are visible in the frame, describe where they are looking (e.g., "looking forward", "making eye contact", "looking down", "looking away"), but DO NOT use the word "camera". If their head/eyes are cropped out or not visible, completely omit gaze descriptions.
+- FLEXIBLE COLOR RULE: For attire or objects, describe the item generically WITHOUT locking in specific colors (e.g., say "a sphere" instead of "a blue sphere", or "in a business suit" instead of "in a blue suit") unless that exact color is strictly central to the action or meaning.
+- AVOID specifying race, ethnicity, or age IN THIS FIELD. Focus on gender, notable body build (if any), core action, key props, and expression (if face is visible). No technical camera terms or lighting terms.
+
+3. "activeFields": A boolean map of the fields. Set to true if the field is RELEVANT to the visual scene, even if not explicitly the main focus. Set to false ONLY if the field is completely irrelevant to the visual context. Include keys: subject, characterBackground, ageRange, interaction, targetMarket, imageMedium, visualType, materialStyle, conceptFocus, authenticity, environment, colorMood, qualityCamera, framing, cameraAngle, subjectPosition, lighting, shadowStyle.
+- IMPORTANT LOGIC: If there are people or characters shown in the image with faces, 'characterBackground', 'ageRange', and 'interaction' MUST be true. If there are NO people/characters, 'characterBackground', 'ageRange', and 'interaction' MUST be false, and 'subject' MUST be mapped to a non-human category (like "No person (product)", "Isolated Object (PNG Ready)", "Still life / Food & Drink", "Background / Landscape only").
+- If the image is a flat illustration or vector art, you MUST set photographic fields (qualityCamera, framing, cameraAngle, lighting, shadowStyle, authenticity) to false, as they do not apply to flat graphics.
+- SPECIAL RULE FOR HAND-ONLY CROPS & TABLETOP PROPS: If ONLY a hand, fingers, or arm is interacting with tabletop props/objects:
+  * Set 'subject' to "Still life / Food & Drink" or "No person (product)".
+  * Set 'characterBackground' and 'ageRange' to FALSE in 'activeFields' (and 'Default / Auto' in settings).
+  * Set 'cameraAngle' to "Top View / Flat Lay" or "High Angle".
+  * Set 'framing' to "Close-up / Cropped Action (Faceless)".
+  * Set 'environment' to "Solid Color / Studio" or "White Background".
 
 Return ONLY this JSON structure, no markdown:
 {
@@ -133,20 +236,20 @@ Return ONLY this JSON structure, no markdown:
     analysisPrompt = `Analyze this description 
   and determine the best matching settings from 
   these available options:
-  ${JSON.stringify(availableOptions)}
+  ${JSON.stringify(cleanAllowedOptions, null, 2)}
   
   Return ONLY a JSON object matching this structure 
   with your best-guess values for each field based 
   on what you observe.
   
-  1. "settings": The values for the fields. If you cannot determine a field, set it to "Default / Auto". For 'characterBackground', select the best matching cultural/ethnic background if implied by the text.
+  1. "settings": The values for the fields chosen STRICTLY from the allowed options above. If you cannot determine a field, set it to "Default / Auto". For 'characterBackground', select the best matching cultural/ethnic background if implied by the text.
   
   2. "smartRefinement": A concise core description of the main subject and their specific action/appearance based on the input. Maximum 25 words. If a person/human is described, observe and explicitly state their GENDER (e.g., "man", "woman", "boy", "girl", "baby"). If the gender is completely unspecified or neutral, use "person". DO NOT specify age categories (like "young adult" or "senior") in this field, as age is mapped to the 'settings' object separately. For BODY BUILD, ONLY mention it if they are distinctly outside the average/standard norm (e.g., "plus-size", "heavy-set", "muscular"). If they have an average/slim body, DO NOT mention their body type at all. FACELESS & ACTION CROP RULE: If the concept focuses on hands, gestures, or cropped body parts without showing a face (e.g. holding a product, typing, wrist pain, cleaning surface), describe this framing clearly (e.g. "close-up on hands and torso, faceless composition") and omit eye gaze direction. CONCEPTUAL FLAT-LAY & TABLETOP STILL LIFE RULE: If the concept is a conceptual business/abstract tabletop still life (wooden blocks, tokens, magnifying glasses, puzzle pieces, checklists, or progress bars with minimalist 2D line icons/symbols on a solid pastel or studio background, with or without a cropped hand/fingers interacting), focus on the physical props, minimalist 2D icons, and clean composition with ample copy space. Do NOT invent full-body characters or business suits. CAMERA DIRECTION RULE: If the face is visible and the text mentions looking at the camera, rephrase it to "looking forward" or "making eye contact"; DO NOT use the word "camera". FLEXIBLE COLOR RULE: For attire or objects, describe the item generically WITHOUT locking in specific colors (e.g., say "a sphere" instead of "a blue sphere") unless strictly central to the action, to allow for diverse stock variations. AVOID specifying race, ethnicity, or age IN THIS FIELD. Focus on gender, notable body build, core action, and props. No technical camera or lighting terms.
   
-  3. "activeFields": A boolean map of the fields. Set to true if the field is RELEVANT to the scene, even if not explicitly described. Set to false ONLY if the field is completely irrelevant to the scene context. You MUST provide a boolean value for ALL of these keys: subject, characterBackground, ageRange, interaction, targetMarket, imageMedium, visualType, materialStyle, conceptFocus, authenticity, environment, colorMood, qualityCamera, framing, cameraAngle, lighting, shadowStyle.
-  IMPORTANT LOGIC: If there are people or characters in the scene, 'characterBackground', 'ageRange', and 'interaction' MUST be true. If there are NO people/characters, 'characterBackground', 'ageRange', and 'interaction' MUST be false, and 'subject' MUST be mapped to a non-human category (like "No person", "Isolated Object", "Background"). If the concept is a flat illustration or 2D vector art, you MUST set photographic fields (qualityCamera, framing, cameraAngle, lighting, shadowStyle, authenticity) to false, as they do not apply to flat graphics.
-  SPECIAL RULE FOR HAND-ONLY CROPS & TABLETOP PROPS: If ONLY a hand or fingers interact with tabletop props/objects (faceless conceptual flat-lay or still life): set 'subject' to "Still life / Food & Drink" or "No person (product)", set 'characterBackground' and 'ageRange' to FALSE in 'activeFields' (and 'Default / Auto' in settings), set 'framing' to "Top View / Flat Lay" or "Close-up / Cropped Action (Faceless)", and set 'environment' to "Solid Color / Studio Background".
-  ABSTRACT 3D TEXTURE, FLUTED GLASS & RIBBED BACKGROUND RULE: If describing an abstract geometric background, texture, or wallpaper with vertical ribbed slats, fluted glass, linear louvers, translucent acrylic panels, or dual-tone neon gradients: set 'subject' to "Abstract Shape / Graphic Element" or "Background / Landscape only", 'imageMedium' to "3D & CGI", 'visualType' to "Abstract Environmental 3D", 'materialStyle' to "Glossy / Shiny" or "Matte / Soft", 'lighting' to "Cinematic Lighting", 'colorMood' to "Vibrant & Bold" or "Moody & Dark", and set all human fields ('characterBackground', 'ageRange', 'interaction', 'authenticity') to FALSE.
+  3. "activeFields": A boolean map of the fields. Set to true if the field is RELEVANT to the scene, even if not explicitly described. Set to false ONLY if the field is completely irrelevant to the scene context. You MUST provide a boolean value for ALL of these keys: subject, characterBackground, ageRange, interaction, targetMarket, imageMedium, visualType, materialStyle, conceptFocus, authenticity, environment, colorMood, qualityCamera, framing, cameraAngle, subjectPosition, lighting, shadowStyle.
+  IMPORTANT LOGIC: If there are people or characters in the scene, 'characterBackground', 'ageRange', and 'interaction' MUST be true. If there are NO people/characters, 'characterBackground', 'ageRange', and 'interaction' MUST be false, and 'subject' MUST be mapped to a non-human category (like "No person (product)", "Isolated Object (PNG Ready)", "Still life / Food & Drink", "Background / Landscape only"). If the concept is a flat illustration or 2D vector art, you MUST set photographic fields (qualityCamera, framing, cameraAngle, lighting, shadowStyle, authenticity) to false, as they do not apply to flat graphics.
+  SPECIAL RULE FOR HAND-ONLY CROPS & TABLETOP PROPS: If ONLY a hand or fingers interact with tabletop props/objects (faceless conceptual flat-lay or still life): set 'subject' to "Still life / Food & Drink" or "No person (product)", set 'characterBackground' and 'ageRange' to FALSE in 'activeFields' (and 'Default / Auto' in settings), set 'cameraAngle' to "Top View / Flat Lay" or "High Angle", set 'framing' to "Close-up / Cropped Action (Faceless)", and set 'environment' to "Solid Color / Studio" or "White Background".
+  ABSTRACT 3D TEXTURE, FLUTED GLASS & RIBBED BACKGROUND RULE: If describing an abstract geometric background, texture, or wallpaper with vertical ribbed slats, fluted glass, linear louvers, translucent acrylic panels, or dual-tone neon gradients: set 'subject' to "Abstract Shape / Graphic Element", 'imageMedium' to "3D & CGI", 'visualType' to "Abstract Environmental 3D", 'materialStyle' to "Glossy / Shiny" or "Matte / Soft", 'lighting' to "Cinematic Lighting", 'colorMood' to "Vibrant & Bold" or "Moody & Dark", and set all human fields ('characterBackground', 'ageRange', 'interaction', 'authenticity') to FALSE.
   
   {
     "settings": {
@@ -166,6 +269,7 @@ Return ONLY this JSON structure, no markdown:
       "qualityCamera": "...",
       "framing": "...",
       "cameraAngle": "...",
+      "subjectPosition": "...",
       "shadowStyle": "..."
     },
     "smartRefinement": "...",
@@ -254,7 +358,11 @@ Return ONLY this JSON structure, no markdown:
       }
     }
     
-    return JSON.parse(jsonString.trim());
+    const parsed = JSON.parse(jsonString.trim());
+    if (parsed && parsed.settings) {
+      parsed.settings = normalizeSettingsAgainstOptions(parsed.settings, availableOptions);
+    }
+    return parsed;
   } catch (error: any) {
     console.warn("Gemini Error:", error);
     let msg = error.message || "An unknown error occurred.";
