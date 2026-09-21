@@ -496,6 +496,7 @@ export const generateStockPrompts = async (
     ];
     const isBackgroundMode = options.subject === 'Background / Landscape only';
     const isIsolatedPngMode = options.subject === 'Isolated Object (PNG Ready)';
+    const isEnvironmental3D = options.visualType === 'Abstract Environmental 3D';
     const isHumanSubject = !nonHumanSubjects.some(key => options.subject?.includes(key));
     
     let NEGATIVE_BLOCK = "blurry subject, out of focus subject, poorly drawn, low resolution, no artificial symmetry, no obvious AI look, no floating objects, no visible studio lights, no light stands, no softboxes, no reflectors, no photography equipment, no text overlay, no logos, no watermarks, no brand elements,";
@@ -505,6 +506,10 @@ export const generateStockPrompts = async (
     
     if (isIsolatedPngMode) {
       NEGATIVE_BLOCK = "no background, no environment, no landscape, no floor, no shadows on ground, no ground plane, no horizon line, no scenery, no props, no reflections, checkerboard background, transparency grid, " + NEGATIVE_BLOCK;
+    }
+
+    if (isEnvironmental3D) {
+      NEGATIVE_BLOCK = "depth of field, bokeh, blurry background, blurry ridges, lens blur, soft focus, motion blur, unfocused, dreamy blur, out of focus edges, " + NEGATIVE_BLOCK;
     }
 
     const SAFETY_BLOCK = "no copyright elements, no signature, no labels, no UI overlay, no visible trademarks, no studio equipment visible, brand-neutral environment, clean commercial stock image";
@@ -763,8 +768,8 @@ export const generateStockPrompts = async (
     Camera is positioned INSIDE or EXTREMELY CLOSE TO the structure. The 3D form fills the entire frame edge-to-edge. No empty background visible.
 
     2. SUBJECT LANGUAGE:
-    Describe as architecture, geometric texture, or landscape — NOT as a floating object. Use terms like:
-    "repeating vertical ribbed slats", "fluted glass texture with luminous refraction waves", "linear architectural louvers", "sweeping curved surface", "repeating geometric panels", "parametric ribbed structure", "architectural wave form", "infinite corridor", "repeating pattern receding to vanishing point"
+    Describe as architecture, geometric texture, glass structure, or luminous landscape — NOT as a floating object. Use terms like:
+    "repeating vertical ribbed slats", "fluted glass texture with luminous refraction waves", "linear architectural louvers", "sweeping curved liquid glass ribbons", "repeating geometric panels", "parametric ribbed structure", "reeded glass panels with vibrant backlight", "prismatic optical glass refraction with chromatic caustics", "infinite corridor", "repeating pattern receding to vanishing point"
 
     3. CAMERA LANGUAGE:
     Always include perspective depth or full edge-to-edge frame coverage:
@@ -777,7 +782,12 @@ export const generateStockPrompts = async (
     5. NEVER USE for this visual type:
     "isolated", "white background", "studio setting", "floating object", "product shot", "softbox", "three-point lighting"
 
-    6. LENGTH: 50-70 words for core prompt body.
+    6. ZERO BLUR & TACK-SHARP TEXTURE RULE (CRITICAL - NO BLUR ALLOWED):
+    - Must enforce crystal-clear, edge-to-edge razor-sharp focus across the entire frame.
+    - Explicitly inject: "razor-sharp edge-to-edge focus, crisp defined ridges, pristine optical glass clarity, tack-sharp geometric lines, high micro-contrast, zero depth-of-field blur".
+    - ABSOLUTELY FORBIDDEN: Do NOT use "shallow depth of field", "bokeh", "blurry background", "dreamy blur", "lens blur", or "soft focus". The entire glass structure, ribbed louvers, and refraction light waves must be tack sharp from corner to corner.
+
+    7. LENGTH: 50-70 words for core prompt body.
 
     [FLAT LINE ICON RULE]:
     When visualType = 'Flat Line Icon':
