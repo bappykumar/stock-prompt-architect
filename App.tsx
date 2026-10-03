@@ -8,7 +8,7 @@ import {
   Layers, Camera, Box, Maximize, User, Moon, Sun,
   Layout, Fingerprint, Focus, Settings2, Download, MessageSquareCode, Send, AlertCircle, X, Cpu, Paintbrush,
   ChevronUp, Key, Lock, Unlock, Info, Settings, ToggleLeft, ToggleRight, Activity, Power, Video, Target, Lightbulb, Search, Shuffle, Image, Type, RefreshCw, ListX, PanelLeftClose, PanelLeftOpen, Upload,
-  LayoutList, Columns2
+  LayoutList, Columns2, UnfoldVertical, FoldVertical
 } from 'lucide-react';
 import { PromptOptions, GeneratedPrompt, PromptBatch, HistoricalPrompt, ApiKeyRecord } from './types';
 import { generateStockPrompts, testApiKey, analyzeReferenceAndSuggestSettings } from './services/geminiService';
@@ -987,6 +987,29 @@ export default function App() {
     }
   });
 
+  const [isCompactMode, setIsCompactMode] = useState<boolean>(() => {
+    try {
+      const saved = safeLocalStorage.getItem('prompt_compact_mode');
+      return saved !== null ? saved === 'true' : true;
+    } catch (e) {
+      return true;
+    }
+  });
+
+  const [expandedCardIds, setExpandedCardIds] = useState<Set<string>>(new Set());
+
+  const toggleCardExpand = useCallback((promptId: string) => {
+    setExpandedCardIds(prev => {
+      const next = new Set(prev);
+      if (next.has(promptId)) {
+        next.delete(promptId);
+      } else {
+        next.add(promptId);
+      }
+      return next;
+    });
+  }, []);
+
   useEffect(() => {
     try {
       safeLocalStorage.setItem('prompt_display_layout', promptLayout);
@@ -994,6 +1017,14 @@ export default function App() {
       // ignore
     }
   }, [promptLayout]);
+
+  useEffect(() => {
+    try {
+      safeLocalStorage.setItem('prompt_compact_mode', String(isCompactMode));
+    } catch (e) {
+      // ignore
+    }
+  }, [isCompactMode]);
 
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -1729,34 +1760,51 @@ export default function App() {
             </div>
           )}
 
-          {batches.length > 0 && (
-            <div className="flex items-center p-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-900/80">
-              <button
-                onClick={() => setPromptLayout('single')}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
-                  promptLayout === 'single'
-                    ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-                }`}
-                title="Single Column View (1 per row)"
-              >
-                <LayoutList size={14} />
-                <span className="hidden xl:inline">1 Col</span>
-              </button>
-              <button
-                onClick={() => setPromptLayout('grid')}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
-                  promptLayout === 'grid'
-                    ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-                }`}
-                title="Side-by-Side View (2 columns)"
-              >
-                <Columns2 size={14} />
-                <span className="hidden xl:inline">2 Col</span>
-              </button>
-            </div>
-          )}
+          {/* Always Visible View Mode Switcher (Icons Only) */}
+          <div className="flex items-center p-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-900/80">
+            <button
+              onClick={() => setPromptLayout('single')}
+              className={`p-1.5 rounded-lg transition-all ${
+                promptLayout === 'single'
+                  ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+              }`}
+              title="Single Column View (1 per row)"
+              aria-label="Single Column View"
+            >
+              <LayoutList size={16} />
+            </button>
+            <button
+              onClick={() => setPromptLayout('grid')}
+              className={`p-1.5 rounded-lg transition-all ${
+                promptLayout === 'grid'
+                  ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+              }`}
+              title="2 Columns Side-by-Side View"
+              aria-label="2 Columns View"
+            >
+              <Columns2 size={16} />
+            </button>
+
+            <div className="w-px h-3.5 bg-slate-200 dark:bg-slate-700 mx-1" />
+
+            <button
+              onClick={() => {
+                setIsCompactMode(!isCompactMode);
+                setExpandedCardIds(new Set());
+              }}
+              className={`p-1.5 rounded-lg transition-all ${
+                isCompactMode
+                  ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+              }`}
+              title={isCompactMode ? "2-Line Compact Mode Active (Click to Expand All)" : "Full Prompts Active (Click to Enable 2-Line Compact Mode)"}
+              aria-label="Toggle 2-Line Compact Mode"
+            >
+              {isCompactMode ? <FoldVertical size={16} /> : <UnfoldVertical size={16} />}
+            </button>
+          </div>
 
           <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
             {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
@@ -2211,55 +2259,52 @@ export default function App() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3">
-                        {/* Layout Mode Switcher */}
-                        <div className="flex items-center bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-inner">
-                          <button
-                            onClick={() => setPromptLayout('single')}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
-                              promptLayout === 'single'
-                                ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm'
-                                : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-                            }`}
-                            title="1 Prompt per Row (Vertical List)"
-                          >
-                            <LayoutList size={14} />
-                            <span className="hidden sm:inline">1 Column</span>
-                          </button>
-                          <button
-                            onClick={() => setPromptLayout('grid')}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
-                              promptLayout === 'grid'
-                                ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm'
-                                : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-                            }`}
-                            title="2 Prompts Side by Side (Grid)"
-                          >
-                            <Columns2 size={14} />
-                            <span className="hidden sm:inline">2 Columns</span>
-                          </button>
-                        </div>
-                        <div className="text-[10px] font-bold opacity-40 uppercase tracking-widest pl-1">{new Date(batch.timestamp).toLocaleTimeString()}</div>
-                      </div>
+                      <div className="text-[10px] font-bold opacity-40 uppercase tracking-widest">{new Date(batch.timestamp).toLocaleTimeString()}</div>
                     </div>
                     <div className={`grid gap-6 ${promptLayout === 'grid' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
-                      {batch.prompts.map((p, pIdx) => (
-                        <div key={p.id} className="bg-gradient-to-br from-white/60 to-white/30 dark:from-slate-800/40 dark:to-slate-900/20 backdrop-blur-2xl border border-solid border-t-white/80 border-l-white/50 border-b-white/20 border-r-white/20 dark:border-t-white/20 dark:border-l-white/10 dark:border-b-transparent dark:border-r-transparent shadow-[0_8px_32px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] rounded-[24px] p-8 flex flex-col justify-between gap-6 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative group">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Prompt #{pIdx+1}</span>
-                            <span className="text-2xl font-black opacity-10">#{pIdx+1}</span>
+                      {batch.prompts.map((p, pIdx) => {
+                        const isExpanded = !isCompactMode || expandedCardIds.has(p.id);
+                        return (
+                          <div key={p.id} className="bg-gradient-to-br from-white/60 to-white/30 dark:from-slate-800/40 dark:to-slate-900/20 backdrop-blur-2xl border border-solid border-t-white/80 border-l-white/50 border-b-white/20 border-r-white/20 dark:border-t-white/20 dark:border-l-white/10 dark:border-b-transparent dark:border-r-transparent shadow-[0_8px_32px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] rounded-[24px] p-8 flex flex-col justify-between gap-5 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300 relative group">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Prompt #{pIdx+1}</span>
+                              <span className="text-2xl font-black opacity-10">#{pIdx+1}</span>
+                            </div>
+
+                            <div className="flex-1 flex flex-col justify-start">
+                              <p className={`text-[15px] font-medium leading-relaxed select-text transition-all duration-200 ${!isExpanded ? 'line-clamp-2' : ''}`}>
+                                {p.text}
+                              </p>
+                              {isCompactMode && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleCardExpand(p.id);
+                                  }}
+                                  className="inline-flex items-center gap-1.5 mt-2.5 self-start text-[11px] font-bold text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors cursor-pointer select-none group/toggle"
+                                >
+                                  <span>{isExpanded ? 'Show less' : 'Show full prompt'}</span>
+                                  {isExpanded ? (
+                                    <ChevronUp size={13} className="transition-transform group-hover/toggle:-translate-y-0.5" />
+                                  ) : (
+                                    <ChevronDown size={13} className="transition-transform group-hover/toggle:translate-y-0.5" />
+                                  )}
+                                </button>
+                              )}
+                            </div>
+
+                            <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
+                               <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 font-mono">
+                                 {p.text.split(/\s+/).filter(Boolean).length} words
+                               </span>
+                               <button onClick={() => copyIndividual(batch.id, p.id, p.text)} className={`px-6 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-[0.96] ${p.copied ? 'bg-emerald-500 text-white shadow-emerald-500/20' : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:opacity-80 shadow-md'}`}>
+                                 {p.copied ? <><Check size={14} className="inline mr-2" />Copied</> : 'Copy Prompt'}
+                               </button>
+                            </div>
                           </div>
-                          <p className="text-[15px] font-medium leading-relaxed flex-1 select-text">{p.text}</p>
-                          <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
-                             <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 font-mono">
-                               {p.text.split(/\s+/).filter(Boolean).length} words
-                             </span>
-                             <button onClick={() => copyIndividual(batch.id, p.id, p.text)} className={`px-6 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-[0.96] ${p.copied ? 'bg-emerald-500 text-white shadow-emerald-500/20' : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:opacity-80 shadow-md'}`}>
-                               {p.copied ? <><Check size={14} className="inline mr-2" />Copied</> : 'Copy Prompt'}
-                             </button>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                ))}
