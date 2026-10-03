@@ -2244,17 +2244,20 @@ export default function App() {
         <div className={`mx-auto px-8 py-16 min-h-full flex flex-col transition-all duration-300 ${promptLayout === 'grid' ? 'max-w-7xl' : 'max-w-4xl'}`}>
           {batches.length > 0 ? (
             <div className="flex flex-col gap-5 flex-1">
-                {batches.map((batch) => (
-                  <div key={batch.id} className={`grid gap-5 ${promptLayout === 'grid' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
-                    {batch.prompts.map((p, pIdx) => {
-                      const isExpanded = !isCompactMode || expandedCardIds.has(p.id);
-                      return (
-                        <div key={p.id} className="bg-gradient-to-br from-white/60 to-white/30 dark:from-slate-800/40 dark:to-slate-900/20 backdrop-blur-2xl border border-solid border-t-white/80 border-l-white/50 border-b-white/20 border-r-white/20 dark:border-t-white/20 dark:border-l-white/10 dark:border-b-transparent dark:border-r-transparent shadow-[0_8px_32px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] rounded-[20px] p-6 flex flex-col justify-between gap-4 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 relative group">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-mono font-bold tracking-widest text-slate-400 dark:text-slate-500 uppercase">
-                              #{(pIdx + 1).toString().padStart(2, '0')}
-                            </span>
-                          </div>
+                {batches.map((batch, idx) => {
+                  const priorPromptsCount = batches.slice(idx + 1).reduce((acc, b) => acc + b.prompts.length, 0);
+                  return (
+                    <div key={batch.id} className={`grid gap-5 ${promptLayout === 'grid' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
+                      {batch.prompts.map((p, pIdx) => {
+                        const globalPromptNum = priorPromptsCount + pIdx + 1;
+                        const isExpanded = !isCompactMode || expandedCardIds.has(p.id);
+                        return (
+                          <div key={p.id} className="bg-gradient-to-br from-white/60 to-white/30 dark:from-slate-800/40 dark:to-slate-900/20 backdrop-blur-2xl border border-solid border-t-white/80 border-l-white/50 border-b-white/20 border-r-white/20 dark:border-t-white/20 dark:border-l-white/10 dark:border-b-transparent dark:border-r-transparent shadow-[0_8px_32px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] rounded-[20px] p-6 flex flex-col justify-between gap-4 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 relative group">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-mono font-bold tracking-widest text-slate-400 dark:text-slate-500 uppercase">
+                                #{globalPromptNum.toString().padStart(2, '0')}
+                              </span>
+                            </div>
 
                           <div className="flex-1 flex flex-col justify-start">
                             <p className={`text-[14px] leading-relaxed text-slate-700 dark:text-slate-200 select-text transition-all duration-200 ${!isExpanded ? 'line-clamp-2' : ''}`}>
@@ -2296,7 +2299,8 @@ export default function App() {
                       );
                     })}
                   </div>
-               ))}
+                );
+              })}
             </div>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-center animate-welcome-reveal">
