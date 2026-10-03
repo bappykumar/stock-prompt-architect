@@ -596,13 +596,16 @@ const CustomDropdown = ({
                   e.stopPropagation();
                   onToggle(!isActive);
                 }}
-                className="focus:outline-none transition-transform active:scale-95"
+                className={`w-7 h-4 rounded-full relative p-0.5 transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] focus:outline-none cursor-pointer active:scale-90 ${
+                  isActive 
+                    ? 'bg-blue-600/90 dark:bg-blue-500/90 shadow-[0_1px_6px_rgba(37,99,235,0.4)] border border-blue-400/30' 
+                    : 'bg-black/10 dark:bg-white/10 border border-black/5 dark:border-white/10'
+                }`}
+                title={isActive ? "Disable parameter" : "Enable parameter"}
               >
-                {isActive ? (
-                  <ToggleRight size={18} className="text-blue-500 dark:text-blue-400 drop-shadow-sm" />
-                ) : (
-                  <ToggleLeft size={18} className="text-slate-300 dark:text-slate-700" />
-                )}
+                <div className={`w-3 h-3 rounded-full bg-white shadow-xs transition-transform duration-300 [transition-timing-function:cubic-bezier(0.34,1.56,0.64,1)] transform ${
+                  isActive ? 'translate-x-3' : 'translate-x-0'
+                }`} />
               </button>
             )}
           </div>
@@ -612,8 +615,8 @@ const CustomDropdown = ({
             type="button"
             disabled={isInputDisabled}
             onClick={() => setIsOpen(!isOpen)}
-            className={`w-full flex items-center justify-between bg-white dark:bg-slate-900/40 border px-4 py-3 rounded-xl text-[13px] font-medium text-left transition-all duration-200 outline-none
-              ${isOpen ? (isLocked ? 'border-amber-500 ring-2 ring-amber-500/10' : 'border-blue-500 ring-2 ring-blue-500/10') : highlight ? 'border-purple-500/50 ring-1 ring-purple-500/20 shadow-[0_0_10px_rgba(168,85,247,0.1)]' : isLocked ? 'border-amber-500/40 dark:border-amber-500/30' : 'border-slate-200 dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700'}
+            className={`w-full flex items-center justify-between bg-white/70 dark:bg-white/[0.04] hover:bg-white/90 dark:hover:bg-white/[0.08] backdrop-blur-xl backdrop-saturate-[180%] border px-4 py-3 rounded-2xl text-[13px] font-medium text-left transition-all duration-200 outline-none
+              ${isOpen ? (isLocked ? 'border-amber-500 ring-2 ring-amber-500/20' : 'border-blue-500 ring-2 ring-blue-500/20 shadow-md') : highlight ? 'border-purple-500/50 ring-1 ring-purple-500/20 shadow-[0_0_12px_rgba(168,85,247,0.15)]' : isLocked ? 'border-amber-500/40 dark:border-amber-500/30' : 'border-white/80 dark:border-white/[0.08] shadow-[0_2px_8px_rgba(0,0,0,0.03),inset_0_1px_1px_rgba(255,255,255,0.8)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)] hover:border-slate-300 dark:hover:border-slate-700'}
               ${isDefault && !isLocked ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-slate-100'}
               disabled:cursor-not-allowed`}
           >
@@ -636,7 +639,7 @@ const CustomDropdown = ({
           )}
   
           {isOpen && (
-            <div className="absolute z-[200] w-full mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top">
+            <div className="absolute z-[200] w-full mt-2 bg-white/85 dark:bg-slate-900/85 backdrop-blur-2xl backdrop-saturate-[180%] border border-white/60 dark:border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.25),inset_0_1px_1px_rgba(255,255,255,0.8)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.1)] overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top">
               {isLocked ? (
                 <div className="px-3.5 py-2 bg-amber-500/10 border-b border-amber-500/20 flex items-center justify-between text-[11px] text-amber-700 dark:text-amber-300 select-none">
                   <div className="flex items-center gap-1.5 font-semibold">
@@ -1704,11 +1707,18 @@ export default function App() {
   const activeModelLabel = activeModelObj ? activeModelObj.label : options.model;
 
   return (
-    <div className={`flex h-screen overflow-hidden font-sans transition-colors duration-500 ${isDarkMode ? 'dark bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
+    <div className={`flex h-screen overflow-hidden font-sans transition-colors duration-500 relative ${isDarkMode ? 'dark bg-[#080d1a] text-slate-100' : 'bg-[#f4f7fb] text-slate-900'}`}>
       
-      <header className="fixed top-0 left-0 right-0 h-16 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 z-[100] flex items-center justify-between px-8">
+      {/* Ambient Glassmorphism Refractive Glow Mesh */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute -top-[15%] left-[20%] w-[650px] h-[650px] rounded-full bg-blue-500/10 dark:bg-blue-600/[0.12] blur-[140px] transform-gpu" />
+        <div className="absolute top-[35%] right-[5%] w-[550px] h-[550px] rounded-full bg-indigo-500/8 dark:bg-purple-600/[0.08] blur-[150px] transform-gpu" />
+        <div className="absolute -bottom-[10%] left-[25%] w-[550px] h-[550px] rounded-full bg-cyan-500/8 dark:bg-cyan-600/[0.07] blur-[140px] transform-gpu" />
+      </div>
+      
+      <header className="fixed top-0 left-0 right-0 h-16 bg-white/70 dark:bg-slate-950/70 backdrop-blur-2xl backdrop-saturate-[180%] border-b border-white/50 dark:border-white/[0.08] shadow-[0_4px_24px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)] z-[100] flex items-center justify-between px-8">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white dark:bg-white text-slate-900 rounded-xl flex items-center justify-center shadow-md">
+          <div className="w-10 h-10 bg-white/90 dark:bg-white text-slate-900 rounded-2xl flex items-center justify-center shadow-[0_4px_14px_rgba(0,0,0,0.08),inset_0_1px_1px_rgba(255,255,255,0.9)] border border-white/80 dark:border-white/20">
             <Command size={22} strokeWidth={2.5} />
           </div>
           <div className="flex flex-col">
@@ -1723,7 +1733,7 @@ export default function App() {
           </div>
           <button 
             onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-            className="ml-2 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+            className="ml-2 p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white/60 dark:hover:bg-white/[0.08] rounded-xl transition-colors backdrop-blur-md"
             title="Toggle Sidebar"
           >
             {isSidebarOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
@@ -1732,8 +1742,8 @@ export default function App() {
 
         <div className="flex items-center gap-3">
           {batches.length > 0 && (
-            <div className="hidden md:flex items-center mr-4">
-              <div className="flex items-center h-9 px-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-sm">
+            <div className="hidden md:flex items-center mr-2">
+              <div className="flex items-center h-9 px-1 rounded-2xl border border-white/60 dark:border-white/[0.08] bg-white/50 dark:bg-white/[0.04] backdrop-blur-xl shadow-[0_2px_8px_rgba(0,0,0,0.02),inset_0_1px_1px_rgba(255,255,255,0.7)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)]">
                 
                 {/* Total Segment */}
                 <div className="flex items-center gap-2 px-3 h-full">
@@ -1745,7 +1755,7 @@ export default function App() {
                 </div>
 
                 {/* Divider */}
-                <div className="w-px h-3 bg-slate-200 dark:bg-slate-700" />
+                <div className="w-px h-3 bg-slate-200/80 dark:bg-white/[0.1]" />
 
                 {/* Pending Segment */}
                 <div className="flex items-center gap-2 px-3 h-full">
@@ -1761,13 +1771,13 @@ export default function App() {
           )}
 
           {/* Always Visible View Mode Switcher (Icons Only) */}
-          <div className="flex items-center p-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-900/80">
+          <div className="flex items-center p-1 rounded-2xl border border-white/60 dark:border-white/[0.08] bg-white/50 dark:bg-white/[0.04] backdrop-blur-xl shadow-[0_2px_8px_rgba(0,0,0,0.02),inset_0_1px_1px_rgba(255,255,255,0.7)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)]">
             <button
               onClick={() => setPromptLayout('single')}
-              className={`p-1.5 rounded-lg transition-all ${
+              className={`p-1.5 rounded-xl transition-all ${
                 promptLayout === 'single'
-                  ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                  ? 'bg-white/90 dark:bg-white/[0.15] text-blue-600 dark:text-blue-400 shadow-sm border border-white/80 dark:border-white/10'
+                  : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
               }`}
               title="Single Column View (1 per row)"
               aria-label="Single Column View"
@@ -1776,10 +1786,10 @@ export default function App() {
             </button>
             <button
               onClick={() => setPromptLayout('grid')}
-              className={`p-1.5 rounded-lg transition-all ${
+              className={`p-1.5 rounded-xl transition-all ${
                 promptLayout === 'grid'
-                  ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                  ? 'bg-white/90 dark:bg-white/[0.15] text-blue-600 dark:text-blue-400 shadow-sm border border-white/80 dark:border-white/10'
+                  : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
               }`}
               title="2 Columns Side-by-Side View"
               aria-label="2 Columns View"
@@ -1787,17 +1797,17 @@ export default function App() {
               <Columns2 size={16} />
             </button>
 
-            <div className="w-px h-3.5 bg-slate-200 dark:bg-slate-700 mx-1" />
+            <div className="w-px h-3.5 bg-slate-200/80 dark:bg-white/[0.1] mx-1" />
 
             <button
               onClick={() => {
                 setIsCompactMode(!isCompactMode);
                 setExpandedCardIds(new Set());
               }}
-              className={`p-1.5 rounded-lg transition-all ${
+              className={`p-1.5 rounded-xl transition-all ${
                 isCompactMode
-                  ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                  ? 'bg-white/90 dark:bg-white/[0.15] text-blue-600 dark:text-blue-400 shadow-sm border border-white/80 dark:border-white/10'
+                  : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
               }`}
               title={isCompactMode ? "2-Line Compact Mode Active (Click to Expand All)" : "Full Prompts Active (Click to Enable 2-Line Compact Mode)"}
               aria-label="Toggle 2-Line Compact Mode"
@@ -1806,26 +1816,30 @@ export default function App() {
             </button>
           </div>
 
-          <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+          <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2.5 rounded-2xl border border-white/60 dark:border-white/[0.08] bg-white/50 dark:bg-white/[0.04] hover:bg-white/80 dark:hover:bg-white/[0.08] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white backdrop-blur-xl shadow-[0_2px_8px_rgba(0,0,0,0.02),inset_0_1px_1px_rgba(255,255,255,0.7)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)] transition-all active:scale-95">
             {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
           </button>
           
-          <button onClick={resetWorkspace} className="flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-red-500 hover:border-red-500/30 transition-all active:scale-[0.95]">
+          <button onClick={resetWorkspace} className="flex items-center gap-2 px-4 py-2 rounded-2xl text-[11px] font-bold uppercase tracking-widest border border-white/60 dark:border-white/[0.08] bg-white/50 dark:bg-white/[0.04] hover:bg-red-500/10 hover:border-red-500/30 text-slate-400 hover:text-red-500 backdrop-blur-xl shadow-[0_2px_8px_rgba(0,0,0,0.02),inset_0_1px_1px_rgba(255,255,255,0.7)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)] transition-all active:scale-[0.95]">
              <Trash2 size={14} />
              <span>Reset</span>
           </button>
           
-          <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+          <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-2xl text-[11px] font-bold uppercase tracking-widest border border-white/60 dark:border-white/[0.08] bg-white/50 dark:bg-white/[0.04] hover:bg-white/80 dark:hover:bg-white/[0.08] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white backdrop-blur-xl shadow-[0_2px_8px_rgba(0,0,0,0.02),inset_0_1px_1px_rgba(255,255,255,0.7)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)] transition-all active:scale-[0.95]">
              <Settings size={14} />
              <span>Config</span>
           </button>
           
-          <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 mx-1" />
+          <div className="h-6 w-px bg-slate-200/80 dark:bg-white/[0.1] mx-1" />
           
           <button 
             onClick={clearCopiedPrompts}
             disabled={stats.copied === 0}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-bold uppercase tracking-widest border transition-all active:scale-[0.95] ${stats.copied > 0 ? 'border-slate-200 dark:border-slate-800 text-orange-500 hover:text-white hover:bg-orange-500 hover:border-orange-500' : 'border-slate-200 dark:border-slate-800 text-slate-300 dark:text-slate-700 opacity-50 cursor-not-allowed'}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-[11px] font-bold uppercase tracking-widest border backdrop-blur-xl transition-all active:scale-[0.95] ${
+              stats.copied > 0 
+                ? 'border-orange-500/30 bg-orange-500/10 text-orange-500 hover:bg-orange-500 hover:text-white shadow-[0_2px_8px_rgba(249,115,22,0.15)]' 
+                : 'border-white/40 dark:border-white/[0.04] bg-white/30 dark:bg-white/[0.02] text-slate-300 dark:text-slate-700 opacity-40 cursor-not-allowed'
+            }`}
             title="Remove Copied Prompts"
           >
             <ListX size={14} />
@@ -1835,11 +1849,13 @@ export default function App() {
           <div className="relative" ref={exportMenuRef}>
             <button 
               onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all shadow-sm active:scale-[0.96] bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:opacity-90 border border-transparent`}
+              className="flex items-center gap-2 px-4 py-2 rounded-2xl text-[11px] font-bold uppercase tracking-widest transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] active:scale-[0.96] bg-white/75 hover:bg-white/95 dark:bg-white/[0.08] dark:hover:bg-white/[0.14] text-slate-800 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 backdrop-blur-2xl backdrop-saturate-[190%] border border-white/80 dark:border-white/[0.12] shadow-[0_4px_16px_rgba(0,0,0,0.04),inset_0_1px_1.5px_rgba(255,255,255,0.9)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.15)] hover:shadow-lg relative overflow-hidden cursor-pointer"
             >
-              <Download size={14} />
+              {/* Top Specular Rim */}
+              <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/90 dark:via-white/25 to-transparent pointer-events-none" />
+              <Download size={14} className="text-blue-500 shrink-0" />
               <span>Backup</span>
-              <ChevronDown size={14} className={`transition-transform ${isExportMenuOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown size={14} className={`transition-transform duration-300 ${isExportMenuOpen ? 'rotate-180 text-blue-500' : ''}`} />
             </button>
             
             {isExportMenuOpen && (
@@ -1863,26 +1879,26 @@ export default function App() {
         </div>
       </header>
 
-      <aside className={`${isSidebarOpen ? 'w-[340px] border-r' : 'w-0 border-r-0'} transition-all duration-300 ease-in-out border-slate-200/50 dark:border-slate-800/50 bg-white/90 dark:bg-slate-950/80 backdrop-blur-2xl flex flex-col shrink-0 relative z-40 h-full overflow-hidden shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)]`}>
+      <aside className={`${isSidebarOpen ? 'w-[340px] border-r' : 'w-0 border-r-0'} transition-all duration-300 ease-in-out border-white/50 dark:border-white/[0.08] bg-white/70 dark:bg-slate-950/70 backdrop-blur-2xl backdrop-saturate-[180%] flex flex-col shrink-0 relative z-40 h-full overflow-hidden shadow-[4px_0_24px_-12px_rgba(0,0,0,0.06)]`}>
         <div className="w-[339px] flex flex-col h-full shrink-0">
           <div className="flex-1 overflow-y-auto custom-scrollbar pt-16 px-6">
           <div className="py-8 flex flex-col gap-10 pb-8">
             
             {/* Mode Toggle */}
-            <div className="flex bg-gray-100 dark:bg-slate-800 rounded-lg p-1 gap-1">
+            <div className="flex bg-black/[0.04] dark:bg-white/[0.05] border border-black/[0.05] dark:border-white/[0.06] rounded-2xl p-1 gap-1 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)]">
               <button
                 onClick={() => setIsAdvanced(false)}
-                className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${!isAdvanced 
-                  ? 'bg-white dark:bg-slate-700 shadow-sm text-gray-900 dark:text-white' 
-                  : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300'}`}
+                className={`flex-1 py-1.5 text-xs font-semibold rounded-xl transition-all ${!isAdvanced 
+                  ? 'bg-white/90 dark:bg-white/[0.15] shadow-sm text-slate-900 dark:text-white border border-white/80 dark:border-white/10' 
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
               >
                 Basic
               </button>
               <button
                 onClick={() => setIsAdvanced(true)}
-                className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${isAdvanced 
-                  ? 'bg-white dark:bg-slate-700 shadow-sm text-gray-900 dark:text-white' 
-                  : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300'}`}
+                className={`flex-1 py-1.5 text-xs font-semibold rounded-xl transition-all ${isAdvanced 
+                  ? 'bg-white/90 dark:bg-white/[0.15] shadow-sm text-slate-900 dark:text-white border border-white/80 dark:border-white/10' 
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
               >
                 Advanced
               </button>
@@ -1943,7 +1959,7 @@ export default function App() {
                           ...lockedOverrides // Keep locked fields intact
                         });
                       }}
-                      className="py-2 px-3 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/50 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 transition-colors text-left truncate"
+                      className="py-2 px-3 bg-white/60 hover:bg-white/90 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] backdrop-blur-md border border-white/70 dark:border-white/[0.07] rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 shadow-[0_2px_6px_rgba(0,0,0,0.02),inset_0_1px_1px_rgba(255,255,255,0.7)] dark:shadow-[0_2px_6px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.06)] transition-all text-left truncate"
                     >
                       {preset.label}
                     </button>
@@ -1954,15 +1970,17 @@ export default function App() {
 
             {/* Feature Cards */}
             <div className="space-y-5">
-              <div className={`p-5 rounded-[24px] relative transition-all duration-300 border group
+              <div className={`p-5 rounded-[24px] relative transition-all duration-300 border group overflow-hidden
                 ${options.activeFields?.smartRefinement 
-                  ? 'bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800/30 shadow-md' 
-                  : 'bg-gradient-to-br from-white to-slate-50 dark:from-slate-900/40 dark:to-slate-900/20 border-slate-200 dark:border-slate-800/60 shadow-sm hover:shadow-md'
+                  ? 'bg-blue-500/[0.07] dark:bg-blue-500/[0.12] border-blue-500/30 dark:border-blue-400/25 shadow-[0_8px_30px_rgba(59,130,246,0.1),inset_0_1px_1px_rgba(255,255,255,0.8)] backdrop-blur-xl' 
+                  : 'bg-white/60 dark:bg-white/[0.03] border-white/70 dark:border-white/[0.08] shadow-[0_8px_24px_rgba(0,0,0,0.03),inset_0_1px_1px_rgba(255,255,255,0.8)] backdrop-blur-xl hover:bg-white/75 dark:hover:bg-white/[0.05]'
                 }`}>
+                {/* Specular top rim */}
+                <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/15 to-transparent pointer-events-none" />
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors duration-300
-                      ${options.activeFields?.smartRefinement ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white dark:bg-slate-800 text-slate-400 shadow-sm'}`}>
+                    <div className={`w-9 h-9 rounded-2xl flex items-center justify-center transition-colors duration-300
+                      ${options.activeFields?.smartRefinement ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white/80 dark:bg-slate-800 text-slate-400 shadow-sm border border-white/60 dark:border-white/10'}`}>
                       <Sparkles size={16} />
                     </div>
                     <div>
@@ -1970,24 +1988,33 @@ export default function App() {
                       <p className="text-[10px] text-slate-500 font-medium">Extract settings and refine prompt</p>
                     </div>
                   </div>
-                  <button onClick={() => setOptions({...options, activeFields: {...options.activeFields, smartRefinement: !options.activeFields?.smartRefinement}})} className={`w-11 h-6 rounded-full relative transition-colors duration-300 ease-out focus:outline-none ${options.activeFields?.smartRefinement ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-700'}`}>
-                    <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full shadow-sm transition-transform duration-300 cubic-bezier(0.4, 0, 0.2, 1) ${options.activeFields?.smartRefinement ? 'translate-x-5' : 'translate-x-0'}`} />
+                  <button 
+                    onClick={() => setOptions({...options, activeFields: {...options.activeFields, smartRefinement: !options.activeFields?.smartRefinement}})} 
+                    className={`w-12 h-6.5 rounded-full relative p-0.5 transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] focus:outline-none cursor-pointer active:scale-95 ${
+                      options.activeFields?.smartRefinement 
+                        ? 'bg-blue-600/90 dark:bg-blue-500/90 shadow-[0_2px_10px_rgba(37,99,235,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)] border border-blue-400/30' 
+                        : 'bg-black/10 dark:bg-white/10 shadow-[inset_0_1px_2px_rgba(0,0,0,0.15)] border border-black/5 dark:border-white/10'
+                    }`}
+                  >
+                    <div className={`w-5 h-5 rounded-full bg-white shadow-[0_2px_6px_rgba(0,0,0,0.25),inset_0_1px_1px_rgba(255,255,255,0.9)] transition-transform duration-300 [transition-timing-function:cubic-bezier(0.34,1.56,0.64,1)] transform ${
+                      options.activeFields?.smartRefinement ? 'translate-x-[22px]' : 'translate-x-0.5'
+                    }`} />
                   </button>
                 </div>
 
                 {options.activeFields?.smartRefinement && (
                   <>
-                    <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1 gap-1 mb-4">
-                      <button onClick={() => setAutoFillMode('image')} className={`flex-1 py-1.5 text-[11px] font-medium rounded-md transition-all flex items-center justify-center gap-1.5 ${autoFillMode === 'image' ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+                    <div className="flex bg-black/[0.04] dark:bg-white/[0.05] border border-black/[0.04] dark:border-white/[0.06] rounded-xl p-1 gap-1 mb-4 shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)]">
+                      <button onClick={() => setAutoFillMode('image')} className={`flex-1 py-1.5 text-[11px] font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${autoFillMode === 'image' ? 'bg-white dark:bg-white/[0.15] shadow-sm text-slate-900 dark:text-white border border-white/80 dark:border-white/10' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}>
                         <Image size={12} /> Image
                       </button>
-                      <button onClick={() => setAutoFillMode('text')} className={`flex-1 py-1.5 text-[11px] font-medium rounded-md transition-all flex items-center justify-center gap-1.5 ${autoFillMode === 'text' ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+                      <button onClick={() => setAutoFillMode('text')} className={`flex-1 py-1.5 text-[11px] font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${autoFillMode === 'text' ? 'bg-white dark:bg-white/[0.15] shadow-sm text-slate-900 dark:text-white border border-white/80 dark:border-white/10' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}>
                         <Type size={12} /> Text
                       </button>
                     </div>
 
                     {autoFillMode === 'image' ? (
-                      <div className="relative border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden text-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex items-center justify-center min-h-[8rem]">
+                      <div className="relative border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden text-center hover:bg-white/40 dark:hover:bg-white/[0.02] transition-colors flex items-center justify-center min-h-[8rem]">
                         <input type="file" accept="image/jpeg, image/png" onChange={(e) => setReferenceImage(e.target.files?.[0] || null)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-30" />
                         {referenceImage ? (
                           <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-slate-900/5 dark:bg-slate-900/50">
@@ -2010,7 +2037,7 @@ export default function App() {
                         )}
                       </div>
                     ) : (
-                      <textarea value={options.smartRefinementText} onChange={(e) => setOptions({...options, smartRefinementText: e.target.value, isFromImageReference: false})} placeholder="Describe your concept (e.g. 'a moody cinematic shot of a businessman in rain')..." className="w-full h-24 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-[12px] outline-none focus:ring-2 focus:ring-blue-500/20 transition-all resize-none custom-scrollbar" />
+                      <textarea value={options.smartRefinementText} onChange={(e) => setOptions({...options, smartRefinementText: e.target.value, isFromImageReference: false})} placeholder="Describe your concept (e.g. 'a moody cinematic shot of a businessman in rain')..." className="w-full h-24 bg-white/70 dark:bg-white/[0.04] backdrop-blur-md border border-white/80 dark:border-white/[0.08] shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] rounded-2xl px-4 py-3 text-[12px] outline-none focus:ring-2 focus:ring-blue-500/20 transition-all resize-none custom-scrollbar" />
                     )}
 
                     {(() => {
@@ -2022,12 +2049,12 @@ export default function App() {
                         <button 
                           onClick={handleAutoFill}
                           disabled={isAnalyzing || !hasSrContent}
-                          className={`w-full mt-4 py-2.5 rounded-xl font-bold uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed
+                          className={`w-full mt-4 py-2.5 rounded-2xl font-bold uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 backdrop-blur-md transition-all active:scale-[0.98] border disabled:opacity-50 disabled:cursor-not-allowed
                             ${!hasSrContent
-                               ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500' 
+                               ? 'bg-slate-200/80 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-transparent' 
                                : isSrUsed 
-                                 ? 'bg-red-500 hover:bg-red-600 text-white shadow-md shadow-red-500/20' 
-                                 : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-md shadow-emerald-500/20'}`}
+                                 ? 'bg-red-500/90 hover:bg-red-500 text-white shadow-md shadow-red-500/20 border-red-400/30' 
+                                 : 'bg-emerald-500/90 hover:bg-emerald-500 text-white shadow-md shadow-emerald-500/20 border-emerald-400/30'}`}
                         >
                           {isAnalyzing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                           {isSrUsed 
@@ -2042,18 +2069,29 @@ export default function App() {
               </div>
 
               {isAdvanced && (
-                <div className={`p-5 rounded-[24px] relative transition-all duration-300 border group
+                <div className={`p-5 rounded-[24px] relative transition-all duration-300 border group overflow-hidden
                   ${options.useCalendar 
-                    ? 'bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800/30 shadow-md' 
-                    : 'bg-gradient-to-br from-white to-slate-50 dark:from-slate-900/40 dark:to-slate-900/20 border-slate-200 dark:border-slate-800/60 shadow-sm hover:shadow-md'
+                    ? 'bg-blue-500/[0.07] dark:bg-blue-500/[0.12] border-blue-500/30 dark:border-blue-400/25 shadow-[0_8px_30px_rgba(59,130,246,0.1),inset_0_1px_1px_rgba(255,255,255,0.8)] backdrop-blur-xl' 
+                    : 'bg-white/60 dark:bg-white/[0.03] border-white/70 dark:border-white/[0.08] shadow-[0_8px_24px_rgba(0,0,0,0.03),inset_0_1px_1px_rgba(255,255,255,0.8)] backdrop-blur-xl hover:bg-white/75 dark:hover:bg-white/[0.05]'
                   }`}>
+                  {/* Specular top rim */}
+                  <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/15 to-transparent pointer-events-none" />
                   <div className="flex items-center justify-between mb-3">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors duration-300
-                      ${options.useCalendar ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white dark:bg-slate-800 text-slate-400 shadow-sm'}`}>
+                    <div className={`w-9 h-9 rounded-2xl flex items-center justify-center transition-colors duration-300
+                      ${options.useCalendar ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white/80 dark:bg-slate-800 text-slate-400 shadow-sm border border-white/60 dark:border-white/10'}`}>
                       <Calendar size={16} />
                     </div>
-                    <button onClick={() => setOptions({...options, useCalendar: !options.useCalendar})} className={`w-11 h-6 rounded-full relative transition-colors duration-300 ease-out focus:outline-none ${options.useCalendar ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-700'}`}>
-                      <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full shadow-sm transition-transform duration-300 cubic-bezier(0.4, 0, 0.2, 1) ${options.useCalendar ? 'translate-x-5' : 'translate-x-0'}`} />
+                    <button 
+                      onClick={() => setOptions({...options, useCalendar: !options.useCalendar})} 
+                      className={`w-12 h-6.5 rounded-full relative p-0.5 transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] focus:outline-none cursor-pointer active:scale-95 ${
+                        options.useCalendar 
+                          ? 'bg-blue-600/90 dark:bg-blue-500/90 shadow-[0_2px_10px_rgba(37,99,235,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)] border border-blue-400/30' 
+                          : 'bg-black/10 dark:bg-white/10 shadow-[inset_0_1px_2px_rgba(0,0,0,0.15)] border border-black/5 dark:border-white/10'
+                      }`}
+                    >
+                      <div className={`w-5 h-5 rounded-full bg-white shadow-[0_2px_6px_rgba(0,0,0,0.25),inset_0_1px_1px_rgba(255,255,255,0.9)] transition-transform duration-300 [transition-timing-function:cubic-bezier(0.34,1.56,0.64,1)] transform ${
+                        options.useCalendar ? 'translate-x-[22px]' : 'translate-x-0.5'
+                      }`} />
                     </button>
                   </div>
                   <h4 className={`text-[12px] font-bold transition-colors ${options.useCalendar ? 'text-blue-700 dark:text-blue-300' : 'text-slate-900 dark:text-slate-200'}`}>Dynamic Seasonality</h4>
@@ -2061,13 +2099,13 @@ export default function App() {
                   {options.useCalendar && (
                     <div className="mt-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
                       <div className="relative">
-                        <select value={options.calendarMonth} onChange={e => setOptions({...options, calendarMonth: e.target.value, calendarEvent: EVENTS_BY_MONTH[e.target.value][0]})} className="w-full appearance-none bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-4 py-2.5 rounded-xl text-[12px] font-medium outline-none focus:ring-2 focus:ring-blue-500/20 transition-all">
+                        <select value={options.calendarMonth} onChange={e => setOptions({...options, calendarMonth: e.target.value, calendarEvent: EVENTS_BY_MONTH[e.target.value][0]})} className="w-full appearance-none bg-white/70 dark:bg-white/[0.04] backdrop-blur-md border border-white/80 dark:border-white/[0.08] shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] px-4 py-2.5 rounded-2xl text-[12px] font-medium outline-none focus:ring-2 focus:ring-blue-500/20 transition-all">
                           {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
                         </select>
                         <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                       </div>
                       <div className="relative">
-                        <select value={options.calendarEvent} onChange={e => setOptions({...options, calendarEvent: e.target.value})} className="w-full appearance-none bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-4 py-2.5 rounded-xl text-[12px] font-medium outline-none focus:ring-2 focus:ring-blue-500/20 transition-all">
+                        <select value={options.calendarEvent} onChange={e => setOptions({...options, calendarEvent: e.target.value})} className="w-full appearance-none bg-white/70 dark:bg-white/[0.04] backdrop-blur-md border border-white/80 dark:border-white/[0.08] shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] px-4 py-2.5 rounded-2xl text-[12px] font-medium outline-none focus:ring-2 focus:ring-blue-500/20 transition-all">
                           {EVENTS_BY_MONTH[options.calendarMonth].map(e => <option key={e} value={e}>{e}</option>)}
                         </select>
                         <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -2181,61 +2219,59 @@ export default function App() {
       </aside>
 
       {/* MAIN AREA */}
-      <main ref={mainScrollRef} className="flex-1 overflow-y-auto custom-scrollbar relative bg-slate-50 dark:bg-slate-950 pt-16" style={{ backgroundImage: isDarkMode ? 'radial-gradient(circle, #1e293b 1px, transparent 1px)' : 'radial-gradient(circle, #e2e8f0 1px, transparent 1px)', backgroundSize: '24px 24px' }}>
+      <main ref={mainScrollRef} className="flex-1 overflow-y-auto custom-scrollbar relative bg-transparent pt-16 z-10" style={{ backgroundImage: isDarkMode ? 'radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 1px)' : 'radial-gradient(circle, rgba(0,0,0,0.07) 1px, transparent 1px)', backgroundSize: '24px 24px' }}>
         {(isGenerating || apiTrackerState.visible) && (
-          <div className={`fixed ${isSidebarOpen ? 'left-[340px]' : 'left-0'} right-0 bottom-12 z-[9999] flex justify-center pointer-events-none transition-all duration-300`}>
-            <div className="bg-slate-900/60 dark:bg-slate-950/50 backdrop-blur-3xl saturate-150 border-y border-x border-solid border-t-blue-400/50 border-r-blue-500/20 border-b-blue-600/10 border-l-blue-500/20 rounded-2xl p-5 shadow-[0_16px_40px_rgba(0,0,0,0.3),_inset_0_1px_0_rgba(255,255,255,0.1)] dark:shadow-[0_16px_40px_rgba(0,0,0,0.6),_inset_0_1px_0_rgba(255,255,255,0.05)] shadow-blue-500/20 font-mono text-xs overflow-hidden animate-in slide-in-from-bottom-8 fade-in duration-300 pointer-events-auto min-w-[340px] relative">
-              <div className="absolute inset-0 bg-blue-500/5 pointer-events-none animate-pulse"></div>
-              <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-blue-400 to-transparent opacity-70 animate-pulse"></div>
-              
-              <div className="flex items-center gap-4 mb-4 pb-4 border-b border-blue-500/20 relative z-10">
-                <div className="relative w-10 h-10 shrink-0">
-                  <div className="absolute inset-0 border-[2px] border-blue-900/50 rounded-full"></div>
-                  <div className="absolute inset-0 border-[2px] border-transparent border-t-blue-400 rounded-full animate-spin" style={{ animationDuration: '1s' }}></div>
-                  <div className="absolute inset-0 border-[2px] border-transparent border-b-blue-500 rounded-full animate-spin" style={{ animationDuration: '1.5s', animationDirection: 'reverse' }}></div>
-                  <div className="absolute inset-0 flex items-center justify-center text-blue-400"><Cpu size={16} /></div>
+          <div className={`fixed inset-0 ${isSidebarOpen ? 'left-[340px]' : 'left-0'} z-[9999] flex items-center justify-center p-6 bg-black/15 dark:bg-black/35 backdrop-saturate-[130%] pointer-events-none transition-all duration-300 animate-in fade-in`}>
+            <div className="bg-gradient-to-b from-white/80 via-white/65 to-white/55 dark:from-slate-900/80 dark:via-slate-900/70 dark:to-slate-950/80 backdrop-blur-2xl backdrop-saturate-[180%] border border-white/60 dark:border-white/10 shadow-[0_24px_60px_-12px_rgba(0,0,0,0.18),0_2px_6px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] dark:shadow-[0_30px_70px_-15px_rgba(0,0,0,0.75),0_1px_2px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.14)] rounded-[26px] p-6 w-full max-w-sm relative overflow-hidden transition-all duration-300 animate-in zoom-in-95 pointer-events-auto">
+              {/* Apple Specular Top Rim Highlight */}
+              <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/90 dark:via-white/25 to-transparent pointer-events-none" />
+
+              <div className="flex items-center gap-3.5 mb-4">
+                <div className="w-11 h-11 rounded-2xl bg-gradient-to-b from-blue-500/15 to-blue-600/5 dark:from-blue-400/20 dark:to-blue-500/5 border border-blue-500/25 dark:border-blue-400/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)] flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
+                  <Loader2 size={20} className="animate-spin" />
                 </div>
-                <div className="flex flex-col flex-1">
-                  <h3 className="text-[13px] font-black text-white tracking-tight uppercase">{isGenerating ? LOADING_STEPS[loadingStepIdx] : 'System Diagnostic'}</h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                    </span>
-                    <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest">SYS.NET • ACTIVE</p>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-[13px] font-bold tracking-tight text-slate-900 dark:text-white uppercase truncate">
+                    {isGenerating ? LOADING_STEPS[loadingStepIdx] : 'System Diagnostic'}
+                  </h3>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+                    <p className="text-[10px] font-mono font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">SYS.NET • ACTIVE</p>
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-2 mb-4 relative z-10">
-                <div className="flex justify-between items-center text-slate-300 text-[11px]">
-                  <span className="opacity-70">TARGET NODE:</span>
-                  <span className="uppercase text-emerald-400 font-bold">{apiTrackerState.currentProvider || activeProvider.toUpperCase()}</span>
+              {/* Recessed Frosted Data Tray (macOS Control Center style) */}
+              <div className="bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.05] dark:border-white/[0.06] shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.3)] rounded-2xl p-3.5 space-y-2 font-mono text-[11px]">
+                <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                  <span className="opacity-70 text-[10px] uppercase tracking-wider">TARGET NODE:</span>
+                  <span className="uppercase text-slate-800 dark:text-slate-200 font-bold">{apiTrackerState.currentProvider || activeProvider.toUpperCase()}</span>
                 </div>
-                <div className="flex justify-between items-center text-slate-300 text-[11px]">
-                  <span className="opacity-70">AI MODEL:</span>
-                  <span className="uppercase text-blue-300 font-bold truncate max-w-[180px] text-right" title={activeModelLabel}>{activeModelLabel}</span>
+                <div className="flex justify-between items-center text-slate-500 dark:text-slate-400 pt-1 border-t border-black/[0.04] dark:border-white/[0.04]">
+                  <span className="opacity-70 text-[10px] uppercase tracking-wider">AI MODEL:</span>
+                  <span className="uppercase text-blue-600 dark:text-blue-400 font-bold truncate max-w-[170px] text-right" title={activeModelLabel}>{activeModelLabel}</span>
                 </div>
                 {apiTrackerState.failedKeys.length > 0 && (
-                  <div className="flex justify-between items-center text-slate-300 text-[11px]">
-                    <span className="opacity-70">ERRORS:</span>
-                    <span className="text-orange-400 font-bold">{apiTrackerState.failedKeys.length}/{apiTrackerState.totalKeys}</span>
+                  <div className="flex justify-between items-center text-amber-500 pt-1 border-t border-black/[0.04] dark:border-white/[0.04]">
+                    <span className="opacity-70 text-[10px] uppercase tracking-wider">ERRORS:</span>
+                    <span className="font-bold">{apiTrackerState.failedKeys.length}/{apiTrackerState.totalKeys}</span>
                   </div>
                 )}
                 {apiTrackerState.attempt > 1 && (
-                   <div className="flex justify-between items-center text-slate-300 text-[11px]">
-                    <span className="opacity-70">CYCLE:</span>
-                    <span className="text-blue-300 font-bold">{apiTrackerState.attempt}/3</span>
+                  <div className="flex justify-between items-center text-blue-500 pt-1 border-t border-black/[0.04] dark:border-white/[0.04]">
+                    <span className="opacity-70 text-[10px] uppercase tracking-wider">CYCLE:</span>
+                    <span className="font-bold">{apiTrackerState.attempt}/3</span>
                   </div>
                 )}
               </div>
               
-              <div className="mt-3 text-[10px] text-emerald-400/90 border-t border-blue-500/20 pt-3 break-words relative z-10 flex items-start gap-2 font-bold leading-tight">
-                <span className="text-blue-500 shrink-0 mt-0.5">&gt;</span> 
-                <div className="flex-1">
+              {/* Frosted Status Bar */}
+              <div className="mt-3 px-3 py-2 rounded-xl bg-black/[0.02] dark:bg-white/[0.03] border border-black/[0.04] dark:border-white/[0.04] text-[10px] font-mono text-slate-600 dark:text-slate-300 flex items-center gap-2 leading-none">
+                <span className="text-blue-500 font-bold shrink-0">&gt;</span> 
+                <div className="flex-1 truncate">
                   <span className="uppercase"><TerminalText text={isGenerating ? (apiTrackerState.statusMessage || 'ESTABLISHING SECURE CONNECTION...') : (apiTrackerState.statusMessage || 'ESTABLISHING SECURE HANDSHAKE...')} /></span>
-                  <span className="inline-block w-2 h-3.5 bg-emerald-400 animate-pulse ml-1 align-middle"></span>
                 </div>
+                <span className="inline-block w-1.5 h-3 bg-blue-500 animate-pulse shrink-0 rounded-xs"></span>
               </div>
             </div>
           </div>
@@ -2252,11 +2288,17 @@ export default function App() {
                         const globalPromptNum = priorPromptsCount + pIdx + 1;
                         const isExpanded = !isCompactMode || expandedCardIds.has(p.id);
                         return (
-                          <div key={p.id} className="bg-gradient-to-br from-white/60 to-white/30 dark:from-slate-800/40 dark:to-slate-900/20 backdrop-blur-2xl border border-solid border-t-white/80 border-l-white/50 border-b-white/20 border-r-white/20 dark:border-t-white/20 dark:border-l-white/10 dark:border-b-transparent dark:border-r-transparent shadow-[0_8px_32px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] rounded-[20px] p-6 flex flex-col justify-between gap-4 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 relative group">
+                          <div key={p.id} className="bg-gradient-to-b from-white/80 via-white/65 to-white/55 dark:from-slate-900/80 dark:via-slate-900/70 dark:to-slate-950/80 backdrop-blur-2xl backdrop-saturate-[180%] border border-white/60 dark:border-white/10 shadow-[0_20px_50px_-10px_rgba(0,0,0,0.08),0_1px_3px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.85)] dark:shadow-[0_24px_60px_-12px_rgba(0,0,0,0.65),0_1px_2px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.12)] rounded-[26px] p-6 flex flex-col justify-between gap-4 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300 relative group overflow-hidden">
+                            {/* Apple Specular Top Rim Highlight */}
+                            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/90 dark:via-white/20 to-transparent pointer-events-none" />
+
                             <div className="flex items-center justify-between">
-                              <span className="text-[11px] font-mono font-bold tracking-widest text-slate-400 dark:text-slate-500 uppercase">
-                                #{globalPromptNum.toString().padStart(2, '0')}
-                              </span>
+                              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/[0.03] dark:bg-white/[0.05] border border-black/[0.04] dark:border-white/[0.06] shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)]">
+                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500/80"></span>
+                                <span className="text-[11px] font-mono font-bold tracking-widest text-slate-500 dark:text-slate-400 uppercase">
+                                  #{globalPromptNum.toString().padStart(2, '0')}
+                                </span>
+                              </div>
                             </div>
 
                           <div className="flex-1 flex flex-col justify-start">
@@ -2270,7 +2312,7 @@ export default function App() {
                                   e.stopPropagation();
                                   toggleCardExpand(p.id);
                                 }}
-                                className="inline-flex items-center gap-1.5 mt-2 self-start text-[11px] font-bold text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors cursor-pointer select-none group/toggle"
+                                className="inline-flex items-center gap-1.5 mt-2.5 self-start text-[11px] font-bold text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors cursor-pointer select-none group/toggle px-2 py-0.5 -ml-2 rounded-lg hover:bg-blue-500/10 dark:hover:bg-blue-400/10"
                               >
                                 <span>{isExpanded ? 'Show less' : 'Show full prompt'}</span>
                                 {isExpanded ? (
@@ -2282,16 +2324,23 @@ export default function App() {
                             )}
                           </div>
 
-                          <div className="flex items-end justify-between pt-3 border-t border-slate-100/80 dark:border-slate-800/80 gap-3">
+                          <div className="flex items-end justify-between pt-3.5 border-t border-black/[0.04] dark:border-white/[0.06] gap-3">
                              <div className="flex flex-col gap-0.5">
-                               <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500 font-mono">
+                               <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 font-mono">
                                  {p.text.split(/\s+/).filter(Boolean).length} words
                                </span>
                                <span className="text-[10px] text-slate-400/80 dark:text-slate-500 font-mono tracking-tight">
                                  {new Date(batch.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}, {new Date(batch.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                                </span>
                              </div>
-                             <button onClick={() => copyIndividual(batch.id, p.id, p.text)} className={`px-5 py-2 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all shrink-0 active:scale-[0.96] ${p.copied ? 'bg-emerald-500 text-white shadow-emerald-500/20' : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:opacity-85 shadow-sm'}`}>
+                             <button 
+                               onClick={() => copyIndividual(batch.id, p.id, p.text)} 
+                               className={`px-5 py-2 rounded-2xl text-[11px] font-bold uppercase tracking-wider transition-all shrink-0 active:scale-[0.96] ${
+                                 p.copied 
+                                   ? 'bg-emerald-500/90 text-white backdrop-blur-md shadow-lg shadow-emerald-500/20 border border-emerald-400/30' 
+                                   : 'bg-slate-900/90 dark:bg-white/95 text-white dark:text-slate-900 hover:opacity-90 backdrop-blur-xl border border-white/20 dark:border-white/50 shadow-[0_4px_14px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.25)] dark:shadow-[0_4px_14px_rgba(255,255,255,0.15),inset_0_1px_0_rgba(255,255,255,0.9)]'
+                               }`}
+                             >
                                {p.copied ? <><Check size={13} className="inline mr-1.5" />Copied</> : 'Copy Prompt'}
                              </button>
                           </div>
@@ -2310,13 +2359,15 @@ export default function App() {
               <h2 className="text-4xl font-black uppercase tracking-tightest leading-tight mb-4 bg-gradient-to-br from-slate-900 to-slate-500 dark:from-white dark:to-slate-500 bg-clip-text text-transparent">Ready to Architect</h2>
               <p className="text-[14px] font-medium text-slate-500 dark:text-slate-400 max-w-sm leading-relaxed mb-16 opacity-60">Configure your parameters in the sidebar to build high-performance commercial stock prompts.</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-2xl">
-                <div className="bg-gradient-to-br from-white/60 to-white/30 dark:from-slate-800/40 dark:to-slate-900/20 backdrop-blur-2xl border border-solid border-t-white/80 border-l-white/50 border-b-white/20 border-r-white/20 dark:border-t-white/20 dark:border-l-white/10 dark:border-b-transparent dark:border-r-transparent shadow-[0_8px_32px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] p-8 rounded-[28px] text-left space-y-4 hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group cursor-default relative">
-                  <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform duration-300"><Zap size={20} className="fill-current" /></div>
+                <div className="bg-gradient-to-b from-white/75 via-white/60 to-white/50 dark:from-slate-900/70 dark:via-slate-900/60 dark:to-slate-950/70 backdrop-blur-2xl backdrop-saturate-[180%] border border-white/60 dark:border-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.85)] dark:shadow-[0_16px_40px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.12)] p-8 rounded-[28px] text-left space-y-4 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group cursor-default relative overflow-hidden">
+                  <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/15 to-transparent pointer-events-none" />
+                  <div className="w-10 h-10 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform duration-300 border border-amber-500/20"><Zap size={20} className="fill-current" /></div>
                   <h3 className="text-xs font-black uppercase tracking-widest group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">Production Grade</h3>
                   <p className="text-[13px] leading-relaxed text-slate-500 dark:text-slate-400">Prompts are algorithmically optimized for Adobe Stock and Freepik guidelines.</p>
                 </div>
-                <div className="bg-gradient-to-br from-white/60 to-white/30 dark:from-slate-800/40 dark:to-slate-900/20 backdrop-blur-2xl border border-solid border-t-white/80 border-l-white/50 border-b-white/20 border-r-white/20 dark:border-t-white/20 dark:border-l-white/10 dark:border-b-transparent dark:border-r-transparent shadow-[0_8px_32px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] p-8 rounded-[28px] text-left space-y-4 hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group cursor-default relative">
-                  <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform duration-300"><Shield size={20} className="fill-current" /></div>
+                <div className="bg-gradient-to-b from-white/75 via-white/60 to-white/50 dark:from-slate-900/70 dark:via-slate-900/60 dark:to-slate-950/70 backdrop-blur-2xl backdrop-saturate-[180%] border border-white/60 dark:border-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.85)] dark:shadow-[0_16px_40px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.12)] p-8 rounded-[28px] text-left space-y-4 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group cursor-default relative overflow-hidden">
+                  <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/15 to-transparent pointer-events-none" />
+                  <div className="w-10 h-10 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform duration-300 border border-blue-500/20"><Shield size={20} className="fill-current" /></div>
                   <h3 className="text-xs font-black uppercase tracking-widest group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">Dual Intelligence</h3>
                   <p className="text-[13px] leading-relaxed text-slate-500 dark:text-slate-400">Seamlessly transition between Gemini Flash and Pro engines based on complexity.</p>
                 </div>
@@ -2336,11 +2387,11 @@ export default function App() {
           </footer>
         </div>
         <div className="fixed bottom-10 right-10 z-[90] flex flex-col gap-3 pointer-events-none">
-          <button onClick={scrollToTop} className={`pointer-events-auto p-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full shadow-2xl transition-all duration-500 ease-out transform hover:scale-110 ${showScrollTop ? 'translate-y-0 opacity-100 rotate-0' : 'translate-y-10 opacity-0 pointer-events-none'}`}>
-            <ChevronUp size={24} strokeWidth={3} />
+          <button onClick={scrollToTop} className={`pointer-events-auto p-3.5 bg-white/80 dark:bg-slate-900/80 text-slate-800 dark:text-white backdrop-blur-2xl backdrop-saturate-[180%] border border-white/70 dark:border-white/10 rounded-full shadow-[0_12px_32px_rgba(0,0,0,0.12),inset_0_1px_1px_rgba(255,255,255,0.8)] dark:shadow-[0_12px_32px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.15)] transition-all duration-300 ease-out transform hover:scale-110 active:scale-95 ${showScrollTop ? 'translate-y-0 opacity-100 rotate-0' : 'translate-y-10 opacity-0 pointer-events-none'}`}>
+            <ChevronUp size={20} strokeWidth={2.5} />
           </button>
-          <button onClick={scrollToBottom} className={`pointer-events-auto p-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full shadow-2xl transition-all duration-500 ease-out transform hover:scale-110 ${showScrollBottom ? 'translate-y-0 opacity-100 rotate-0' : '-translate-y-10 opacity-0 pointer-events-none'}`}>
-            <ChevronDown size={24} strokeWidth={3} />
+          <button onClick={scrollToBottom} className={`pointer-events-auto p-3.5 bg-white/80 dark:bg-slate-900/80 text-slate-800 dark:text-white backdrop-blur-2xl backdrop-saturate-[180%] border border-white/70 dark:border-white/10 rounded-full shadow-[0_12px_32px_rgba(0,0,0,0.12),inset_0_1px_1px_rgba(255,255,255,0.8)] dark:shadow-[0_12px_32px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.15)] transition-all duration-300 ease-out transform hover:scale-110 active:scale-95 ${showScrollBottom ? 'translate-y-0 opacity-100 rotate-0' : '-translate-y-10 opacity-0 pointer-events-none'}`}>
+            <ChevronDown size={20} strokeWidth={2.5} />
           </button>
         </div>
       </main>
@@ -2385,13 +2436,15 @@ export default function App() {
       )}
       
       {isModalOpen && (
-        <div className="fixed inset-0 z-[2500] flex items-center justify-center p-6 bg-black/50 backdrop-blur-md">
-          <div className="bg-white/90 dark:bg-slate-900/80 backdrop-blur-2xl border border-white/50 dark:border-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.2)] dark:shadow-[0_32px_64px_rgba(0,0,0,0.6)] w-full max-w-4xl rounded-[32px] p-0 shadow-2xl relative overflow-hidden flex flex-col">
+        <div className="fixed inset-0 z-[2500] flex items-center justify-center p-6 bg-black/40 backdrop-blur-xl animate-in fade-in duration-300">
+          <div className="bg-gradient-to-b from-white/90 via-white/80 to-white/70 dark:from-slate-900/90 dark:via-slate-900/80 dark:to-slate-950/90 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/70 dark:border-white/10 shadow-[0_32px_80px_rgba(0,0,0,0.25)] dark:shadow-[0_32px_80px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.12)] w-full max-w-4xl rounded-[32px] p-0 shadow-2xl relative overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+            {/* Top Specular Rim */}
+            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/90 dark:via-white/20 to-transparent pointer-events-none" />
             
             {/* Header */}
-            <div className="flex items-center justify-between p-8 pb-6 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between p-8 pb-6 border-b border-black/[0.04] dark:border-white/[0.06]">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-slate-950 dark:bg-white text-white dark:text-slate-950 rounded-2xl flex items-center justify-center"><Settings size={24} /></div>
+                <div className="w-12 h-12 bg-slate-950 dark:bg-white text-white dark:text-slate-950 rounded-2xl flex items-center justify-center shadow-lg"><Settings size={24} /></div>
                 <div>
                   <h2 className="text-lg font-black uppercase text-slate-900 dark:text-white">API Secrets Management</h2>
                   <p className="text-xs text-slate-500 font-medium mt-1">Configure models and connectivity</p>
@@ -2411,7 +2464,7 @@ export default function App() {
 
             <div className="p-8">
               {/* Provider Tabs */}
-              <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-950 p-2 rounded-2xl mb-8">
+              <div className="flex items-center gap-2 bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.04] dark:border-white/[0.06] p-1.5 rounded-2xl mb-8">
                 {PROVIDERS.map(p => (
                   <button
                     key={p.id}
@@ -2422,7 +2475,7 @@ export default function App() {
                         setOptions(prev => ({...prev, model: modelsForProvider[0].value as any}));
                       }
                     }}
-                    className={`flex-1 py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-sm font-bold transition-all ${activeProviderTab === p.id ? 'bg-white dark:bg-slate-800 text-blue-500 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                    className={`flex-1 py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-sm font-bold transition-all ${activeProviderTab === p.id ? 'bg-white/90 dark:bg-white/[0.15] text-blue-600 dark:text-blue-400 shadow-sm border border-white/80 dark:border-white/10' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
                   >
                      <p.icon size={16} />
                      {p.name}
@@ -2442,7 +2495,7 @@ export default function App() {
                         <select 
                           value={options.model} 
                           onChange={e => setOptions(prev => ({...prev, model: e.target.value as any}))}
-                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 cursor-pointer appearance-none font-medium"
+                          className="w-full bg-white/70 dark:bg-white/[0.04] backdrop-blur-md border border-white/80 dark:border-white/[0.08] shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] rounded-2xl px-4 py-3 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 cursor-pointer appearance-none font-medium"
                         >
                           {OPTIONS.model.filter(m => m.provider === activeProviderTab).map(m => (
                             <option key={m.value} value={m.value}>{m.label}</option>

@@ -67,10 +67,13 @@ export const RunArchitectButton: React.FC<Props> = ({ onClick, isGenerating, lab
             }
           }}
           disabled={disabled || phase !== 'idle'}
-          className="relative z-10 w-full h-[52px] rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black uppercase tracking-widest text-[13px] flex items-center justify-center shadow-lg shadow-slate-900/20 hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-300 overflow-hidden"
+          className="relative z-10 w-full h-[52px] rounded-full bg-gradient-to-b from-slate-900/90 via-slate-900/85 to-slate-950/95 dark:from-white/95 dark:via-white/90 dark:to-white/80 text-white dark:text-slate-950 font-black uppercase tracking-widest text-[13px] flex items-center justify-center backdrop-blur-2xl backdrop-saturate-[200%] border border-white/25 dark:border-white/60 shadow-[0_14px_35px_rgba(15,23,42,0.25),inset_0_1px_1.5px_rgba(255,255,255,0.5)] dark:shadow-[0_14px_35px_rgba(255,255,255,0.15),inset_0_1px_1.5px_rgba(255,255,255,1)] hover:shadow-[0_20px_45px_rgba(59,130,246,0.3)] hover:-translate-y-0.5 active:scale-[0.97] transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] overflow-hidden cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {/* Subtle internal gradient to make it look premium */}
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-800/0 via-slate-800/50 to-slate-800/0 dark:from-slate-100/0 dark:via-slate-100/50 dark:to-slate-100/0 pointer-events-none"></div>
+          {/* Top Specular Rim */}
+          <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/90 to-transparent pointer-events-none" />
+
+          {/* Internal Liquid Glass Shimmer */}
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.08] dark:via-slate-900/[0.04] to-transparent pointer-events-none"></div>
 
           {/* Loading Wavy Line */}
           <div 
