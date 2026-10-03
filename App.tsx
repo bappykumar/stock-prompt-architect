@@ -2243,69 +2243,58 @@ export default function App() {
 
         <div className={`mx-auto px-8 py-16 min-h-full flex flex-col transition-all duration-300 ${promptLayout === 'grid' ? 'max-w-7xl' : 'max-w-4xl'}`}>
           {batches.length > 0 ? (
-            <div className="flex flex-col gap-12 flex-1">
-               {batches.map((batch, idx) => (
-                  <div key={batch.id} className="space-y-8">
-                    <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-white dark:bg-slate-900 rounded-xl flex items-center justify-center border border-slate-200 dark:border-slate-800 shadow-sm"><Clock size={18} /></div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold opacity-80">BATCH {batches.length - idx}</span>
-                            <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800/80 px-2 py-0.5 rounded-full">
-                              {batch.prompts.length} {batch.prompts.length === 1 ? 'Prompt' : 'Prompts'}
+            <div className="flex flex-col gap-5 flex-1">
+                {batches.map((batch) => (
+                  <div key={batch.id} className={`grid gap-5 ${promptLayout === 'grid' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
+                    {batch.prompts.map((p, pIdx) => {
+                      const isExpanded = !isCompactMode || expandedCardIds.has(p.id);
+                      return (
+                        <div key={p.id} className="bg-gradient-to-br from-white/60 to-white/30 dark:from-slate-800/40 dark:to-slate-900/20 backdrop-blur-2xl border border-solid border-t-white/80 border-l-white/50 border-b-white/20 border-r-white/20 dark:border-t-white/20 dark:border-l-white/10 dark:border-b-transparent dark:border-r-transparent shadow-[0_8px_32px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] rounded-[20px] p-6 flex flex-col justify-between gap-4 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 relative group">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-mono font-bold tracking-widest text-slate-400 dark:text-slate-500 uppercase">
+                              #{(pIdx + 1).toString().padStart(2, '0')}
                             </span>
                           </div>
-                        </div>
-                      </div>
 
-                      <div className="text-[10px] font-bold opacity-40 uppercase tracking-widest">{new Date(batch.timestamp).toLocaleTimeString()}</div>
-                    </div>
-                    <div className={`grid gap-6 ${promptLayout === 'grid' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
-                      {batch.prompts.map((p, pIdx) => {
-                        const isExpanded = !isCompactMode || expandedCardIds.has(p.id);
-                        return (
-                          <div key={p.id} className="bg-gradient-to-br from-white/60 to-white/30 dark:from-slate-800/40 dark:to-slate-900/20 backdrop-blur-2xl border border-solid border-t-white/80 border-l-white/50 border-b-white/20 border-r-white/20 dark:border-t-white/20 dark:border-l-white/10 dark:border-b-transparent dark:border-r-transparent shadow-[0_8px_32px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] rounded-[24px] p-8 flex flex-col justify-between gap-5 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300 relative group">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Prompt #{pIdx+1}</span>
-                              <span className="text-2xl font-black opacity-10">#{pIdx+1}</span>
-                            </div>
+                          <div className="flex-1 flex flex-col justify-start">
+                            <p className={`text-[14px] leading-relaxed text-slate-700 dark:text-slate-200 select-text transition-all duration-200 ${!isExpanded ? 'line-clamp-2' : ''}`}>
+                              {p.text}
+                            </p>
+                            {isCompactMode && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleCardExpand(p.id);
+                                }}
+                                className="inline-flex items-center gap-1.5 mt-2 self-start text-[11px] font-bold text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors cursor-pointer select-none group/toggle"
+                              >
+                                <span>{isExpanded ? 'Show less' : 'Show full prompt'}</span>
+                                {isExpanded ? (
+                                  <ChevronUp size={13} className="transition-transform group-hover/toggle:-translate-y-0.5" />
+                                ) : (
+                                  <ChevronDown size={13} className="transition-transform group-hover/toggle:translate-y-0.5" />
+                                )}
+                              </button>
+                            )}
+                          </div>
 
-                            <div className="flex-1 flex flex-col justify-start">
-                              <p className={`text-[15px] font-medium leading-relaxed select-text transition-all duration-200 ${!isExpanded ? 'line-clamp-2' : ''}`}>
-                                {p.text}
-                              </p>
-                              {isCompactMode && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    toggleCardExpand(p.id);
-                                  }}
-                                  className="inline-flex items-center gap-1.5 mt-2.5 self-start text-[11px] font-bold text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors cursor-pointer select-none group/toggle"
-                                >
-                                  <span>{isExpanded ? 'Show less' : 'Show full prompt'}</span>
-                                  {isExpanded ? (
-                                    <ChevronUp size={13} className="transition-transform group-hover/toggle:-translate-y-0.5" />
-                                  ) : (
-                                    <ChevronDown size={13} className="transition-transform group-hover/toggle:translate-y-0.5" />
-                                  )}
-                                </button>
-                              )}
-                            </div>
-
-                            <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
-                               <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 font-mono">
+                          <div className="flex items-end justify-between pt-3 border-t border-slate-100/80 dark:border-slate-800/80 gap-3">
+                             <div className="flex flex-col gap-0.5">
+                               <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500 font-mono">
                                  {p.text.split(/\s+/).filter(Boolean).length} words
                                </span>
-                               <button onClick={() => copyIndividual(batch.id, p.id, p.text)} className={`px-6 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-[0.96] ${p.copied ? 'bg-emerald-500 text-white shadow-emerald-500/20' : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:opacity-80 shadow-md'}`}>
-                                 {p.copied ? <><Check size={14} className="inline mr-2" />Copied</> : 'Copy Prompt'}
-                               </button>
-                            </div>
+                               <span className="text-[10px] text-slate-400/80 dark:text-slate-500 font-mono tracking-tight">
+                                 {new Date(batch.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}, {new Date(batch.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                               </span>
+                             </div>
+                             <button onClick={() => copyIndividual(batch.id, p.id, p.text)} className={`px-5 py-2 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all shrink-0 active:scale-[0.96] ${p.copied ? 'bg-emerald-500 text-white shadow-emerald-500/20' : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:opacity-85 shadow-sm'}`}>
+                               {p.copied ? <><Check size={13} className="inline mr-1.5" />Copied</> : 'Copy Prompt'}
+                             </button>
                           </div>
-                        );
-                      })}
-                    </div>
+                        </div>
+                      );
+                    })}
                   </div>
                ))}
             </div>
