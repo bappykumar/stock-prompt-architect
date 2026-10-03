@@ -115,9 +115,18 @@
         to { opacity: 1; transform: translateY(0); }
       }
 
-      /* Button Hover Transitions */
-      button, select, input, .card-hover {
+      /* Button Hover Transitions - avoid overriding switches and custom components */
+      button:not([role="switch"]):not(.no-global-transition), select, input, .card-hover {
         transition: all 0.2s ease;
+      }
+
+      /* Apple Fluid Switch System */
+      .apple-switch-track {
+        transition: background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease, box-shadow 0.25s ease !important;
+      }
+      .apple-switch-thumb {
+        transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+        will-change: transform;
       }
       
       @keyframes scan {

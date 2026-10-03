@@ -592,18 +592,20 @@ const CustomDropdown = ({
             {canToggle && onToggle && (
               <button 
                 type="button"
+                role="switch"
+                aria-checked={isActive}
                 onClick={(e) => {
                   e.stopPropagation();
                   onToggle(!isActive);
                 }}
-                className={`w-7 h-4 rounded-full relative p-0.5 transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] focus:outline-none cursor-pointer active:scale-90 ${
+                className={`w-7 h-4 rounded-full relative p-0.5 apple-switch-track focus:outline-none cursor-pointer active:scale-95 ${
                   isActive 
-                    ? 'bg-blue-600/90 dark:bg-blue-500/90 shadow-[0_1px_6px_rgba(37,99,235,0.4)] border border-blue-400/30' 
-                    : 'bg-black/10 dark:bg-white/10 border border-black/5 dark:border-white/10'
+                    ? 'bg-blue-600 dark:bg-blue-500 shadow-[0_1px_6px_rgba(37,99,235,0.4)] border border-blue-400/30' 
+                    : 'bg-black/15 dark:bg-white/15 border border-black/10 dark:border-white/10'
                 }`}
                 title={isActive ? "Disable parameter" : "Enable parameter"}
               >
-                <div className={`w-3 h-3 rounded-full bg-white shadow-xs transition-transform duration-300 [transition-timing-function:cubic-bezier(0.34,1.56,0.64,1)] transform ${
+                <div className={`w-3 h-3 rounded-full bg-white shadow-xs apple-switch-thumb transform ${
                   isActive ? 'translate-x-3' : 'translate-x-0'
                 }`} />
               </button>
@@ -615,8 +617,8 @@ const CustomDropdown = ({
             type="button"
             disabled={isInputDisabled}
             onClick={() => setIsOpen(!isOpen)}
-            className={`w-full flex items-center justify-between bg-white/70 dark:bg-white/[0.04] hover:bg-white/90 dark:hover:bg-white/[0.08] backdrop-blur-xl backdrop-saturate-[180%] border px-4 py-3 rounded-2xl text-[13px] font-medium text-left transition-all duration-200 outline-none
-              ${isOpen ? (isLocked ? 'border-amber-500 ring-2 ring-amber-500/20' : 'border-blue-500 ring-2 ring-blue-500/20 shadow-md') : highlight ? 'border-purple-500/50 ring-1 ring-purple-500/20 shadow-[0_0_12px_rgba(168,85,247,0.15)]' : isLocked ? 'border-amber-500/40 dark:border-amber-500/30' : 'border-white/80 dark:border-white/[0.08] shadow-[0_2px_8px_rgba(0,0,0,0.03),inset_0_1px_1px_rgba(255,255,255,0.8)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)] hover:border-slate-300 dark:hover:border-slate-700'}
+            className={`w-full flex items-center justify-between bg-white/85 dark:bg-white/[0.04] hover:bg-white dark:hover:bg-white/[0.08] backdrop-blur-xl backdrop-saturate-[180%] border px-4 py-3 rounded-2xl text-[13px] font-medium text-left transition-all duration-200 outline-none
+              ${isOpen ? (isLocked ? 'border-amber-500 ring-2 ring-amber-500/20' : 'border-blue-500 ring-2 ring-blue-500/20 shadow-md') : highlight ? 'border-purple-500/50 ring-1 ring-purple-500/20 shadow-[0_0_12px_rgba(168,85,247,0.15)]' : isLocked ? 'border-amber-500/40 dark:border-amber-500/30' : 'border-slate-200/90 dark:border-white/[0.08] shadow-[0_2px_8px_rgba(0,0,0,0.03),inset_0_1px_1px_rgba(255,255,255,0.9)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)] hover:border-slate-300 dark:hover:border-slate-700'}
               ${isDefault && !isLocked ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-slate-100'}
               disabled:cursor-not-allowed`}
           >
@@ -639,7 +641,7 @@ const CustomDropdown = ({
           )}
   
           {isOpen && (
-            <div className="absolute z-[200] w-full mt-2 bg-white/85 dark:bg-slate-900/85 backdrop-blur-2xl backdrop-saturate-[180%] border border-white/60 dark:border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.25),inset_0_1px_1px_rgba(255,255,255,0.8)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.1)] overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top">
+            <div className="absolute z-[200] w-full mt-2 bg-white/95 dark:bg-slate-900/85 backdrop-blur-2xl backdrop-saturate-[180%] border border-slate-200/90 dark:border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.18),inset_0_1px_1px_rgba(255,255,255,0.9)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.1)] overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top">
               {isLocked ? (
                 <div className="px-3.5 py-2 bg-amber-500/10 border-b border-amber-500/20 flex items-center justify-between text-[11px] text-amber-700 dark:text-amber-300 select-none">
                   <div className="flex items-center gap-1.5 font-semibold">
@@ -1716,9 +1718,9 @@ export default function App() {
         <div className="absolute -bottom-[10%] left-[25%] w-[550px] h-[550px] rounded-full bg-cyan-500/8 dark:bg-cyan-600/[0.07] blur-[140px] transform-gpu" />
       </div>
       
-      <header className="fixed top-0 left-0 right-0 h-16 bg-white/70 dark:bg-slate-950/70 backdrop-blur-2xl backdrop-saturate-[180%] border-b border-white/50 dark:border-white/[0.08] shadow-[0_4px_24px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)] z-[100] flex items-center justify-between px-8">
+      <header className="fixed top-0 left-0 right-0 h-16 bg-white/80 dark:bg-slate-950/70 backdrop-blur-2xl backdrop-saturate-[180%] border-b border-slate-200/80 dark:border-white/[0.08] shadow-[0_4px_24px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)] z-[100] flex items-center justify-between px-8">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white/90 dark:bg-white text-slate-900 rounded-2xl flex items-center justify-center shadow-[0_4px_14px_rgba(0,0,0,0.08),inset_0_1px_1px_rgba(255,255,255,0.9)] border border-white/80 dark:border-white/20">
+          <div className="w-10 h-10 bg-white/90 dark:bg-white text-slate-900 rounded-2xl flex items-center justify-center shadow-[0_4px_14px_rgba(0,0,0,0.08),inset_0_1px_1px_rgba(255,255,255,0.9)] border border-slate-200/80 dark:border-white/20">
             <Command size={22} strokeWidth={2.5} />
           </div>
           <div className="flex flex-col">
@@ -1733,7 +1735,7 @@ export default function App() {
           </div>
           <button 
             onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-            className="ml-2 p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white/60 dark:hover:bg-white/[0.08] rounded-xl transition-colors backdrop-blur-md"
+            className="ml-2 p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-black/[0.04] dark:hover:bg-white/[0.08] rounded-xl transition-colors backdrop-blur-md"
             title="Toggle Sidebar"
           >
             {isSidebarOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
@@ -1743,7 +1745,7 @@ export default function App() {
         <div className="flex items-center gap-3">
           {batches.length > 0 && (
             <div className="hidden md:flex items-center mr-2">
-              <div className="flex items-center h-9 px-1 rounded-2xl border border-white/60 dark:border-white/[0.08] bg-white/50 dark:bg-white/[0.04] backdrop-blur-xl shadow-[0_2px_8px_rgba(0,0,0,0.02),inset_0_1px_1px_rgba(255,255,255,0.7)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)]">
+              <div className="flex items-center h-9 px-1 rounded-2xl border border-slate-200/80 dark:border-white/[0.08] bg-white/70 dark:bg-white/[0.04] backdrop-blur-xl shadow-[0_2px_8px_rgba(0,0,0,0.02),inset_0_1px_1px_rgba(255,255,255,0.8)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)]">
                 
                 {/* Total Segment */}
                 <div className="flex items-center gap-2 px-3 h-full">
@@ -1771,12 +1773,12 @@ export default function App() {
           )}
 
           {/* Always Visible View Mode Switcher (Icons Only) */}
-          <div className="flex items-center p-1 rounded-2xl border border-white/60 dark:border-white/[0.08] bg-white/50 dark:bg-white/[0.04] backdrop-blur-xl shadow-[0_2px_8px_rgba(0,0,0,0.02),inset_0_1px_1px_rgba(255,255,255,0.7)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)]">
+          <div className="flex items-center p-1 rounded-2xl border border-slate-200/80 dark:border-white/[0.08] bg-white/70 dark:bg-white/[0.04] backdrop-blur-xl shadow-[0_2px_8px_rgba(0,0,0,0.02),inset_0_1px_1px_rgba(255,255,255,0.8)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)]">
             <button
               onClick={() => setPromptLayout('single')}
               className={`p-1.5 rounded-xl transition-all ${
                 promptLayout === 'single'
-                  ? 'bg-white/90 dark:bg-white/[0.15] text-blue-600 dark:text-blue-400 shadow-sm border border-white/80 dark:border-white/10'
+                  ? 'bg-white shadow-sm text-blue-600 dark:bg-white/[0.15] dark:text-blue-400 border border-slate-200/80 dark:border-white/10'
                   : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
               }`}
               title="Single Column View (1 per row)"
@@ -1788,7 +1790,7 @@ export default function App() {
               onClick={() => setPromptLayout('grid')}
               className={`p-1.5 rounded-xl transition-all ${
                 promptLayout === 'grid'
-                  ? 'bg-white/90 dark:bg-white/[0.15] text-blue-600 dark:text-blue-400 shadow-sm border border-white/80 dark:border-white/10'
+                  ? 'bg-white shadow-sm text-blue-600 dark:bg-white/[0.15] dark:text-blue-400 border border-slate-200/80 dark:border-white/10'
                   : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
               }`}
               title="2 Columns Side-by-Side View"
@@ -1806,7 +1808,7 @@ export default function App() {
               }}
               className={`p-1.5 rounded-xl transition-all ${
                 isCompactMode
-                  ? 'bg-white/90 dark:bg-white/[0.15] text-blue-600 dark:text-blue-400 shadow-sm border border-white/80 dark:border-white/10'
+                  ? 'bg-white shadow-sm text-blue-600 dark:bg-white/[0.15] dark:text-blue-400 border border-slate-200/80 dark:border-white/10'
                   : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
               }`}
               title={isCompactMode ? "2-Line Compact Mode Active (Click to Expand All)" : "Full Prompts Active (Click to Enable 2-Line Compact Mode)"}
@@ -1816,16 +1818,16 @@ export default function App() {
             </button>
           </div>
 
-          <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2.5 rounded-2xl border border-white/60 dark:border-white/[0.08] bg-white/50 dark:bg-white/[0.04] hover:bg-white/80 dark:hover:bg-white/[0.08] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white backdrop-blur-xl shadow-[0_2px_8px_rgba(0,0,0,0.02),inset_0_1px_1px_rgba(255,255,255,0.7)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)] transition-all active:scale-95">
+          <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2.5 rounded-2xl border border-slate-200/80 dark:border-white/[0.08] bg-white/70 dark:bg-white/[0.04] hover:bg-white dark:hover:bg-white/[0.08] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white backdrop-blur-xl shadow-[0_2px_8px_rgba(0,0,0,0.02),inset_0_1px_1px_rgba(255,255,255,0.8)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)] transition-all active:scale-95">
             {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
           </button>
           
-          <button onClick={resetWorkspace} className="flex items-center gap-2 px-4 py-2 rounded-2xl text-[11px] font-bold uppercase tracking-widest border border-white/60 dark:border-white/[0.08] bg-white/50 dark:bg-white/[0.04] hover:bg-red-500/10 hover:border-red-500/30 text-slate-400 hover:text-red-500 backdrop-blur-xl shadow-[0_2px_8px_rgba(0,0,0,0.02),inset_0_1px_1px_rgba(255,255,255,0.7)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)] transition-all active:scale-[0.95]">
+          <button onClick={resetWorkspace} className="flex items-center gap-2 px-4 py-2 rounded-2xl text-[11px] font-bold uppercase tracking-widest border border-slate-200/80 dark:border-white/[0.08] bg-white/70 dark:bg-white/[0.04] hover:bg-red-500/10 hover:border-red-500/30 text-slate-400 hover:text-red-500 backdrop-blur-xl shadow-[0_2px_8px_rgba(0,0,0,0.02),inset_0_1px_1px_rgba(255,255,255,0.8)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)] transition-all active:scale-[0.95]">
              <Trash2 size={14} />
              <span>Reset</span>
           </button>
           
-          <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-2xl text-[11px] font-bold uppercase tracking-widest border border-white/60 dark:border-white/[0.08] bg-white/50 dark:bg-white/[0.04] hover:bg-white/80 dark:hover:bg-white/[0.08] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white backdrop-blur-xl shadow-[0_2px_8px_rgba(0,0,0,0.02),inset_0_1px_1px_rgba(255,255,255,0.7)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)] transition-all active:scale-[0.95]">
+          <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-2xl text-[11px] font-bold uppercase tracking-widest border border-slate-200/80 dark:border-white/[0.08] bg-white/70 dark:bg-white/[0.04] hover:bg-white dark:hover:bg-white/[0.08] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white backdrop-blur-xl shadow-[0_2px_8px_rgba(0,0,0,0.02),inset_0_1px_1px_rgba(255,255,255,0.8)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)] transition-all active:scale-[0.95]">
              <Settings size={14} />
              <span>Config</span>
           </button>
@@ -1838,7 +1840,7 @@ export default function App() {
             className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-[11px] font-bold uppercase tracking-widest border backdrop-blur-xl transition-all active:scale-[0.95] ${
               stats.copied > 0 
                 ? 'border-orange-500/30 bg-orange-500/10 text-orange-500 hover:bg-orange-500 hover:text-white shadow-[0_2px_8px_rgba(249,115,22,0.15)]' 
-                : 'border-white/40 dark:border-white/[0.04] bg-white/30 dark:bg-white/[0.02] text-slate-300 dark:text-slate-700 opacity-40 cursor-not-allowed'
+                : 'border-slate-200/60 dark:border-white/[0.04] bg-white/40 dark:bg-white/[0.02] text-slate-300 dark:text-slate-700 opacity-40 cursor-not-allowed'
             }`}
             title="Remove Copied Prompts"
           >
@@ -1849,27 +1851,29 @@ export default function App() {
           <div className="relative" ref={exportMenuRef}>
             <button 
               onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
-              className="flex items-center gap-2 px-4 py-2 rounded-2xl text-[11px] font-bold uppercase tracking-widest transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] active:scale-[0.96] bg-white/75 hover:bg-white/95 dark:bg-white/[0.08] dark:hover:bg-white/[0.14] text-slate-800 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 backdrop-blur-2xl backdrop-saturate-[190%] border border-white/80 dark:border-white/[0.12] shadow-[0_4px_16px_rgba(0,0,0,0.04),inset_0_1px_1.5px_rgba(255,255,255,0.9)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.15)] hover:shadow-lg relative overflow-hidden cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2 rounded-2xl text-[11px] font-bold uppercase tracking-widest transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] active:scale-[0.96] bg-gradient-to-b from-white/90 via-white/80 to-white/70 hover:from-white hover:to-white/80 dark:from-white/[0.12] dark:via-white/[0.08] dark:to-white/[0.05] dark:hover:from-white/[0.18] dark:hover:to-white/[0.1] text-slate-800 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 backdrop-blur-2xl backdrop-saturate-[190%] border border-slate-200/90 dark:border-white/[0.15] shadow-[0_4px_16px_rgba(0,0,0,0.04),inset_0_1px_1.5px_rgba(255,255,255,0.95)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.18)] hover:shadow-[0_8px_24px_rgba(59,130,246,0.15)] relative overflow-hidden cursor-pointer"
             >
               {/* Top Specular Rim */}
-              <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/90 dark:via-white/25 to-transparent pointer-events-none" />
+              <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/95 dark:via-white/30 to-transparent pointer-events-none" />
               <Download size={14} className="text-blue-500 shrink-0" />
               <span>Backup</span>
               <ChevronDown size={14} className={`transition-transform duration-300 ${isExportMenuOpen ? 'rotate-180 text-blue-500' : ''}`} />
             </button>
             
             {isExportMenuOpen && (
-              <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-slate-900 rounded-xl shadow-[0_16px_40px_-12px_rgba(0,0,0,0.3)] border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col z-50 animate-in fade-in slide-in-from-top-2">
-                <button onClick={copyAllWorkspacePrompts} disabled={batches.length === 0} className="flex items-center gap-3 px-4 py-3 text-[12px] font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed">
-                  {isAllCopied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+              <div className="absolute right-0 top-full mt-2 w-60 bg-gradient-to-b from-white/95 via-white/90 to-white/85 dark:from-slate-900/95 dark:via-slate-900/90 dark:to-slate-950/95 backdrop-blur-3xl backdrop-saturate-[180%] rounded-2xl shadow-[0_24px_60px_-10px_rgba(0,0,0,0.18),inset_0_1px_1.5px_rgba(255,255,255,0.9)] dark:shadow-[0_28px_70px_-10px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(255,255,255,0.15)] border border-slate-200/90 dark:border-white/[0.12] p-1.5 overflow-hidden flex flex-col z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                {/* Top Specular Highlight */}
+                <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/90 dark:via-white/20 to-transparent pointer-events-none" />
+                <button onClick={copyAllWorkspacePrompts} disabled={batches.length === 0} className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 hover:bg-black/[0.04] dark:hover:bg-white/[0.08] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                  {isAllCopied ? <Check size={14} className="text-emerald-500 shrink-0" /> : <Copy size={14} className="shrink-0" />}
                   <span>{isAllCopied ? 'Copied' : 'Copy All'}</span>
                 </button>
-                <button onClick={handleExportFile} disabled={batches.length === 0} className="flex items-center gap-3 px-4 py-3 text-[12px] font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed border-t border-slate-100 dark:border-slate-800/50">
-                  <Download size={14} />
+                <button onClick={handleExportFile} disabled={batches.length === 0} className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 hover:bg-black/[0.04] dark:hover:bg-white/[0.08] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                  <Download size={14} className="shrink-0" />
                   <span>Export JSON Backup</span>
                 </button>
-                <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-3 px-4 py-3 text-[12px] font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 border-t border-slate-100 dark:border-slate-800/50">
-                  <Upload size={14} />
+                <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 hover:bg-black/[0.04] dark:hover:bg-white/[0.08] transition-colors">
+                  <Upload size={14} className="shrink-0" />
                   <span>Import JSON Backup</span>
                 </button>
               </div>
@@ -1879,7 +1883,7 @@ export default function App() {
         </div>
       </header>
 
-      <aside className={`${isSidebarOpen ? 'w-[340px] border-r' : 'w-0 border-r-0'} transition-all duration-300 ease-in-out border-white/50 dark:border-white/[0.08] bg-white/70 dark:bg-slate-950/70 backdrop-blur-2xl backdrop-saturate-[180%] flex flex-col shrink-0 relative z-40 h-full overflow-hidden shadow-[4px_0_24px_-12px_rgba(0,0,0,0.06)]`}>
+      <aside className={`${isSidebarOpen ? 'w-[340px] border-r' : 'w-0 border-r-0'} transition-all duration-300 ease-in-out border-slate-200/80 dark:border-white/[0.08] bg-white/80 dark:bg-slate-950/70 backdrop-blur-2xl backdrop-saturate-[180%] flex flex-col shrink-0 relative z-40 h-full overflow-hidden shadow-[4px_0_24px_-12px_rgba(0,0,0,0.06)]`}>
         <div className="w-[339px] flex flex-col h-full shrink-0">
           <div className="flex-1 overflow-y-auto custom-scrollbar pt-16 px-6">
           <div className="py-8 flex flex-col gap-10 pb-8">
@@ -1989,15 +1993,18 @@ export default function App() {
                     </div>
                   </div>
                   <button 
+                    type="button"
+                    role="switch"
+                    aria-checked={options.activeFields?.smartRefinement}
                     onClick={() => setOptions({...options, activeFields: {...options.activeFields, smartRefinement: !options.activeFields?.smartRefinement}})} 
-                    className={`w-12 h-6.5 rounded-full relative p-0.5 transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] focus:outline-none cursor-pointer active:scale-95 ${
+                    className={`w-11 h-6 rounded-full relative p-0.5 apple-switch-track focus:outline-none cursor-pointer active:scale-95 ${
                       options.activeFields?.smartRefinement 
-                        ? 'bg-blue-600/90 dark:bg-blue-500/90 shadow-[0_2px_10px_rgba(37,99,235,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)] border border-blue-400/30' 
-                        : 'bg-black/10 dark:bg-white/10 shadow-[inset_0_1px_2px_rgba(0,0,0,0.15)] border border-black/5 dark:border-white/10'
+                        ? 'bg-blue-600 dark:bg-blue-500 shadow-[0_2px_10px_rgba(37,99,235,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)] border border-blue-400/40' 
+                        : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)] border border-black/10 dark:border-white/10'
                     }`}
                   >
-                    <div className={`w-5 h-5 rounded-full bg-white shadow-[0_2px_6px_rgba(0,0,0,0.25),inset_0_1px_1px_rgba(255,255,255,0.9)] transition-transform duration-300 [transition-timing-function:cubic-bezier(0.34,1.56,0.64,1)] transform ${
-                      options.activeFields?.smartRefinement ? 'translate-x-[22px]' : 'translate-x-0.5'
+                    <div className={`w-5 h-5 rounded-full bg-white shadow-[0_2px_6px_rgba(0,0,0,0.25),inset_0_1px_1px_rgba(255,255,255,0.95)] apple-switch-thumb transform ${
+                      options.activeFields?.smartRefinement ? 'translate-x-5' : 'translate-x-0'
                     }`} />
                   </button>
                 </div>
@@ -2082,15 +2089,18 @@ export default function App() {
                       <Calendar size={16} />
                     </div>
                     <button 
+                      type="button"
+                      role="switch"
+                      aria-checked={options.useCalendar}
                       onClick={() => setOptions({...options, useCalendar: !options.useCalendar})} 
-                      className={`w-12 h-6.5 rounded-full relative p-0.5 transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] focus:outline-none cursor-pointer active:scale-95 ${
+                      className={`w-11 h-6 rounded-full relative p-0.5 apple-switch-track focus:outline-none cursor-pointer active:scale-95 ${
                         options.useCalendar 
-                          ? 'bg-blue-600/90 dark:bg-blue-500/90 shadow-[0_2px_10px_rgba(37,99,235,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)] border border-blue-400/30' 
-                          : 'bg-black/10 dark:bg-white/10 shadow-[inset_0_1px_2px_rgba(0,0,0,0.15)] border border-black/5 dark:border-white/10'
+                          ? 'bg-blue-600 dark:bg-blue-500 shadow-[0_2px_10px_rgba(37,99,235,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)] border border-blue-400/40' 
+                          : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)] border border-black/10 dark:border-white/10'
                       }`}
                     >
-                      <div className={`w-5 h-5 rounded-full bg-white shadow-[0_2px_6px_rgba(0,0,0,0.25),inset_0_1px_1px_rgba(255,255,255,0.9)] transition-transform duration-300 [transition-timing-function:cubic-bezier(0.34,1.56,0.64,1)] transform ${
-                        options.useCalendar ? 'translate-x-[22px]' : 'translate-x-0.5'
+                      <div className={`w-5 h-5 rounded-full bg-white shadow-[0_2px_6px_rgba(0,0,0,0.25),inset_0_1px_1px_rgba(255,255,255,0.95)] apple-switch-thumb transform ${
+                        options.useCalendar ? 'translate-x-5' : 'translate-x-0'
                       }`} />
                     </button>
                   </div>
@@ -2221,14 +2231,14 @@ export default function App() {
       {/* MAIN AREA */}
       <main ref={mainScrollRef} className="flex-1 overflow-y-auto custom-scrollbar relative bg-transparent pt-16 z-10" style={{ backgroundImage: isDarkMode ? 'radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 1px)' : 'radial-gradient(circle, rgba(0,0,0,0.07) 1px, transparent 1px)', backgroundSize: '24px 24px' }}>
         {(isGenerating || apiTrackerState.visible) && (
-          <div className={`fixed inset-0 ${isSidebarOpen ? 'left-[340px]' : 'left-0'} z-[9999] flex items-center justify-center p-6 bg-black/15 dark:bg-black/35 backdrop-saturate-[130%] pointer-events-none transition-all duration-300 animate-in fade-in`}>
-            <div className="bg-gradient-to-b from-white/80 via-white/65 to-white/55 dark:from-slate-900/80 dark:via-slate-900/70 dark:to-slate-950/80 backdrop-blur-2xl backdrop-saturate-[180%] border border-white/60 dark:border-white/10 shadow-[0_24px_60px_-12px_rgba(0,0,0,0.18),0_2px_6px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] dark:shadow-[0_30px_70px_-15px_rgba(0,0,0,0.75),0_1px_2px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.14)] rounded-[26px] p-6 w-full max-w-sm relative overflow-hidden transition-all duration-300 animate-in zoom-in-95 pointer-events-auto">
+          <div className={`fixed inset-0 ${isSidebarOpen ? 'left-[340px]' : 'left-0'} z-[9999] flex items-center justify-center p-6 bg-black/25 dark:bg-black/45 backdrop-blur-[3px] backdrop-saturate-[140%] pointer-events-none transition-all duration-300 animate-in fade-in`}>
+            <div className="bg-gradient-to-b from-white/96 via-white/92 to-white/90 dark:from-[#0d162a]/97 dark:via-[#090f1d]/95 dark:to-[#060a14]/97 backdrop-blur-3xl backdrop-saturate-[200%] border border-white/90 dark:border-white/20 shadow-[0_32px_80px_rgba(0,0,0,0.28),0_8px_24px_rgba(0,0,0,0.12),inset_0_1px_2px_rgba(255,255,255,1)] dark:shadow-[0_40px_90px_rgba(0,0,0,0.85),0_8px_24px_rgba(0,0,0,0.5),inset_0_1px_1.5px_rgba(255,255,255,0.22)] rounded-[28px] p-6 w-full max-w-sm relative overflow-hidden transition-all duration-300 animate-in zoom-in-95 pointer-events-auto">
               {/* Apple Specular Top Rim Highlight */}
-              <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/90 dark:via-white/25 to-transparent pointer-events-none" />
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-white/95 dark:via-white/35 to-transparent pointer-events-none" />
 
               <div className="flex items-center gap-3.5 mb-4">
-                <div className="w-11 h-11 rounded-2xl bg-gradient-to-b from-blue-500/15 to-blue-600/5 dark:from-blue-400/20 dark:to-blue-500/5 border border-blue-500/25 dark:border-blue-400/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)] flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
-                  <Loader2 size={20} className="animate-spin" />
+                <div className="w-11 h-11 rounded-2xl bg-gradient-to-b from-blue-500/20 to-blue-600/10 dark:from-blue-400/25 dark:to-blue-500/10 border border-blue-500/30 dark:border-blue-400/30 shadow-[inset_0_1px_1.5px_rgba(255,255,255,0.6)] flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
+                  <Loader2 size={20} className="animate-spin text-blue-600 dark:text-blue-400" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-[13px] font-bold tracking-tight text-slate-900 dark:text-white uppercase truncate">
@@ -2236,39 +2246,39 @@ export default function App() {
                   </h3>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
-                    <p className="text-[10px] font-mono font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">SYS.NET • ACTIVE</p>
+                    <p className="text-[10px] font-mono font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">SYS.NET • ACTIVE</p>
                   </div>
                 </div>
               </div>
 
               {/* Recessed Frosted Data Tray (macOS Control Center style) */}
-              <div className="bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.05] dark:border-white/[0.06] shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.3)] rounded-2xl p-3.5 space-y-2 font-mono text-[11px]">
-                <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                  <span className="opacity-70 text-[10px] uppercase tracking-wider">TARGET NODE:</span>
-                  <span className="uppercase text-slate-800 dark:text-slate-200 font-bold">{apiTrackerState.currentProvider || activeProvider.toUpperCase()}</span>
+              <div className="bg-slate-100/95 dark:bg-black/60 border border-slate-200/90 dark:border-white/10 shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.4)] rounded-2xl p-3.5 space-y-2.5 font-mono text-[11px]">
+                <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
+                  <span className="opacity-80 text-[10px] uppercase tracking-wider font-semibold">TARGET NODE:</span>
+                  <span className="uppercase text-emerald-600 dark:text-emerald-400 font-bold">{apiTrackerState.currentProvider || activeProvider.toUpperCase()}</span>
                 </div>
-                <div className="flex justify-between items-center text-slate-500 dark:text-slate-400 pt-1 border-t border-black/[0.04] dark:border-white/[0.04]">
-                  <span className="opacity-70 text-[10px] uppercase tracking-wider">AI MODEL:</span>
+                <div className="flex justify-between items-center text-slate-600 dark:text-slate-300 pt-1.5 border-t border-slate-200/80 dark:border-white/[0.08]">
+                  <span className="opacity-80 text-[10px] uppercase tracking-wider font-semibold">AI MODEL:</span>
                   <span className="uppercase text-blue-600 dark:text-blue-400 font-bold truncate max-w-[170px] text-right" title={activeModelLabel}>{activeModelLabel}</span>
                 </div>
                 {apiTrackerState.failedKeys.length > 0 && (
-                  <div className="flex justify-between items-center text-amber-500 pt-1 border-t border-black/[0.04] dark:border-white/[0.04]">
-                    <span className="opacity-70 text-[10px] uppercase tracking-wider">ERRORS:</span>
+                  <div className="flex justify-between items-center text-amber-500 pt-1.5 border-t border-slate-200/80 dark:border-white/[0.08]">
+                    <span className="opacity-80 text-[10px] uppercase tracking-wider font-semibold">ERRORS:</span>
                     <span className="font-bold">{apiTrackerState.failedKeys.length}/{apiTrackerState.totalKeys}</span>
                   </div>
                 )}
                 {apiTrackerState.attempt > 1 && (
-                  <div className="flex justify-between items-center text-blue-500 pt-1 border-t border-black/[0.04] dark:border-white/[0.04]">
-                    <span className="opacity-70 text-[10px] uppercase tracking-wider">CYCLE:</span>
+                  <div className="flex justify-between items-center text-blue-500 pt-1.5 border-t border-slate-200/80 dark:border-white/[0.08]">
+                    <span className="opacity-80 text-[10px] uppercase tracking-wider font-semibold">CYCLE:</span>
                     <span className="font-bold">{apiTrackerState.attempt}/3</span>
                   </div>
                 )}
               </div>
               
               {/* Frosted Status Bar */}
-              <div className="mt-3 px-3 py-2 rounded-xl bg-black/[0.02] dark:bg-white/[0.03] border border-black/[0.04] dark:border-white/[0.04] text-[10px] font-mono text-slate-600 dark:text-slate-300 flex items-center gap-2 leading-none">
+              <div className="mt-3.5 px-3 py-2.5 rounded-xl bg-slate-100/95 dark:bg-black/55 border border-slate-200/90 dark:border-white/10 text-[10px] font-mono text-slate-800 dark:text-slate-200 flex items-center gap-2 leading-none">
                 <span className="text-blue-500 font-bold shrink-0">&gt;</span> 
-                <div className="flex-1 truncate">
+                <div className="flex-1 truncate font-semibold">
                   <span className="uppercase"><TerminalText text={isGenerating ? (apiTrackerState.statusMessage || 'ESTABLISHING SECURE CONNECTION...') : (apiTrackerState.statusMessage || 'ESTABLISHING SECURE HANDSHAKE...')} /></span>
                 </div>
                 <span className="inline-block w-1.5 h-3 bg-blue-500 animate-pulse shrink-0 rounded-xs"></span>
@@ -2288,12 +2298,12 @@ export default function App() {
                         const globalPromptNum = priorPromptsCount + pIdx + 1;
                         const isExpanded = !isCompactMode || expandedCardIds.has(p.id);
                         return (
-                          <div key={p.id} className="bg-gradient-to-b from-white/80 via-white/65 to-white/55 dark:from-slate-900/80 dark:via-slate-900/70 dark:to-slate-950/80 backdrop-blur-2xl backdrop-saturate-[180%] border border-white/60 dark:border-white/10 shadow-[0_20px_50px_-10px_rgba(0,0,0,0.08),0_1px_3px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.85)] dark:shadow-[0_24px_60px_-12px_rgba(0,0,0,0.65),0_1px_2px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.12)] rounded-[26px] p-6 flex flex-col justify-between gap-4 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300 relative group overflow-hidden">
+                          <div key={p.id} className="bg-gradient-to-b from-white/90 via-white/80 to-white/70 dark:from-slate-900/80 dark:via-slate-900/70 dark:to-slate-950/80 backdrop-blur-2xl backdrop-saturate-[180%] border border-slate-200/80 dark:border-white/10 shadow-[0_16px_40px_-10px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.03),inset_0_1px_1.5px_rgba(255,255,255,0.95)] dark:shadow-[0_24px_60px_-12px_rgba(0,0,0,0.65),0_1px_2px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.12)] rounded-[26px] p-6 flex flex-col justify-between gap-4 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300 relative group overflow-hidden">
                             {/* Apple Specular Top Rim Highlight */}
-                            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/90 dark:via-white/20 to-transparent pointer-events-none" />
+                            <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/95 dark:via-white/20 to-transparent pointer-events-none" />
 
                             <div className="flex items-center justify-between">
-                              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/[0.03] dark:bg-white/[0.05] border border-black/[0.04] dark:border-white/[0.06] shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)]">
+                              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/[0.04] dark:bg-white/[0.05] border border-black/[0.04] dark:border-white/[0.06] shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]">
                                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500/80"></span>
                                 <span className="text-[11px] font-mono font-bold tracking-widest text-slate-500 dark:text-slate-400 uppercase">
                                   #{globalPromptNum.toString().padStart(2, '0')}
@@ -2302,7 +2312,7 @@ export default function App() {
                             </div>
 
                           <div className="flex-1 flex flex-col justify-start">
-                            <p className={`text-[14px] leading-relaxed text-slate-700 dark:text-slate-200 select-text transition-all duration-200 ${!isExpanded ? 'line-clamp-2' : ''}`}>
+                            <p className={`text-[14px] leading-relaxed text-slate-800 dark:text-slate-200 select-text transition-all duration-200 ${!isExpanded ? 'line-clamp-2' : ''}`}>
                               {p.text}
                             </p>
                             {isCompactMode && (
@@ -2324,12 +2334,12 @@ export default function App() {
                             )}
                           </div>
 
-                          <div className="flex items-end justify-between pt-3.5 border-t border-black/[0.04] dark:border-white/[0.06] gap-3">
+                          <div className="flex items-end justify-between pt-3.5 border-t border-black/[0.06] dark:border-white/[0.06] gap-3">
                              <div className="flex flex-col gap-0.5">
                                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 font-mono">
                                  {p.text.split(/\s+/).filter(Boolean).length} words
-                               </span>
-                               <span className="text-[10px] text-slate-400/80 dark:text-slate-500 font-mono tracking-tight">
+                                </span>
+                               <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono tracking-tight">
                                  {new Date(batch.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}, {new Date(batch.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                                </span>
                              </div>
@@ -2338,7 +2348,7 @@ export default function App() {
                                className={`px-5 py-2 rounded-2xl text-[11px] font-bold uppercase tracking-wider transition-all shrink-0 active:scale-[0.96] ${
                                  p.copied 
                                    ? 'bg-emerald-500/90 text-white backdrop-blur-md shadow-lg shadow-emerald-500/20 border border-emerald-400/30' 
-                                   : 'bg-slate-900/90 dark:bg-white/95 text-white dark:text-slate-900 hover:opacity-90 backdrop-blur-xl border border-white/20 dark:border-white/50 shadow-[0_4px_14px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.25)] dark:shadow-[0_4px_14px_rgba(255,255,255,0.15),inset_0_1px_0_rgba(255,255,255,0.9)]'
+                                   : 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:opacity-90 backdrop-blur-xl border border-white/20 dark:border-white/50 shadow-[0_4px_14px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.3)] dark:shadow-[0_4px_14px_rgba(255,255,255,0.15),inset_0_1px_0_rgba(255,255,255,0.9)]'
                                }`}
                              >
                                {p.copied ? <><Check size={13} className="inline mr-1.5" />Copied</> : 'Copy Prompt'}
@@ -2359,14 +2369,14 @@ export default function App() {
               <h2 className="text-4xl font-black uppercase tracking-tightest leading-tight mb-4 bg-gradient-to-br from-slate-900 to-slate-500 dark:from-white dark:to-slate-500 bg-clip-text text-transparent">Ready to Architect</h2>
               <p className="text-[14px] font-medium text-slate-500 dark:text-slate-400 max-w-sm leading-relaxed mb-16 opacity-60">Configure your parameters in the sidebar to build high-performance commercial stock prompts.</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-2xl">
-                <div className="bg-gradient-to-b from-white/75 via-white/60 to-white/50 dark:from-slate-900/70 dark:via-slate-900/60 dark:to-slate-950/70 backdrop-blur-2xl backdrop-saturate-[180%] border border-white/60 dark:border-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.85)] dark:shadow-[0_16px_40px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.12)] p-8 rounded-[28px] text-left space-y-4 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group cursor-default relative overflow-hidden">
-                  <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/15 to-transparent pointer-events-none" />
+                <div className="bg-gradient-to-b from-white/90 via-white/80 to-white/70 dark:from-slate-900/70 dark:via-slate-900/60 dark:to-slate-950/70 backdrop-blur-2xl backdrop-saturate-[180%] border border-slate-200/80 dark:border-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.06),inset_0_1px_1.5px_rgba(255,255,255,0.9)] dark:shadow-[0_16px_40px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.12)] p-8 rounded-[28px] text-left space-y-4 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group cursor-default relative overflow-hidden">
+                  <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/95 dark:via-white/15 to-transparent pointer-events-none" />
                   <div className="w-10 h-10 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform duration-300 border border-amber-500/20"><Zap size={20} className="fill-current" /></div>
                   <h3 className="text-xs font-black uppercase tracking-widest group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">Production Grade</h3>
                   <p className="text-[13px] leading-relaxed text-slate-500 dark:text-slate-400">Prompts are algorithmically optimized for Adobe Stock and Freepik guidelines.</p>
                 </div>
-                <div className="bg-gradient-to-b from-white/75 via-white/60 to-white/50 dark:from-slate-900/70 dark:via-slate-900/60 dark:to-slate-950/70 backdrop-blur-2xl backdrop-saturate-[180%] border border-white/60 dark:border-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.85)] dark:shadow-[0_16px_40px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.12)] p-8 rounded-[28px] text-left space-y-4 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group cursor-default relative overflow-hidden">
-                  <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/15 to-transparent pointer-events-none" />
+                <div className="bg-gradient-to-b from-white/90 via-white/80 to-white/70 dark:from-slate-900/70 dark:via-slate-900/60 dark:to-slate-950/70 backdrop-blur-2xl backdrop-saturate-[180%] border border-slate-200/80 dark:border-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.06),inset_0_1px_1.5px_rgba(255,255,255,0.9)] dark:shadow-[0_16px_40px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.12)] p-8 rounded-[28px] text-left space-y-4 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group cursor-default relative overflow-hidden">
+                  <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/95 dark:via-white/15 to-transparent pointer-events-none" />
                   <div className="w-10 h-10 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform duration-300 border border-blue-500/20"><Shield size={20} className="fill-current" /></div>
                   <h3 className="text-xs font-black uppercase tracking-widest group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">Dual Intelligence</h3>
                   <p className="text-[13px] leading-relaxed text-slate-500 dark:text-slate-400">Seamlessly transition between Gemini Flash and Pro engines based on complexity.</p>
