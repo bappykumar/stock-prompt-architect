@@ -45,6 +45,7 @@ export interface PromptBatch {
   id: string;
   timestamp: number;
   prompts: GeneratedPrompt[];
+  sourceImage?: string;
 }
 
 export interface HistoricalPrompt {

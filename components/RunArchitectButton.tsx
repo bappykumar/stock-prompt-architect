@@ -35,10 +35,10 @@ export const RunArchitectButton: React.FC<Props> = ({ onClick, isGenerating, lab
       <style>{`
         @keyframes archProgress {
           0% { transform: translateX(0); }
-          100% { transform: translateX(-400px); }
+          100% { transform: translateX(-350px); }
         }
         .animate-arch-progress {
-          animation: archProgress 3s linear infinite;
+          animation: archProgress 2.8s linear infinite;
         }
       `}</style>
       <div className="relative w-full group">
@@ -60,11 +60,17 @@ export const RunArchitectButton: React.FC<Props> = ({ onClick, isGenerating, lab
           {/* Liquid Gloss Top Arc */}
           <div className="absolute top-0 left-2 right-2 h-1/2 bg-gradient-to-b from-white/25 dark:from-white/10 to-transparent rounded-t-full pointer-events-none" />
 
-          {/* Loading Original Wavy Line - Adapts to Theme (Slate in Day, Pure White in Night) */}
+          {/* Loading Original Wavy Line - Extended Width (88px) with Soft Faded Edges */}
           <div 
             className={`absolute inset-0 flex items-center justify-center pointer-events-none transition-all duration-500 ${phase === 'loading' ? 'opacity-100 scale-100 delay-150' : 'opacity-0 scale-90'}`}
           >
-             <div className="relative w-[40px] h-[32px] overflow-hidden">
+             <div 
+               className="relative w-[88px] h-[32px] overflow-hidden flex items-center"
+               style={{
+                 WebkitMaskImage: 'linear-gradient(to right, transparent, black 14%, black 86%, transparent)',
+                 maskImage: 'linear-gradient(to right, transparent, black 14%, black 86%, transparent)'
+               }}
+             >
                 <svg 
                   className="animate-arch-progress absolute left-0 top-[11px] w-[444px] h-[10px]" 
                   viewBox="0 0 444 10" 

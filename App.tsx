@@ -8,7 +8,7 @@ import {
   Layers, Camera, Box, Maximize, User, Moon, Sun,
   Layout, Fingerprint, Focus, Settings2, Download, MessageSquareCode, Send, AlertCircle, X, Cpu, Paintbrush,
   ChevronUp, Key, Lock, Unlock, Info, Settings, ToggleLeft, ToggleRight, Activity, Power, Video, Target, Lightbulb, Search, Shuffle, Image, Type, RefreshCw, ListX, PanelLeftClose, PanelLeftOpen, Upload,
-  LayoutList, Columns2, UnfoldVertical, FoldVertical
+  LayoutList, Columns2, UnfoldVertical, FoldVertical, SlidersHorizontal
 } from 'lucide-react';
 import { PromptOptions, GeneratedPrompt, PromptBatch, HistoricalPrompt, ApiKeyRecord } from './types';
 import { generateStockPrompts, testApiKey, analyzeReferenceAndSuggestSettings } from './services/geminiService';
@@ -1059,6 +1059,7 @@ export default function App() {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [showScrollBottom, setShowScrollBottom] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [configActiveTab, setConfigActiveTab] = useState<'api' | 'preferences'>('api');
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [testAllSummary, setTestAllSummary] = useState<{valid: number, invalid: number, total: number} | null>(null);
   const [isTestingAll, setIsTestingAll] = useState(false);
@@ -1772,67 +1773,19 @@ export default function App() {
             </div>
           )}
 
-          {/* Always Visible View Mode Switcher (Icons Only) */}
-          <div className="flex items-center p-1 rounded-2xl border border-slate-200/80 dark:border-white/[0.08] bg-white/70 dark:bg-white/[0.04] backdrop-blur-xl shadow-[0_2px_8px_rgba(0,0,0,0.02),inset_0_1px_1px_rgba(255,255,255,0.8)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)]">
-            <button
-              onClick={() => setPromptLayout('single')}
-              className={`p-1.5 rounded-xl transition-all ${
-                promptLayout === 'single'
-                  ? 'bg-white shadow-sm text-blue-600 dark:bg-white/[0.15] dark:text-blue-400 border border-slate-200/80 dark:border-white/10'
-                  : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-              }`}
-              title="Single Column View (1 per row)"
-              aria-label="Single Column View"
-            >
-              <LayoutList size={16} />
-            </button>
-            <button
-              onClick={() => setPromptLayout('grid')}
-              className={`p-1.5 rounded-xl transition-all ${
-                promptLayout === 'grid'
-                  ? 'bg-white shadow-sm text-blue-600 dark:bg-white/[0.15] dark:text-blue-400 border border-slate-200/80 dark:border-white/10'
-                  : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-              }`}
-              title="2 Columns Side-by-Side View"
-              aria-label="2 Columns View"
-            >
-              <Columns2 size={16} />
-            </button>
+          <div className="h-6 w-px bg-slate-200/80 dark:bg-white/[0.1] mx-0.5" />
 
-            <div className="w-px h-3.5 bg-slate-200/80 dark:bg-white/[0.1] mx-1" />
-
-            <button
-              onClick={() => {
-                setIsCompactMode(!isCompactMode);
-                setExpandedCardIds(new Set());
-              }}
-              className={`p-1.5 rounded-xl transition-all ${
-                isCompactMode
-                  ? 'bg-white shadow-sm text-blue-600 dark:bg-white/[0.15] dark:text-blue-400 border border-slate-200/80 dark:border-white/10'
-                  : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-              }`}
-              title={isCompactMode ? "2-Line Compact Mode Active (Click to Expand All)" : "Full Prompts Active (Click to Enable 2-Line Compact Mode)"}
-              aria-label="Toggle 2-Line Compact Mode"
-            >
-              {isCompactMode ? <FoldVertical size={16} /> : <UnfoldVertical size={16} />}
-            </button>
-          </div>
-
-          <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2.5 rounded-2xl border border-slate-200/80 dark:border-white/[0.08] bg-white/70 dark:bg-white/[0.04] hover:bg-white dark:hover:bg-white/[0.08] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white backdrop-blur-xl shadow-[0_2px_8px_rgba(0,0,0,0.02),inset_0_1px_1px_rgba(255,255,255,0.8)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)] transition-all active:scale-95">
-            {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+          {/* Master Config Button (Apple Frosted Liquid Glass) */}
+          <button 
+            onClick={() => setIsModalOpen(true)} 
+            className="flex items-center gap-2 px-4 py-2 rounded-2xl text-[11px] font-bold uppercase tracking-widest transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] active:scale-[0.96] bg-gradient-to-b from-white/90 via-white/80 to-white/70 hover:from-white hover:to-white/80 dark:from-white/[0.12] dark:via-white/[0.08] dark:to-white/[0.05] dark:hover:from-white/[0.18] dark:hover:to-white/[0.1] text-slate-800 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 backdrop-blur-2xl backdrop-saturate-[190%] border border-slate-200/90 dark:border-white/[0.15] shadow-[0_4px_16px_rgba(0,0,0,0.04),inset_0_1px_1.5px_rgba(255,255,255,0.95)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.18)] hover:shadow-[0_8px_24px_rgba(59,130,246,0.15)] relative overflow-hidden cursor-pointer"
+            title="System Configuration (API & Display Preferences)"
+          >
+            {/* Top Specular Rim */}
+            <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/95 dark:via-white/30 to-transparent pointer-events-none" />
+            <Settings size={14} className="text-blue-500 shrink-0" />
+            <span>Config</span>
           </button>
-          
-          <button onClick={resetWorkspace} className="flex items-center gap-2 px-4 py-2 rounded-2xl text-[11px] font-bold uppercase tracking-widest border border-slate-200/80 dark:border-white/[0.08] bg-white/70 dark:bg-white/[0.04] hover:bg-red-500/10 hover:border-red-500/30 text-slate-400 hover:text-red-500 backdrop-blur-xl shadow-[0_2px_8px_rgba(0,0,0,0.02),inset_0_1px_1px_rgba(255,255,255,0.8)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)] transition-all active:scale-[0.95]">
-             <Trash2 size={14} />
-             <span>Reset</span>
-          </button>
-          
-          <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-2xl text-[11px] font-bold uppercase tracking-widest border border-slate-200/80 dark:border-white/[0.08] bg-white/70 dark:bg-white/[0.04] hover:bg-white dark:hover:bg-white/[0.08] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white backdrop-blur-xl shadow-[0_2px_8px_rgba(0,0,0,0.02),inset_0_1px_1px_rgba(255,255,255,0.8)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)] transition-all active:scale-[0.95]">
-             <Settings size={14} />
-             <span>Config</span>
-          </button>
-          
-          <div className="h-6 w-px bg-slate-200/80 dark:bg-white/[0.1] mx-1" />
           
           <button 
             onClick={clearCopiedPrompts}
@@ -2452,16 +2405,45 @@ export default function App() {
             <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/90 dark:via-white/20 to-transparent pointer-events-none" />
             
             {/* Header */}
-            <div className="flex items-center justify-between p-8 pb-6 border-b border-black/[0.04] dark:border-white/[0.06]">
+            <div className="flex items-center justify-between p-7 pb-5 border-b border-black/[0.04] dark:border-white/[0.06]">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-slate-950 dark:bg-white text-white dark:text-slate-950 rounded-2xl flex items-center justify-center shadow-lg"><Settings size={24} /></div>
+                <div className="w-12 h-12 bg-slate-950 dark:bg-white text-white dark:text-slate-950 rounded-2xl flex items-center justify-center shadow-lg"><Settings size={22} /></div>
                 <div>
-                  <h2 className="text-lg font-black uppercase text-slate-900 dark:text-white">API Secrets Management</h2>
-                  <p className="text-xs text-slate-500 font-medium mt-1">Configure models and connectivity</p>
+                  <h2 className="text-lg font-black uppercase text-slate-900 dark:text-white tracking-wide">System Configuration</h2>
+                  <p className="text-xs text-slate-500 font-medium mt-0.5">Manage AI connectivity, display layouts, theme and workspace controls</p>
                 </div>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+              <button onClick={() => setIsModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors rounded-xl hover:bg-black/5 dark:hover:bg-white/5">
                 <X size={20} />
+              </button>
+            </div>
+
+            {/* Navigation Tabs (Apple Vision Style) */}
+            <div className="px-8 pt-4 pb-2 border-b border-black/[0.04] dark:border-white/[0.06] flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setConfigActiveTab('api')}
+                className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                  configActiveTab === 'api'
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-blue-500/40'
+                    : 'bg-black/[0.03] dark:bg-white/[0.04] text-slate-600 dark:text-slate-400 hover:bg-black/[0.06] dark:hover:bg-white/[0.08] hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <Key size={15} />
+                <span>API & AI Models</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setConfigActiveTab('preferences')}
+                className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                  configActiveTab === 'preferences'
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-blue-500/40'
+                    : 'bg-black/[0.03] dark:bg-white/[0.04] text-slate-600 dark:text-slate-400 hover:bg-black/[0.06] dark:hover:bg-white/[0.08] hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <SlidersHorizontal size={15} />
+                <span>Display & System</span>
               </button>
             </div>
             
@@ -2472,7 +2454,8 @@ export default function App() {
               </div>
             )}
 
-            <div className="p-8">
+            {configActiveTab === 'api' ? (
+              <div className="p-8 max-h-[580px] overflow-y-auto custom-scrollbar">
               {/* Provider Tabs */}
               <div className="flex items-center gap-2 bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.04] dark:border-white/[0.06] p-1.5 rounded-2xl mb-8">
                 {PROVIDERS.map(p => (
@@ -2616,10 +2599,228 @@ export default function App() {
                 </div>
               </div>
             </div>
+            ) : (
+              /* Display & System Preferences Tab */
+              <div className="p-8 space-y-6 max-h-[580px] overflow-y-auto custom-scrollbar">
+                {/* Section 1: Appearance & Theme */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">Appearance & Theme</h3>
+                      <p className="text-[11px] text-slate-500 font-medium">Switch between daytime clarity and dark visionOS mode</p>
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                      {isDarkMode ? 'Night Mode' : 'Day Mode'}
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Light Mode */}
+                    <button
+                      type="button"
+                      onClick={() => setIsDarkMode(false)}
+                      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all text-left cursor-pointer ${
+                        !isDarkMode 
+                          ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-900/20 ring-2 ring-blue-500/30 shadow-md' 
+                          : 'border-slate-200/80 dark:border-white/[0.08] bg-white/60 dark:bg-white/[0.03] hover:bg-white dark:hover:bg-white/[0.06]'
+                      }`}
+                    >
+                      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${!isDarkMode ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
+                        <Sun size={20} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-bold text-slate-900 dark:text-white">Daylight Mode</span>
+                          {!isDarkMode && <Check size={16} className="text-blue-600 dark:text-blue-400" />}
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">Crisp frosted glass daylight theme</p>
+                      </div>
+                    </button>
+
+                    {/* Dark Mode */}
+                    <button
+                      type="button"
+                      onClick={() => setIsDarkMode(true)}
+                      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all text-left cursor-pointer ${
+                        isDarkMode 
+                          ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-900/20 ring-2 ring-blue-500/30 shadow-md' 
+                          : 'border-slate-200/80 dark:border-white/[0.08] bg-white/60 dark:bg-white/[0.03] hover:bg-white dark:hover:bg-white/[0.06]'
+                      }`}
+                    >
+                      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${isDarkMode ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
+                        <Moon size={20} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-bold text-slate-900 dark:text-white">Night Mode</span>
+                          {isDarkMode && <Check size={16} className="text-blue-600 dark:text-blue-400" />}
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">Deep OLED visionOS dark glass</p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="h-px bg-black/[0.04] dark:bg-white/[0.06]" />
+
+                {/* Section 2: Canvas Layout */}
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">Prompt Canvas Layout</h3>
+                    <p className="text-[11px] text-slate-500 font-medium">Choose how generated prompt cards are arranged in columns</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Single Column */}
+                    <button
+                      type="button"
+                      onClick={() => setPromptLayout('single')}
+                      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all text-left cursor-pointer ${
+                        promptLayout === 'single'
+                          ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-900/20 ring-2 ring-blue-500/30 shadow-md'
+                          : 'border-slate-200/80 dark:border-white/[0.08] bg-white/60 dark:bg-white/[0.03] hover:bg-white dark:hover:bg-white/[0.06]'
+                      }`}
+                    >
+                      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${promptLayout === 'single' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
+                        <LayoutList size={20} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-bold text-slate-900 dark:text-white">Single Column</span>
+                          {promptLayout === 'single' && <Check size={16} className="text-blue-600 dark:text-blue-400" />}
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">Full-width readable feed view</p>
+                      </div>
+                    </button>
+
+                    {/* 2 Columns */}
+                    <button
+                      type="button"
+                      onClick={() => setPromptLayout('grid')}
+                      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all text-left cursor-pointer ${
+                        promptLayout === 'grid'
+                          ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-900/20 ring-2 ring-blue-500/30 shadow-md'
+                          : 'border-slate-200/80 dark:border-white/[0.08] bg-white/60 dark:bg-white/[0.03] hover:bg-white dark:hover:bg-white/[0.06]'
+                      }`}
+                    >
+                      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${promptLayout === 'grid' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
+                        <Columns2 size={20} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-bold text-slate-900 dark:text-white">2 Columns</span>
+                          {promptLayout === 'grid' && <Check size={16} className="text-blue-600 dark:text-blue-400" />}
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">Side-by-side comparative split grid</p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="h-px bg-black/[0.04] dark:bg-white/[0.06]" />
+
+                {/* Section 3: Card Prompt Density */}
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">Card Prompt Density</h3>
+                    <p className="text-[11px] text-slate-500 font-medium">Control whether prompt texts expand fully or stay neatly collapsed</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Full Prompts */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCompactMode(false);
+                        setExpandedCardIds(new Set());
+                      }}
+                      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all text-left cursor-pointer ${
+                        !isCompactMode
+                          ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-900/20 ring-2 ring-blue-500/30 shadow-md'
+                          : 'border-slate-200/80 dark:border-white/[0.08] bg-white/60 dark:bg-white/[0.03] hover:bg-white dark:hover:bg-white/[0.06]'
+                      }`}
+                    >
+                      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${!isCompactMode ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
+                        <UnfoldVertical size={20} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-bold text-slate-900 dark:text-white">Full Prompts</span>
+                          {!isCompactMode && <Check size={16} className="text-blue-600 dark:text-blue-400" />}
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">Display full prompt texts on all cards</p>
+                      </div>
+                    </button>
+
+                    {/* 2-Line Compact */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCompactMode(true);
+                        setExpandedCardIds(new Set());
+                      }}
+                      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all text-left cursor-pointer ${
+                        isCompactMode
+                          ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-900/20 ring-2 ring-blue-500/30 shadow-md'
+                          : 'border-slate-200/80 dark:border-white/[0.08] bg-white/60 dark:bg-white/[0.03] hover:bg-white dark:hover:bg-white/[0.06]'
+                      }`}
+                    >
+                      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${isCompactMode ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
+                        <FoldVertical size={20} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-bold text-slate-900 dark:text-white">2-Line Compact</span>
+                          {isCompactMode && <Check size={16} className="text-blue-600 dark:text-blue-400" />}
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">2-line preview with click to expand</p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="h-px bg-black/[0.04] dark:bg-white/[0.06]" />
+
+                {/* Section 4: Danger Zone / System Reset */}
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="text-xs font-black text-red-500 uppercase tracking-wider">Danger Zone</h3>
+                    <p className="text-[11px] text-slate-500 font-medium">Irreversible actions on current workspace data</p>
+                  </div>
+
+                  <div className="p-5 rounded-2xl border border-red-500/25 bg-red-500/[0.04] dark:bg-red-500/[0.06] flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-11 h-11 rounded-2xl bg-red-500/15 text-red-500 flex items-center justify-center shrink-0">
+                        <Trash2 size={20} />
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold text-slate-900 dark:text-white">Reset Workspace & History</div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Clear all generated prompt batches, restore parameter defaults, and clear history.</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsModalOpen(false);
+                        setIsResetConfirmOpen(true);
+                      }}
+                      className="px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-red-500 hover:bg-red-600 text-white shadow-md shadow-red-500/25 transition-all shrink-0 active:scale-95 cursor-pointer"
+                    >
+                      Reset Workspace
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
             
             {/* Footer */}
-            <div className="p-8 pt-0 mt-2">
-               <button onClick={() => setIsModalOpen(false)} className="w-full py-4 bg-slate-950 dark:bg-white text-white dark:text-slate-950 rounded-full font-black uppercase tracking-widest text-xs shadow-lg active:scale-[0.98] transition-all">Save Settings</button>
+            <div className="p-8 pt-4 border-t border-black/[0.04] dark:border-white/[0.06]">
+               <button 
+                 onClick={() => setIsModalOpen(false)} 
+                 className="w-full py-4 bg-slate-950 dark:bg-white text-white dark:text-slate-950 rounded-full font-black uppercase tracking-widest text-xs shadow-lg active:scale-[0.98] transition-all cursor-pointer"
+               >
+                 Close Settings
+               </button>
             </div>
           </div>
         </div>
