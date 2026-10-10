@@ -1,4 +1,5 @@
 import { RunArchitectButton } from "./components/RunArchitectButton";
+import { QuantumOrbitalCore } from "./components/QuantumOrbitalCore";
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { 
   Sparkles, Check, Copy, ChevronDown, Loader2, 
@@ -2441,57 +2442,75 @@ export default function App() {
       {/* MAIN AREA */}
       <main ref={mainScrollRef} className="flex-1 overflow-y-auto custom-scrollbar relative bg-transparent pt-16 z-10 transition-colors duration-500" style={mainCanvasBackgroundStyle}>
         {(isGenerating || apiTrackerState.visible) && (
-          <div className={`fixed inset-0 ${isSidebarOpen ? 'lg:left-[340px] xl:left-[370px]' : 'left-0'} z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/25 dark:bg-black/45 backdrop-blur-[3px] backdrop-saturate-[140%] pointer-events-none transition-all duration-300 animate-in fade-in`}>
-            <div className="bg-gradient-to-b from-white/96 via-white/92 to-white/90 dark:from-[#0d162a]/97 dark:via-[#090f1d]/95 dark:to-[#060a14]/97 backdrop-blur-3xl backdrop-saturate-[200%] border border-white/90 dark:border-white/20 shadow-[0_32px_80px_rgba(0,0,0,0.28),0_8px_24px_rgba(0,0,0,0.12),inset_0_1px_2px_rgba(255,255,255,1)] dark:shadow-[0_40px_90px_rgba(0,0,0,0.85),0_8px_24px_rgba(0,0,0,0.5),inset_0_1px_1.5px_rgba(255,255,255,0.22)] rounded-[28px] p-6 w-full max-w-sm relative overflow-hidden transition-all duration-300 animate-in zoom-in-95 pointer-events-auto">
-              {/* Apple Specular Top Rim Highlight */}
-              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-white/95 dark:via-white/35 to-transparent pointer-events-none" />
+          <div className={`fixed inset-0 ${isSidebarOpen ? 'lg:left-[340px] xl:left-[370px]' : 'left-0'} z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/45 dark:bg-black/65 pointer-events-none transition-all duration-300 animate-in fade-in`}>
+            <div className="relative w-full max-w-sm pointer-events-auto">
+              {/* Localized frosted blur directly underneath the loading card */}
+              <div 
+                aria-hidden="true" 
+                className="absolute -inset-2.5 sm:-inset-3.5 rounded-[34px] backdrop-blur-2xl bg-white/15 dark:bg-black/40 shadow-2xl pointer-events-none transition-all duration-300" 
+              />
 
-              <div className="flex items-center gap-3.5 mb-4">
-                <div className="w-11 h-11 rounded-2xl bg-gradient-to-b from-blue-500/20 to-blue-600/10 dark:from-blue-400/25 dark:to-blue-500/10 border border-blue-500/30 dark:border-blue-400/30 shadow-[inset_0_1px_1.5px_rgba(255,255,255,0.6)] flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
-                  <Loader2 size={20} className="animate-spin text-blue-600 dark:text-blue-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-[13px] font-bold tracking-tight text-slate-900 dark:text-white uppercase truncate">
-                    {isGenerating ? LOADING_STEPS[loadingStepIdx] : 'System Diagnostic'}
-                  </h3>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
-                    <p className="text-[10px] font-mono font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">SYS.NET • ACTIVE</p>
-                  </div>
-                </div>
-              </div>
+              {/* Loading / Diagnostic Card */}
+              <div className="relative bg-gradient-to-b from-white/96 via-white/92 to-white/90 dark:from-[#0d162a]/97 dark:via-[#090f1d]/95 dark:to-[#060a14]/97 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/90 dark:border-white/20 shadow-[0_32px_80px_rgba(0,0,0,0.35),0_8px_24px_rgba(0,0,0,0.15),inset_0_1px_2px_rgba(255,255,255,1)] dark:shadow-[0_40px_90px_rgba(0,0,0,0.85),0_8px_24px_rgba(0,0,0,0.5),inset_0_1px_1.5px_rgba(255,255,255,0.22)] rounded-[28px] p-6 w-full overflow-hidden transition-all duration-300 diagnostic-card-reveal">
+                {/* Apple Specular Top Rim Highlight */}
+                <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-white/95 dark:via-white/35 to-transparent pointer-events-none z-30" />
 
-              {/* Recessed Frosted Data Tray (macOS Control Center style) */}
-              <div className="bg-slate-100/95 dark:bg-black/60 border border-slate-200/90 dark:border-white/10 shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.4)] rounded-2xl p-3.5 space-y-2.5 font-mono text-[11px]">
-                <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
-                  <span className="opacity-80 text-[10px] uppercase tracking-wider font-semibold">TARGET NODE:</span>
-                  <span className="uppercase text-emerald-600 dark:text-emerald-400 font-bold">{apiTrackerState.currentProvider || activeProvider.toUpperCase()}</span>
+                {/* Glowing Horizontal Cybernetic Scanner Beam Sweeping Across the Card */}
+                <div className="absolute left-0 right-0 h-[2px] pointer-events-none quantum-scanner-beam z-20">
+                  {/* High-intensity laser core */}
+                  <div className="h-full w-full bg-gradient-to-r from-transparent via-cyan-400 dark:via-cyan-300 to-transparent shadow-[0_0_12px_rgba(56,189,248,0.95),0_0_24px_rgba(99,102,241,0.65)]" />
+                  {/* Soft diffused laser flare aura */}
+                  <div className="absolute -top-3.5 left-0 right-0 h-7 bg-gradient-to-b from-cyan-500/10 via-blue-500/15 to-transparent blur-[5px] pointer-events-none" />
                 </div>
-                <div className="flex justify-between items-center text-slate-600 dark:text-slate-300 pt-1.5 border-t border-slate-200/80 dark:border-white/[0.08]">
-                  <span className="opacity-80 text-[10px] uppercase tracking-wider font-semibold">AI MODEL:</span>
-                  <span className="uppercase text-blue-600 dark:text-blue-400 font-bold truncate max-w-[170px] text-right" title={activeModelLabel}>{activeModelLabel}</span>
-                </div>
-                {apiTrackerState.failedKeys.length > 0 && (
-                  <div className="flex justify-between items-center text-amber-500 pt-1.5 border-t border-slate-200/80 dark:border-white/[0.08]">
-                    <span className="opacity-80 text-[10px] uppercase tracking-wider font-semibold">ERRORS:</span>
-                    <span className="font-bold">{apiTrackerState.failedKeys.length}/{apiTrackerState.totalKeys}</span>
+
+                <div className="flex items-center gap-3.5 mb-4 relative z-10">
+                  {/* Multi-Ring Quantum Orbital Core with Pulsing Neural Center */}
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-blue-500/15 via-indigo-500/10 to-cyan-500/15 dark:from-blue-400/20 dark:via-indigo-400/15 dark:to-cyan-400/20 border border-blue-500/30 dark:border-cyan-400/30 shadow-[inset_0_1px_2px_rgba(255,255,255,0.7),0_4px_20px_rgba(56,189,248,0.25)] flex items-center justify-center shrink-0 relative overflow-visible">
+                    <QuantumOrbitalCore size={40} />
                   </div>
-                )}
-                {apiTrackerState.attempt > 1 && (
-                  <div className="flex justify-between items-center text-blue-500 pt-1.5 border-t border-slate-200/80 dark:border-white/[0.08]">
-                    <span className="opacity-80 text-[10px] uppercase tracking-wider font-semibold">CYCLE:</span>
-                    <span className="font-bold">{apiTrackerState.attempt}/3</span>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-[13px] font-bold tracking-tight text-slate-900 dark:text-white uppercase truncate">
+                      {isGenerating ? LOADING_STEPS[loadingStepIdx] : 'System Diagnostic'}
+                    </h3>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+                      <p className="text-[10px] font-mono font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">SYS.NET • ACTIVE</p>
+                    </div>
                   </div>
-                )}
-              </div>
-              
-              {/* Frosted Status Bar */}
-              <div className="mt-3.5 px-3 py-2.5 rounded-xl bg-slate-100/95 dark:bg-black/55 border border-slate-200/90 dark:border-white/10 text-[10px] font-mono text-slate-800 dark:text-slate-200 flex items-center gap-2 leading-none">
-                <span className="text-blue-500 font-bold shrink-0">&gt;</span> 
-                <div className="flex-1 truncate font-semibold">
-                  <span className="uppercase"><TerminalText text={isGenerating ? (apiTrackerState.statusMessage || 'ESTABLISHING SECURE CONNECTION...') : (apiTrackerState.statusMessage || 'ESTABLISHING SECURE HANDSHAKE...')} /></span>
                 </div>
-                <span className="inline-block w-1.5 h-3 bg-blue-500 animate-pulse shrink-0 rounded-xs"></span>
+
+                {/* Recessed Frosted Data Tray (macOS Control Center style) */}
+                <div className="bg-slate-100/95 dark:bg-black/60 border border-slate-200/90 dark:border-white/10 shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.4)] rounded-2xl p-3.5 space-y-2.5 font-mono text-[11px] relative z-10">
+                  <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
+                    <span className="opacity-80 text-[10px] uppercase tracking-wider font-semibold">TARGET NODE:</span>
+                    <span className="uppercase text-emerald-600 dark:text-emerald-400 font-bold">{apiTrackerState.currentProvider || activeProvider.toUpperCase()}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-slate-600 dark:text-slate-300 pt-1.5 border-t border-slate-200/80 dark:border-white/[0.08]">
+                    <span className="opacity-80 text-[10px] uppercase tracking-wider font-semibold">AI MODEL:</span>
+                    <span className="uppercase text-blue-600 dark:text-blue-400 font-bold truncate max-w-[170px] text-right" title={activeModelLabel}>{activeModelLabel}</span>
+                  </div>
+                  {apiTrackerState.failedKeys.length > 0 && (
+                    <div className="flex justify-between items-center text-amber-500 pt-1.5 border-t border-slate-200/80 dark:border-white/[0.08]">
+                      <span className="opacity-80 text-[10px] uppercase tracking-wider font-semibold">ERRORS:</span>
+                      <span className="font-bold">{apiTrackerState.failedKeys.length}/{apiTrackerState.totalKeys}</span>
+                    </div>
+                  )}
+                  {apiTrackerState.attempt > 1 && (
+                    <div className="flex justify-between items-center text-blue-500 pt-1.5 border-t border-slate-200/80 dark:border-white/[0.08]">
+                      <span className="opacity-80 text-[10px] uppercase tracking-wider font-semibold">CYCLE:</span>
+                      <span className="font-bold">{apiTrackerState.attempt}/3</span>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Frosted Status Bar */}
+                <div className="mt-3.5 px-3 py-2.5 rounded-xl bg-slate-100/95 dark:bg-black/55 border border-slate-200/90 dark:border-white/10 text-[10px] font-mono text-slate-800 dark:text-slate-200 flex items-center gap-2 leading-none relative z-10">
+                  <span className="text-blue-500 font-bold shrink-0">&gt;</span> 
+                  <div className="flex-1 truncate font-semibold">
+                    <span className="uppercase"><TerminalText text={isGenerating ? (apiTrackerState.statusMessage || 'ESTABLISHING SECURE CONNECTION...') : (apiTrackerState.statusMessage || 'ESTABLISHING SECURE HANDSHAKE...')} /></span>
+                  </div>
+                  <span className="inline-block w-1.5 h-3 bg-blue-500 animate-pulse shrink-0 rounded-xs"></span>
+                </div>
               </div>
             </div>
           </div>

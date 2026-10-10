@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Sparkles, Check } from 'lucide-react';
+import { Sparkles, Check, Zap } from 'lucide-react';
 
 interface Props {
   onClick: () => void;
@@ -46,8 +46,8 @@ export const RunArchitectButton: React.FC<Props> = ({
           setPhase('reset');
           resetTimerRef.current = setTimeout(() => {
             setPhase('idle');
-          }, 60);
-        }, 1200);
+          }, 80);
+        }, 1300);
       }
     } else if (!isGenerating && phase === 'loading') {
       clearTimers();
@@ -70,207 +70,275 @@ export const RunArchitectButton: React.FC<Props> = ({
     onClick();
   };
 
-  const getLabelStyle = (): React.CSSProperties => {
-    if (phase === 'idle') {
-      return { 
-        transform: 'translateY(0)', 
-        opacity: 1, 
-        transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease' 
-      };
-    }
-    if (phase === 'loading' || phase === 'success') {
-      return { 
-        transform: 'translateY(24px)', 
-        opacity: 0, 
-        transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease' 
-      };
-    }
-    return { 
-      transform: 'translateY(-24px)', 
-      opacity: 0, 
-      transition: 'none' 
-    };
-  };
-
-  // Mathematically precise continuous sine wave paths (Period = 40px, cy = 13px)
-  // Perfectly loops when translating by -80px (exact 2 full periods) with zero deviation
-  const primaryWavePath = "M -40,13 C -32.80,6.50 -27.20,6.50 -20.00,13 C -12.80,19.50 -7.20,19.50 0.00,13 C 7.20,6.50 12.80,6.50 20.00,13 C 27.20,19.50 32.80,19.50 40.00,13 C 47.20,6.50 52.80,6.50 60.00,13 C 67.20,19.50 72.80,19.50 80.00,13 C 87.20,6.50 92.80,6.50 100.00,13 C 107.20,19.50 112.80,19.50 120.00,13 C 127.20,6.50 132.80,6.50 140.00,13 C 147.20,19.50 152.80,19.50 160.00,13 C 167.20,6.50 172.80,6.50 180.00,13 C 187.20,19.50 192.80,19.50 200.00,13 C 207.20,6.50 212.80,6.50 220.00,13 C 227.20,19.50 232.80,19.50 240.00,13 C 247.20,6.50 252.80,6.50 260.00,13 C 267.20,19.50 272.80,19.50 280.00,13 C 287.20,6.50 292.80,6.50 300.00,13 C 307.20,19.50 312.80,19.50 320.00,13 C 327.20,6.50 332.80,6.50 340.00,13 C 347.20,19.50 352.80,19.50 360.00,13 C 367.20,6.50 372.80,6.50 380.00,13 C 387.20,19.50 392.80,19.50 400.00,13 C 407.20,6.50 412.80,6.50 420.00,13 C 427.20,19.50 432.80,19.50 440.00,13";
-  
-  const secondaryWavePath = "M -40,13 C -32.80,9.00 -27.20,9.00 -20.00,13 C -12.80,17.00 -7.20,17.00 0.00,13 C 7.20,9.00 12.80,9.00 20.00,13 C 27.20,17.00 32.80,17.00 40.00,13 C 47.20,9.00 52.80,9.00 60.00,13 C 67.20,17.00 72.80,17.00 80.00,13 C 87.20,9.00 92.80,9.00 100.00,13 C 107.20,17.00 112.80,17.00 120.00,13 C 127.20,9.00 132.80,9.00 140.00,13 C 147.20,17.00 152.80,17.00 160.00,13 C 167.20,9.00 172.80,9.00 180.00,13 C 187.20,17.00 192.80,17.00 200.00,13 C 207.20,9.00 212.80,9.00 220.00,13 C 227.20,17.00 232.80,17.00 240.00,13 C 247.20,9.00 252.80,9.00 260.00,13 C 267.20,17.00 272.80,17.00 280.00,13 C 287.20,9.00 292.80,9.00 300.00,13 C 307.20,17.00 312.80,17.00 320.00,13 C 327.20,9.00 332.80,9.00 340.00,13 C 347.20,17.00 352.80,17.00 360.00,13 C 367.20,9.00 372.80,9.00 380.00,13 C 387.20,17.00 392.80,17.00 400.00,13 C 407.20,9.00 412.80,9.00 420.00,13 C 427.20,17.00 432.80,17.00 440.00,13";
-
   return (
-    <>
-      <style>{`
-        @keyframes modernAiWavePrimary {
-          0% { transform: translate3d(0, 0, 0); }
-          100% { transform: translate3d(-80px, 0, 0); }
-        }
-        @keyframes modernAiWaveSecondary {
-          0% { transform: translate3d(-80px, 0, 0); }
-          100% { transform: translate3d(0, 0, 0); }
-        }
-        @keyframes modernAiWaveBreathe {
-          0%, 100% { transform: scaleY(0.92); opacity: 0.92; }
-          50% { transform: scaleY(1.14); opacity: 1; }
-        }
-        @keyframes modernBorderBeam {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        .animate-ai-wave-primary {
-          animation: modernAiWavePrimary 2.2s linear infinite;
-          will-change: transform;
-        }
-        .animate-ai-wave-secondary {
-          animation: modernAiWaveSecondary 3.1s linear infinite;
-          will-change: transform;
-        }
-        .animate-ai-wave-breathe {
-          animation: modernAiWaveBreathe 2.8s ease-in-out infinite;
-        }
-        .animate-border-beam {
-          animation: modernBorderBeam 3.5s linear infinite;
-          will-change: transform;
-        }
-      `}</style>
+    <div className="relative w-full group select-none">
+      {/* Outer ambient glow halo (Intensifies on hover and loading) */}
+      <div 
+        className={`absolute -inset-1 rounded-full blur-xl transition-all duration-500 pointer-events-none ${
+          phase === 'loading'
+            ? 'opacity-85 bg-gradient-to-r from-cyan-500/40 via-blue-600/40 to-indigo-500/40 scale-105'
+            : phase === 'success'
+            ? 'opacity-90 bg-emerald-500/35 scale-105'
+            : 'opacity-0 group-hover:opacity-60 bg-gradient-to-r from-cyan-500/20 via-blue-500/25 to-indigo-500/20 scale-100'
+        }`}
+      />
 
-      <div className="relative w-full group select-none">
-        <button 
-          onClick={handleClick}
-          disabled={disabled || isGenerating || phase === 'loading'}
-          aria-busy={phase === 'loading'}
-          aria-label={phase === 'loading' ? 'Generating prompts...' : label}
-          className={`no-global-transition relative z-10 w-full min-h-[48px] h-12 xs:h-[50px] sm:h-[52px] md:h-[54px] rounded-full overflow-hidden flex items-center justify-center font-black uppercase tracking-[0.14em] text-[12px] xs:text-[12.5px] sm:text-[13px] md:text-[13.5px] backdrop-blur-2xl backdrop-saturate-[190%] transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] cursor-pointer ${
+      <button 
+        onClick={handleClick}
+        disabled={disabled || isGenerating || phase === 'loading'}
+        aria-busy={phase === 'loading'}
+        aria-label={phase === 'loading' ? 'Generating prompts...' : label}
+        className={`no-global-transition relative z-10 w-full min-h-[50px] h-[50px] sm:h-[52px] md:h-[54px] rounded-full overflow-hidden flex items-center justify-center font-black uppercase tracking-[0.15em] text-[12px] xs:text-[12.5px] sm:text-[13px] md:text-[13.5px] backdrop-blur-2xl backdrop-saturate-[200%] transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] cursor-pointer ${
+          phase === 'loading' 
+            ? 'bg-gradient-to-b from-white/95 via-slate-50/90 to-white/85 dark:from-slate-950/95 dark:via-[#070d1e]/90 dark:to-[#040816]/95 text-cyan-600 dark:text-cyan-300 border border-cyan-500/50 dark:border-cyan-400/40 shadow-[0_0_32px_rgba(6,182,212,0.32),inset_0_1px_2px_rgba(255,255,255,0.9)] dark:shadow-[0_0_36px_rgba(6,182,212,0.35),inset_0_1px_2px_rgba(255,255,255,0.25)]'
+            : phase === 'success'
+            ? 'bg-gradient-to-b from-emerald-500/20 via-emerald-500/10 to-transparent dark:from-emerald-500/25 dark:via-emerald-500/15 dark:to-[#021d14]/90 text-emerald-600 dark:text-emerald-300 border border-emerald-400/60 shadow-[0_0_32px_rgba(16,185,129,0.4),inset_0_1px_2px_rgba(255,255,255,0.8)]'
+            : 'bg-gradient-to-b from-white/95 via-white/85 to-white/75 hover:from-white hover:to-white/90 dark:from-white/[0.13] dark:via-white/[0.08] dark:to-white/[0.05] dark:hover:from-white/[0.20] dark:hover:to-white/[0.12] text-slate-900 dark:text-white hover:text-cyan-600 dark:hover:text-cyan-300 border border-slate-200/90 dark:border-white/[0.18] shadow-[0_8px_24px_rgba(0,0,0,0.06),inset_0_1px_1.5px_rgba(255,255,255,0.95)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.5),inset_0_1px_1.5px_rgba(255,255,255,0.2)] hover:shadow-[0_12px_36px_rgba(6,182,212,0.32)] hover:-translate-y-0.5 active:scale-[0.98]'
+        } ${
+          (disabled || isGenerating) && phase === 'idle' ? 'opacity-40 cursor-not-allowed hover:translate-y-0 hover:shadow-none' : 'opacity-100'
+        }`}
+      >
+        {/* Top Specular Rim Reflection */}
+        <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/95 dark:via-white/45 to-transparent pointer-events-none z-20" />
+
+        {/* Liquid Gloss Top Arc */}
+        <div className="absolute top-0 left-2 right-2 h-1/2 bg-gradient-to-b from-white/35 dark:from-white/12 to-transparent rounded-t-full pointer-events-none z-10" />
+
+        {/* Quantum Shimmer Border: Idle, Hover & Loading states */}
+        <div 
+          className={`absolute -inset-[200%] pointer-events-none flex items-center justify-center transition-opacity duration-500 z-0 ${
             phase === 'loading' 
-              ? 'bg-gradient-to-b from-white/95 via-white/90 to-white/85 dark:from-slate-900/95 dark:via-slate-900/90 dark:to-[#0b1329]/95 text-blue-600 dark:text-blue-400 border border-blue-500/40 dark:border-blue-400/30 shadow-[0_0_24px_rgba(59,130,246,0.22),inset_0_1px_1.5px_rgba(255,255,255,0.95)] dark:shadow-[0_0_28px_rgba(99,102,241,0.3),inset_0_1px_1.5px_rgba(255,255,255,0.2)]'
-              : phase === 'success'
-              ? 'bg-gradient-to-b from-emerald-500/15 via-emerald-500/10 to-transparent dark:from-emerald-500/20 dark:via-emerald-500/10 dark:to-transparent text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 shadow-[0_0_24px_rgba(16,185,129,0.25)]'
-              : 'bg-gradient-to-b from-white/90 via-white/80 to-white/70 hover:from-white hover:to-white/90 dark:from-white/[0.12] dark:via-white/[0.08] dark:to-white/[0.05] dark:hover:from-white/[0.18] dark:hover:to-white/[0.1] text-slate-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 border border-slate-200/90 dark:border-white/[0.15] shadow-[0_8px_24px_rgba(0,0,0,0.05),inset_0_1px_1.5px_rgba(255,255,255,0.95)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.4),inset_0_1px_1.5px_rgba(255,255,255,0.18)] hover:shadow-[0_12px_32px_rgba(59,130,246,0.18)] hover:-translate-y-0.5 active:scale-[0.98]'
-          } ${
-            (disabled || isGenerating) && phase === 'idle' ? 'opacity-40 cursor-not-allowed hover:translate-y-0 hover:shadow-none' : 'opacity-100'
+              ? 'opacity-90 dark:opacity-95' 
+              : 'opacity-25 group-hover:opacity-85 dark:opacity-30 dark:group-hover:opacity-95'
           }`}
         >
-          {/* Top Specular Rim Reflection */}
-          <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/95 dark:via-white/35 to-transparent pointer-events-none z-20" />
-
-          {/* Liquid Gloss Top Arc */}
-          <div className="absolute top-0 left-2 right-2 h-1/2 bg-gradient-to-b from-white/30 dark:from-white/10 to-transparent rounded-t-full pointer-events-none z-10" />
-
-          {/* Dynamic Border Beam (Active during loading phase) */}
-          {phase === 'loading' && (
-            <div className="absolute -inset-[150%] pointer-events-none flex items-center justify-center opacity-60 dark:opacity-75 z-0">
-              <div className="w-[300%] h-[300%] bg-[conic-gradient(from_0deg,transparent_0_310deg,#38bdf8_335deg,#818cf8_350deg,#ec4899_360deg)] animate-border-beam" />
-            </div>
-          )}
-
-          {/* Inner Surface Card Mask (Overlays border beam so only thin 1.5px border glows) */}
-          {phase === 'loading' && (
-            <div className="absolute inset-[1.5px] rounded-full bg-white/95 dark:bg-[#0c1527]/95 backdrop-blur-xl pointer-events-none z-[1]" />
-          )}
-
-          {/* Ambient Radial Glow behind waves during loading */}
           <div 
-            className={`absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-500 z-[2] ${
-              phase === 'loading' ? 'opacity-100' : 'opacity-0'
-            }`}
-          >
-            <div className="w-32 h-6 rounded-full bg-gradient-to-r from-cyan-500/25 via-blue-500/30 to-fuchsia-500/25 blur-md" />
+            className={`w-[400%] h-[400%] bg-[conic-gradient(from_0deg,transparent_0_300deg,#06b6d4_325deg,#3b82f6_345deg,#818cf8_355deg,#ffffff_360deg)] ${
+              phase === 'loading' ? 'quantum-btn-border-spin-fast' : 'quantum-btn-border-spin'
+            }`} 
+          />
+        </div>
+
+        {/* Inner Surface Card Mask to isolate the shimmer to a sharp 1.5px border glow */}
+        <div 
+          className={`absolute inset-[1.5px] rounded-full pointer-events-none z-[1] transition-colors duration-300 ${
+            phase === 'loading'
+              ? 'bg-white/95 dark:bg-[#060b18]/95 backdrop-blur-xl'
+              : phase === 'success'
+              ? 'bg-emerald-50/90 dark:bg-[#03150f]/95 backdrop-blur-xl'
+              : 'bg-white/90 dark:bg-[#0a0f1d]/90 backdrop-blur-xl group-hover:bg-white/95 dark:group-hover:bg-[#0c1326]/95'
+          }`} 
+        />
+
+        {/* ========================================================
+            SUCCESS STATE: Quantum Flash Expansion & Glowing Checkmark
+            ======================================================== */}
+        {phase === 'success' && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[4]">
+            {/* Luminous Quantum Flash Expanding Shockwave */}
+            <div className="absolute w-24 h-24 rounded-full bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 blur-md quantum-flash-expand" />
+            
+            {/* Success Content Badge */}
+            <div className="relative flex items-center justify-center gap-2.5 quantum-check-spring">
+              <div className="w-6 h-6 rounded-full bg-emerald-500/25 border border-emerald-400 flex items-center justify-center text-emerald-500 dark:text-emerald-300 shadow-[0_0_16px_rgba(16,185,129,0.7)]">
+                <Check size={14} strokeWidth={3.5} />
+              </div>
+              <span className="text-[12px] sm:text-[13px] font-black tracking-[0.18em] text-emerald-600 dark:text-emerald-300 drop-shadow-[0_0_10px_rgba(16,185,129,0.4)]">
+                PROMPTS SYNTHESIZED
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
+            GENERATING STATE: Quantum Orbital Ring + Particle Energy Stream
+            ======================================================== */}
+        <div 
+          className={`absolute inset-0 flex items-center justify-between px-3 sm:px-4 pointer-events-none transition-all duration-400 z-[3] ${
+            phase === 'loading' ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'
+          }`}
+        >
+          {/* Synchronized Micro Quantum Orbital Core (Left anchor) */}
+          <div className="relative w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0 flex items-center justify-center">
+            {/* Orbital glow backing */}
+            <div className="absolute inset-0 rounded-full bg-cyan-500/30 blur-[6px] animate-pulse" />
+            
+            <svg 
+              viewBox="0 0 100 100" 
+              className="w-full h-full relative z-10 overflow-visible"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <defs>
+                <linearGradient id="btn-q-orbit-primary" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#38bdf8" />
+                  <stop offset="50%" stopColor="#60a5fa" />
+                  <stop offset="100%" stopColor="#818cf8" />
+                </linearGradient>
+
+                <linearGradient id="btn-q-orbit-cyan" x1="100%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#06b6d4" />
+                  <stop offset="100%" stopColor="#a855f7" />
+                </linearGradient>
+
+                <radialGradient id="btn-q-core-dot" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="#ffffff" />
+                  <stop offset="60%" stopColor="#38bdf8" />
+                  <stop offset="100%" stopColor="#0284c7" />
+                </radialGradient>
+
+                <filter id="btn-q-node-glow" x="-30%" y="-30%" width="160%" height="160%">
+                  <feGaussianBlur stdDeviation="2" result="blur" />
+                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
+              </defs>
+
+              {/* Outer Circular Track with Traveling Quantum Node */}
+              <g className="quantum-orbit-cw origin-center">
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="44"
+                  fill="none"
+                  stroke="url(#btn-q-orbit-primary)"
+                  strokeWidth="2.5"
+                  strokeDasharray="8 8"
+                  className="opacity-80"
+                />
+                <circle cx="50" cy="6" r="4.5" fill="#ffffff" filter="url(#btn-q-node-glow)" />
+              </g>
+
+              {/* Inclined Ellipse 1 (Counter-Clockwise) */}
+              <g className="quantum-orbit-ellipse-ccw origin-center">
+                <ellipse
+                  cx="50"
+                  cy="50"
+                  rx="42"
+                  ry="22"
+                  fill="none"
+                  stroke="url(#btn-q-orbit-cyan)"
+                  strokeWidth="2.2"
+                  strokeDasharray="6 7"
+                  className="opacity-85"
+                />
+                <circle cx="92" cy="50" r="4" fill="#38bdf8" filter="url(#btn-q-node-glow)" />
+              </g>
+
+              {/* Inclined Ellipse 2 (Clockwise) */}
+              <g className="quantum-orbit-ellipse-cw origin-center">
+                <ellipse
+                  cx="50"
+                  cy="50"
+                  rx="41"
+                  ry="21"
+                  fill="none"
+                  stroke="url(#btn-q-orbit-primary)"
+                  strokeWidth="2"
+                  strokeDasharray="4 8"
+                  className="opacity-85"
+                />
+                <circle cx="8" cy="50" r="3.5" fill="#818cf8" filter="url(#btn-q-node-glow)" />
+              </g>
+
+              {/* Pulsing Neural Core Center */}
+              <circle
+                cx="50"
+                cy="50"
+                r="10"
+                fill="url(#btn-q-core-dot)"
+                className="quantum-neural-pulse"
+              />
+            </svg>
           </div>
 
-          {/* MODERN AI GENERATIVE WAVE ANIMATION CONTAINER */}
-          <div 
-            className={`absolute inset-0 flex items-center justify-center pointer-events-none transition-all duration-500 z-[3] ${
-              phase === 'loading' ? 'opacity-100 scale-100' : 'opacity-0 scale-90'
-            }`}
-          >
-            {/* Viewport Capsule with Silky Edge Gradient Mask */}
+          {/* Synchronized Particle Energy Stream Conduit */}
+          <div className="relative flex-1 mx-2 sm:mx-3 h-7 sm:h-8 flex items-center justify-center overflow-hidden">
+            {/* Silky Edge Gradient Mask for seamless fade */}
             <div 
-              className="relative w-[116px] sm:w-[130px] h-[28px] overflow-hidden flex items-center justify-center animate-ai-wave-breathe"
+              className="absolute inset-0 flex items-center overflow-hidden"
               style={{
-                WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%)',
-                maskImage: 'linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%)'
+                WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%)',
+                maskImage: 'linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%)'
               }}
             >
+              {/* Primary Streaming Conduit Beam (Flows right) */}
               <svg 
-                className="absolute left-0 top-[1px] w-[440px] h-[26px]" 
-                viewBox="0 0 440 26" 
+                className="w-[420px] h-full flex-shrink-0 animate-quantum-stream-left"
+                viewBox="0 0 420 30" 
                 fill="none"
               >
                 <defs>
-                  {/* Primary Apple Intelligence / Gemini Gradient */}
-                  <linearGradient id="modernAiWaveGradPrimary" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#38bdf8" />
+                  <linearGradient id="btn-stream-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#06b6d4" />
                     <stop offset="30%" stopColor="#3b82f6" />
-                    <stop offset="65%" stopColor="#818cf8" />
-                    <stop offset="85%" stopColor="#c084fc" />
-                    <stop offset="100%" stopColor="#f472b6" />
+                    <stop offset="70%" stopColor="#818cf8" />
+                    <stop offset="100%" stopColor="#06b6d4" />
                   </linearGradient>
-
-                  {/* Secondary Harmonic Wave Gradient */}
-                  <linearGradient id="modernAiWaveGradSecondary" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#67e8f9" stopOpacity="0.75" />
-                    <stop offset="50%" stopColor="#a855f7" stopOpacity="0.75" />
-                    <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.75" />
-                  </linearGradient>
-
-                  {/* Luminous Glow Filter */}
-                  <filter id="modernAiGlow" x="-20%" y="-20%" width="140%" height="140%">
-                    <feGaussianBlur stdDeviation="1" result="glow" />
-                    <feComposite in="SourceGraphic" in2="glow" operator="over" />
-                  </filter>
                 </defs>
-
-                {/* Secondary Harmonic Resonance Wave (Opposite flow for quantum fluid depth) */}
+                {/* Conduit Line 1 with animated dashes */}
                 <path 
-                  d={secondaryWavePath}
-                  className="animate-ai-wave-secondary"
-                  stroke="url(#modernAiWaveGradSecondary)"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  opacity="0.65"
+                  d="M 0,10 Q 50,4 105,10 T 210,10 T 315,10 T 420,10"
+                  stroke="url(#btn-stream-grad)"
+                  strokeWidth="2"
+                  strokeDasharray="6 8 16 8"
+                  className="opacity-75"
                 />
-
-                {/* Primary Radiant Wave (Forward silky smooth continuous sine flow) */}
+                {/* Conduit Line 2 counter-harmonic */}
                 <path 
-                  d={primaryWavePath}
-                  className="animate-ai-wave-primary"
-                  stroke="url(#modernAiWaveGradPrimary)"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  filter="url(#modernAiGlow)"
-                  style={{
-                    filter: 'drop-shadow(0 0 4px rgba(59, 130, 246, 0.7)) drop-shadow(0 0 8px rgba(139, 92, 246, 0.4))'
-                  }}
+                  d="M 0,20 Q 50,26 105,20 T 210,20 T 315,20 T 420,20"
+                  stroke="url(#btn-stream-grad)"
+                  strokeWidth="1.6"
+                  strokeDasharray="10 6 4 6"
+                  className="opacity-60"
                 />
+                {/* High-energy particle dots */}
+                <circle cx="45" cy="9" r="2.8" fill="#ffffff" filter="drop-shadow(0 0 4px #38bdf8)" />
+                <circle cx="150" cy="11" r="2.5" fill="#38bdf8" filter="drop-shadow(0 0 4px #38bdf8)" />
+                <circle cx="255" cy="10" r="3" fill="#ffffff" filter="drop-shadow(0 0 5px #818cf8)" />
+                <circle cx="360" cy="9" r="2.5" fill="#06b6d4" />
+                <circle cx="100" cy="21" r="2.5" fill="#818cf8" />
+                <circle cx="310" cy="19" r="2.8" fill="#ffffff" filter="drop-shadow(0 0 4px #06b6d4)" />
               </svg>
             </div>
-          </div>
 
-          {/* Success State Indicator */}
-          <div 
-            className={`absolute inset-0 flex items-center justify-center gap-2 pointer-events-none transition-all duration-400 z-[4] ${
-              phase === 'success' ? 'opacity-100 scale-100' : 'opacity-0 scale-75'
-            }`}
-          >
-            <div className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-500 dark:text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.4)]">
-              <Check size={14} strokeWidth={3} className="animate-in zoom-in-50 duration-300" />
+            {/* Energetic Overlay Label */}
+            <div className="relative z-10 flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-white/70 dark:bg-slate-900/80 backdrop-blur-md border border-cyan-500/30 dark:border-cyan-400/25 shadow-[0_0_12px_rgba(6,182,212,0.25)]">
+              <Zap size={11} className="text-cyan-500 dark:text-cyan-400 animate-pulse" />
+              <span className="text-[10px] sm:text-[11px] font-black tracking-[0.2em] text-cyan-700 dark:text-cyan-300 whitespace-nowrap">
+                SYNTHESIZING...
+              </span>
             </div>
-            <span className="text-[12px] font-black tracking-wider text-emerald-600 dark:text-emerald-400">
-              SYNTHESIZED
-            </span>
           </div>
 
-          {/* Idle Label Text with Sparkles Icon */}
-          <div className="relative z-[5] flex items-center justify-center gap-2.5 w-full h-full pointer-events-none">
-            <span style={getLabelStyle()} className="absolute flex items-center gap-2 whitespace-nowrap">
-              <Sparkles size={16} className="text-blue-500 dark:text-blue-400 group-hover:rotate-12 group-hover:scale-110 transition-transform duration-300" />
-              <span>{label}</span>
-            </span>
+          {/* Synchronized Micro Particle Node Anchor (Right anchor) */}
+          <div className="relative w-6 h-6 flex-shrink-0 flex items-center justify-center">
+            <div className="w-3 h-3 rounded-full bg-gradient-to-tr from-cyan-400 to-indigo-500 animate-ping opacity-75" />
+            <div className="absolute w-2 h-2 rounded-full bg-white dark:bg-cyan-200 shadow-[0_0_8px_#38bdf8]" />
           </div>
-        </button>
-      </div>
-    </>
+        </div>
+
+        {/* ========================================================
+            IDLE STATE: Quantum Shimmer Label & Sparkling Hover Lift
+            ======================================================== */}
+        <div 
+          className={`relative z-[5] flex items-center justify-center gap-2.5 w-full h-full pointer-events-none transition-all duration-300 ${
+            phase === 'idle' 
+              ? 'opacity-100 transform-none' 
+              : phase === 'loading'
+              ? 'opacity-0 translate-y-3'
+              : 'opacity-0 -translate-y-3'
+          }`}
+        >
+          <span className="flex items-center gap-2.5 whitespace-nowrap">
+            <Sparkles 
+              size={17} 
+              className="text-cyan-500 dark:text-cyan-400 group-hover:rotate-12 group-hover:scale-125 transition-all duration-300 drop-shadow-[0_0_8px_rgba(6,182,212,0.45)]" 
+            />
+            <span className="group-hover:tracking-[0.18em] transition-all duration-300">
+              {label}
+            </span>
+          </span>
+        </div>
+      </button>
+    </div>
   );
 };

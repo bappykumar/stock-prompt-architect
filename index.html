@@ -139,6 +139,176 @@
         100% { top: 100%; opacity: 0; }
       }
 
+      /* ========================================================
+         Modern Quantum Orbital Core & Scanner Animations 
+         ======================================================== */
+      @keyframes quantum-orbit-cw {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+      @keyframes quantum-orbit-ccw {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(-360deg); }
+      }
+      @keyframes quantum-orbit-ellipse-cw {
+        from { transform: rotate(38deg); }
+        to { transform: rotate(398deg); }
+      }
+      @keyframes quantum-orbit-ellipse-ccw {
+        from { transform: rotate(-32deg); }
+        to { transform: rotate(-392deg); }
+      }
+      @keyframes quantum-neural-pulse {
+        0%, 100% {
+          transform: scale(0.92);
+          opacity: 0.85;
+          filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.4));
+        }
+        50% {
+          transform: scale(1.12);
+          opacity: 1;
+          filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.85));
+        }
+      }
+
+      .quantum-orbit-cw {
+        animation: quantum-orbit-cw 5.5s linear infinite;
+        transform-origin: 50px 50px;
+      }
+      .quantum-orbit-ellipse-ccw {
+        animation: quantum-orbit-ellipse-ccw 4.2s linear infinite;
+        transform-origin: 50px 50px;
+      }
+      .quantum-orbit-ellipse-cw {
+        animation: quantum-orbit-ellipse-cw 3.6s linear infinite;
+        transform-origin: 50px 50px;
+      }
+      .quantum-orbit-ccw-fast {
+        animation: quantum-orbit-ccw 2.6s linear infinite;
+        transform-origin: 50px 50px;
+      }
+      .quantum-neural-pulse {
+        animation: quantum-neural-pulse 1.8s ease-in-out infinite;
+        transform-origin: 50px 50px;
+      }
+
+      /* Glowing horizontal scanner beam sweeping across diagnostic card */
+      @keyframes quantum-scanner-sweep {
+        0% {
+          top: -2%;
+          opacity: 0;
+        }
+        8% {
+          opacity: 1;
+        }
+        90% {
+          opacity: 1;
+        }
+        100% {
+          top: 102%;
+          opacity: 0;
+        }
+      }
+      .quantum-scanner-beam {
+        animation: quantum-scanner-sweep 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        will-change: top, opacity;
+      }
+
+      /* Smooth spring scale & fade with subtle frosted blur reveal */
+      @keyframes diagnostic-reveal {
+        0% {
+          opacity: 0;
+          transform: scale(0.92) translateY(10px);
+          filter: blur(8px);
+        }
+        70% {
+          opacity: 1;
+          transform: scale(1.012) translateY(-1px);
+          filter: blur(0px);
+        }
+        100% {
+          opacity: 1;
+          transform: scale(1) translateY(0);
+          filter: blur(0px);
+        }
+      }
+      .diagnostic-card-reveal {
+        animation: diagnostic-reveal 0.42s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        will-change: transform, opacity, filter;
+      }
+
+      /* ========================================================
+         Quantum Orbital Button & Particle Stream Animations
+         ======================================================== */
+      @keyframes quantum-btn-border-spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      .quantum-btn-border-spin {
+        animation: quantum-btn-border-spin 4s linear infinite;
+        will-change: transform;
+      }
+      .quantum-btn-border-spin-fast {
+        animation: quantum-btn-border-spin 2s linear infinite;
+        will-change: transform;
+      }
+
+      @keyframes quantum-stream-slide-left {
+        0% { transform: translate3d(0, 0, 0); }
+        100% { transform: translate3d(-100px, 0, 0); }
+      }
+      .animate-quantum-stream-left {
+        animation: quantum-stream-slide-left 1.8s linear infinite;
+        will-change: transform;
+      }
+
+      @keyframes quantum-stream-slide-right {
+        0% { transform: translate3d(-100px, 0, 0); }
+        100% { transform: translate3d(0, 0, 0); }
+      }
+      .animate-quantum-stream-right {
+        animation: quantum-stream-slide-right 2.4s linear infinite;
+        will-change: transform;
+      }
+
+      @keyframes quantum-flash-expand {
+        0% {
+          transform: scale(0.6);
+          opacity: 0.9;
+        }
+        50% {
+          transform: scale(1.2);
+          opacity: 0.6;
+        }
+        100% {
+          transform: scale(1.7);
+          opacity: 0;
+        }
+      }
+      .quantum-flash-expand {
+        animation: quantum-flash-expand 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        will-change: transform, opacity;
+      }
+
+      @keyframes quantum-check-spring {
+        0% {
+          transform: scale(0.4) rotate(-20deg);
+          opacity: 0;
+        }
+        70% {
+          transform: scale(1.15) rotate(4deg);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(1) rotate(0deg);
+          opacity: 1;
+        }
+      }
+      .quantum-check-spring {
+        animation: quantum-check-spring 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        will-change: transform, opacity;
+      }
+
       .dark ::selection {
         background: #3b82f6;
         color: #ffffff;
