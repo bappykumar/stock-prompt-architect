@@ -8,7 +8,8 @@ import {
   Layers, Camera, Box, Maximize, User, Moon, Sun,
   Layout, Fingerprint, Focus, Settings2, Download, MessageSquareCode, Send, AlertCircle, X, Cpu, Paintbrush,
   ChevronUp, Key, Lock, Unlock, Info, Settings, ToggleLeft, ToggleRight, Activity, Power, Video, Target, Lightbulb, Search, Shuffle, Image, Type, RefreshCw, ListX, PanelLeftClose, PanelLeftOpen, Upload,
-  LayoutList, Columns2, UnfoldVertical, FoldVertical, SlidersHorizontal
+  LayoutList, Columns2, UnfoldVertical, FoldVertical, SlidersHorizontal, LayoutGrid, Rows3,
+  CircleDot, Grid3X3, RotateCcw
 } from 'lucide-react';
 import { PromptOptions, GeneratedPrompt, PromptBatch, HistoricalPrompt, ApiKeyRecord } from './types';
 import { generateStockPrompts, testApiKey, analyzeReferenceAndSuggestSettings } from './services/geminiService';
@@ -978,17 +979,37 @@ export default function App() {
   const [newKeyInput, setNewKeyInput] = useState("");
   const [activeProviderTab, setActiveProviderTab] = useState<'gemini' | 'groq' | 'mistral' | 'openrouter'>('gemini');
 
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 1024;
+    }
+    return true;
+  });
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     const saved = safeLocalStorage.getItem('theme_preference');
     return saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
   });
-  const [promptLayout, setPromptLayout] = useState<'single' | 'grid'>(() => {
+  const [promptLayout, setPromptLayout] = useState<'auto' | 'single' | 'grid'>(() => {
     try {
       const saved = safeLocalStorage.getItem('prompt_display_layout');
-      return saved === 'grid' ? 'grid' : 'single';
+      if (saved === 'auto' || saved === 'single' || saved === 'grid') {
+        return saved;
+      }
+      return 'auto';
     } catch (e) {
-      return 'single';
+      return 'auto';
+    }
+  });
+
+  const [viewScale, setViewScale] = useState<'compact' | 'normal' | 'spacious'>(() => {
+    try {
+      const saved = safeLocalStorage.getItem('prompt_view_scale');
+      if (saved === 'compact' || saved === 'normal' || saved === 'spacious') {
+        return saved;
+      }
+      return 'normal';
+    } catch (e) {
+      return 'normal';
     }
   });
 
@@ -998,6 +1019,18 @@ export default function App() {
       return saved !== null ? saved === 'true' : true;
     } catch (e) {
       return true;
+    }
+  });
+
+  const [canvasBackground, setCanvasBackground] = useState<'dots' | 'grid' | 'minimal'>(() => {
+    try {
+      const saved = safeLocalStorage.getItem('canvas_background');
+      if (saved === 'dots' || saved === 'grid' || saved === 'minimal') {
+        return saved;
+      }
+      return 'dots';
+    } catch (e) {
+      return 'dots';
     }
   });
 
@@ -1025,11 +1058,110 @@ export default function App() {
 
   useEffect(() => {
     try {
+      safeLocalStorage.setItem('prompt_view_scale', viewScale);
+    } catch (e) {
+      // ignore
+    }
+  }, [viewScale]);
+
+  useEffect(() => {
+    try {
       safeLocalStorage.setItem('prompt_compact_mode', String(isCompactMode));
     } catch (e) {
       // ignore
     }
   }, [isCompactMode]);
+
+  useEffect(() => {
+    try {
+      safeLocalStorage.setItem('canvas_background', canvasBackground);
+    } catch (e) {
+      // ignore
+    }
+  }, [canvasBackground]);
+
+  const mainCanvasBackgroundStyle = useMemo(() => {
+    if (canvasBackground === 'grid') {
+      return {
+        backgroundImage: isDarkMode
+          ? 'linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px)'
+          : 'linear-gradient(to right, rgba(0,0,0,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,0.05) 1px, transparent 1px)',
+        backgroundSize: '28px 28px',
+      };
+    }
+    if (canvasBackground === 'minimal') {
+      return {
+        backgroundImage: isDarkMode
+          ? 'radial-gradient(ellipse at 50% 0%, rgba(59,130,246,0.05) 0%, transparent 65%)'
+          : 'radial-gradient(ellipse at 50% 0%, rgba(59,130,246,0.04) 0%, transparent 65%)',
+        backgroundSize: '100% 100%',
+      };
+    }
+    // dots (default)
+    return {
+      backgroundImage: isDarkMode
+        ? 'radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 1px)'
+        : 'radial-gradient(circle, rgba(0,0,0,0.07) 1px, transparent 1px)',
+      backgroundSize: '24px 24px',
+    };
+  }, [canvasBackground, isDarkMode]);
+
+  const gridClasses = useMemo(() => {
+    switch (promptLayout) {
+      case 'single':
+        return 'grid-cols-1';
+      case 'grid':
+        return 'grid-cols-1 md:grid-cols-2';
+      case 'auto':
+      default:
+        return 'grid-cols-1 md:grid-cols-2 2xl:grid-cols-3';
+    }
+  }, [promptLayout]);
+
+  const containerMaxWidth = useMemo(() => {
+    switch (promptLayout) {
+      case 'single':
+        return 'max-w-4xl';
+      case 'grid':
+        return 'max-w-7xl';
+      case 'auto':
+      default:
+        return 'max-w-[1700px]';
+    }
+  }, [promptLayout]);
+
+  const cardScaleConfig = useMemo(() => {
+    switch (viewScale) {
+      case 'compact':
+        return {
+          cardPadding: 'p-4 sm:p-5',
+          textSize: 'text-[12.5px] sm:text-[13px] leading-relaxed',
+          pillPadding: 'px-2 py-0.5 text-[10px]',
+          footerPadding: 'pt-3',
+          buttonPadding: 'px-3.5 py-1.5 text-[10px]',
+          metaSize: 'text-[10px]',
+        };
+      case 'spacious':
+        return {
+          cardPadding: 'p-6 sm:p-8',
+          textSize: 'text-[15px] sm:text-[16px] leading-[1.8]',
+          pillPadding: 'px-3 py-1 text-[12px]',
+          footerPadding: 'pt-4',
+          buttonPadding: 'px-6 py-2.5 text-[12px]',
+          metaSize: 'text-[11px] sm:text-[12px]',
+        };
+      case 'normal':
+      default:
+        return {
+          cardPadding: 'p-5 sm:p-6',
+          textSize: 'text-[13.5px] sm:text-[14px] leading-relaxed',
+          pillPadding: 'px-2.5 py-0.5 text-[11px]',
+          footerPadding: 'pt-3.5',
+          buttonPadding: 'px-5 py-2 text-[11px]',
+          metaSize: 'text-[10px] sm:text-[11px]',
+        };
+    }
+  }, [viewScale]);
 
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -1571,6 +1703,9 @@ export default function App() {
       setIsModalOpen(true);
       return;
     }
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setIsSidebarOpen(false);
+    }
     setIsGenerating(true);
     setLoadingStepIdx(0);
     setErrorMessage(null);
@@ -1719,33 +1854,33 @@ export default function App() {
         <div className="absolute -bottom-[10%] left-[25%] w-[550px] h-[550px] rounded-full bg-cyan-500/8 dark:bg-cyan-600/[0.07] blur-[140px] transform-gpu" />
       </div>
       
-      <header className="fixed top-0 left-0 right-0 h-16 bg-white/80 dark:bg-slate-950/70 backdrop-blur-2xl backdrop-saturate-[180%] border-b border-slate-200/80 dark:border-white/[0.08] shadow-[0_4px_24px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)] z-[100] flex items-center justify-between px-8">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white/90 dark:bg-white text-slate-900 rounded-2xl flex items-center justify-center shadow-[0_4px_14px_rgba(0,0,0,0.08),inset_0_1px_1px_rgba(255,255,255,0.9)] border border-slate-200/80 dark:border-white/20">
-            <Command size={22} strokeWidth={2.5} />
+      <header className="fixed top-0 left-0 right-0 h-16 bg-white/80 dark:bg-slate-950/70 backdrop-blur-2xl backdrop-saturate-[180%] border-b border-slate-200/80 dark:border-white/[0.08] shadow-[0_4px_24px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)] z-[100] flex items-center justify-between px-3 sm:px-6 md:px-8">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 bg-white/90 dark:bg-white text-slate-900 rounded-2xl flex items-center justify-center shadow-[0_4px_14px_rgba(0,0,0,0.08),inset_0_1px_1px_rgba(255,255,255,0.9)] border border-slate-200/80 dark:border-white/20 shrink-0">
+            <Command className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
           </div>
-          <div className="flex flex-col">
-            <h1 className="text-[13px] font-black uppercase tracking-tighter leading-none">PROMPT MASTER</h1>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">SYS V1.5</span>
-              <span className="w-px h-2 bg-slate-300 dark:bg-slate-700"></span>
-              <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest max-w-[180px] truncate" title={activeModelLabel}>
+          <div className="flex flex-col min-w-0">
+            <h1 className="text-[12px] sm:text-[13px] font-black uppercase tracking-tighter leading-none truncate">PROMPT MASTER</h1>
+            <div className="flex items-center gap-1.5 sm:gap-2 mt-1">
+              <span className="text-[8px] sm:text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest shrink-0">SYS V1.5</span>
+              <span className="w-px h-2 bg-slate-300 dark:bg-slate-700 shrink-0"></span>
+              <span className="text-[8px] sm:text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest max-w-[80px] xs:max-w-[120px] sm:max-w-[180px] truncate" title={activeModelLabel}>
                 {activeModelLabel}
               </span>
             </div>
           </div>
           <button 
             onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-            className="ml-2 p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-black/[0.04] dark:hover:bg-white/[0.08] rounded-xl transition-colors backdrop-blur-md"
-            title="Toggle Sidebar"
+            className="p-1.5 sm:p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-black/[0.04] dark:hover:bg-white/[0.08] rounded-xl transition-colors backdrop-blur-md shrink-0"
+            title="Toggle Controls Sidebar"
           >
             {isSidebarOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
           </button>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 md:gap-3 shrink-0">
           {batches.length > 0 && (
-            <div className="hidden md:flex items-center mr-2">
+            <div className="hidden lg:flex items-center mr-1">
               <div className="flex items-center h-9 px-1 rounded-2xl border border-slate-200/80 dark:border-white/[0.08] bg-white/70 dark:bg-white/[0.04] backdrop-blur-xl shadow-[0_2px_8px_rgba(0,0,0,0.02),inset_0_1px_1px_rgba(255,255,255,0.8)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)]">
                 
                 {/* Total Segment */}
@@ -1773,44 +1908,38 @@ export default function App() {
             </div>
           )}
 
-          <div className="h-6 w-px bg-slate-200/80 dark:bg-white/[0.1] mx-0.5" />
-
-          {/* Master Config Button (Apple Frosted Liquid Glass) */}
-          <button 
-            onClick={() => setIsModalOpen(true)} 
-            className="flex items-center gap-2 px-4 py-2 rounded-2xl text-[11px] font-bold uppercase tracking-widest transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] active:scale-[0.96] bg-gradient-to-b from-white/90 via-white/80 to-white/70 hover:from-white hover:to-white/80 dark:from-white/[0.12] dark:via-white/[0.08] dark:to-white/[0.05] dark:hover:from-white/[0.18] dark:hover:to-white/[0.1] text-slate-800 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 backdrop-blur-2xl backdrop-saturate-[190%] border border-slate-200/90 dark:border-white/[0.15] shadow-[0_4px_16px_rgba(0,0,0,0.04),inset_0_1px_1.5px_rgba(255,255,255,0.95)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.18)] hover:shadow-[0_8px_24px_rgba(59,130,246,0.15)] relative overflow-hidden cursor-pointer"
-            title="System Configuration (API & Display Preferences)"
-          >
-            {/* Top Specular Rim */}
-            <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/95 dark:via-white/30 to-transparent pointer-events-none" />
-            <Settings size={14} className="text-blue-500 shrink-0" />
-            <span>Config</span>
-          </button>
-          
+          {/* Action 1: Clear Copied Prompts */}
           <button 
             onClick={clearCopiedPrompts}
             disabled={stats.copied === 0}
-            className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-[11px] font-bold uppercase tracking-widest border backdrop-blur-xl transition-all active:scale-[0.95] ${
+            className={`h-8 sm:h-9 flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 rounded-xl sm:rounded-2xl text-[10px] sm:text-[11px] font-bold uppercase tracking-widest border backdrop-blur-xl transition-all active:scale-[0.95] ${
               stats.copied > 0 
-                ? 'border-orange-500/30 bg-orange-500/10 text-orange-500 hover:bg-orange-500 hover:text-white shadow-[0_2px_8px_rgba(249,115,22,0.15)]' 
-                : 'border-slate-200/60 dark:border-white/[0.04] bg-white/40 dark:bg-white/[0.02] text-slate-300 dark:text-slate-700 opacity-40 cursor-not-allowed'
+                ? 'border-orange-500/35 bg-orange-500/10 text-orange-600 dark:text-orange-400 hover:bg-orange-500 hover:text-white shadow-[0_2px_8px_rgba(249,115,22,0.18)] cursor-pointer' 
+                : 'border-slate-200/60 dark:border-white/[0.04] bg-white/40 dark:bg-white/[0.02] text-slate-300 dark:text-slate-600 opacity-40 cursor-not-allowed'
             }`}
-            title="Remove Copied Prompts"
+            title={stats.copied > 0 ? `Remove ${stats.copied} copied prompts` : "No copied prompts to remove"}
           >
-            <ListX size={14} />
-            <span>Clear Copied</span>
+            <ListX size={13} className="sm:w-3.5 sm:h-3.5 shrink-0" />
+            <span className="hidden sm:inline">Clear Copied</span>
+            <span className="inline sm:hidden">Clear</span>
+            {stats.copied > 0 && (
+              <span className="font-mono text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-orange-500/20 text-orange-600 dark:text-orange-300">
+                {stats.copied}
+              </span>
+            )}
           </button>
           
+          {/* Action 2: Backup & Restore */}
           <div className="relative" ref={exportMenuRef}>
             <button 
               onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
-              className="flex items-center gap-2 px-4 py-2 rounded-2xl text-[11px] font-bold uppercase tracking-widest transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] active:scale-[0.96] bg-gradient-to-b from-white/90 via-white/80 to-white/70 hover:from-white hover:to-white/80 dark:from-white/[0.12] dark:via-white/[0.08] dark:to-white/[0.05] dark:hover:from-white/[0.18] dark:hover:to-white/[0.1] text-slate-800 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 backdrop-blur-2xl backdrop-saturate-[190%] border border-slate-200/90 dark:border-white/[0.15] shadow-[0_4px_16px_rgba(0,0,0,0.04),inset_0_1px_1.5px_rgba(255,255,255,0.95)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.18)] hover:shadow-[0_8px_24px_rgba(59,130,246,0.15)] relative overflow-hidden cursor-pointer"
+              className="h-8 sm:h-9 flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 rounded-xl sm:rounded-2xl text-[10px] sm:text-[11px] font-bold uppercase tracking-widest transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] active:scale-[0.96] bg-gradient-to-b from-white/90 via-white/80 to-white/70 hover:from-white hover:to-white/80 dark:from-white/[0.12] dark:via-white/[0.08] dark:to-white/[0.05] dark:hover:from-white/[0.18] dark:hover:to-white/[0.1] text-slate-800 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 backdrop-blur-2xl backdrop-saturate-[190%] border border-slate-200/90 dark:border-white/[0.15] shadow-[0_4px_16px_rgba(0,0,0,0.04),inset_0_1px_1.5px_rgba(255,255,255,0.95)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.18)] hover:shadow-[0_8px_24px_rgba(59,130,246,0.15)] relative overflow-hidden cursor-pointer"
             >
               {/* Top Specular Rim */}
               <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/95 dark:via-white/30 to-transparent pointer-events-none" />
-              <Download size={14} className="text-blue-500 shrink-0" />
-              <span>Backup</span>
-              <ChevronDown size={14} className={`transition-transform duration-300 ${isExportMenuOpen ? 'rotate-180 text-blue-500' : ''}`} />
+              <Download size={13} className="sm:w-3.5 sm:h-3.5 text-blue-500 shrink-0" />
+              <span className="hidden xs:inline sm:inline">Backup</span>
+              <ChevronDown size={12} className={`transition-transform duration-300 sm:w-3.5 sm:h-3.5 ${isExportMenuOpen ? 'rotate-180 text-blue-500' : ''}`} />
             </button>
             
             {isExportMenuOpen && (
@@ -1833,13 +1962,64 @@ export default function App() {
             )}
             <input type="file" accept=".json" className="hidden" ref={fileInputRef} onChange={handleImportFile} />
           </div>
+
+          <div className="h-6 w-px bg-slate-200/80 dark:bg-white/[0.1] mx-0.5 hidden xs:block" />
+
+          {/* Master Config Button - Anchored at the far right like standard settings */}
+          <button 
+            onClick={() => setIsModalOpen(true)} 
+            className="h-8 sm:h-9 flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 rounded-xl sm:rounded-2xl text-[10px] sm:text-[11px] font-bold uppercase tracking-widest transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] active:scale-[0.96] bg-gradient-to-b from-white/95 via-white/85 to-white/75 hover:from-white hover:to-white/90 dark:from-white/[0.14] dark:via-white/[0.09] dark:to-white/[0.06] dark:hover:from-white/[0.2] dark:hover:to-white/[0.12] text-slate-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 backdrop-blur-2xl backdrop-saturate-[190%] border border-slate-200/90 dark:border-white/[0.18] shadow-[0_4px_16px_rgba(0,0,0,0.04),inset_0_1px_1.5px_rgba(255,255,255,0.95)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.18)] hover:shadow-[0_8px_24px_rgba(59,130,246,0.18)] relative overflow-hidden cursor-pointer"
+            title="System Configuration (API & Display Preferences)"
+          >
+            {/* Top Specular Rim */}
+            <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/95 dark:via-white/40 to-transparent pointer-events-none" />
+            <Settings size={13} className="sm:w-3.5 sm:h-3.5 text-blue-500 shrink-0" />
+            <span className="hidden xs:inline sm:inline">Config</span>
+          </button>
         </div>
       </header>
 
-      <aside className={`${isSidebarOpen ? 'w-[340px] border-r' : 'w-0 border-r-0'} transition-all duration-300 ease-in-out border-slate-200/80 dark:border-white/[0.08] bg-white/80 dark:bg-slate-950/70 backdrop-blur-2xl backdrop-saturate-[180%] flex flex-col shrink-0 relative z-40 h-full overflow-hidden shadow-[4px_0_24px_-12px_rgba(0,0,0,0.06)]`}>
-        <div className="w-[339px] flex flex-col h-full shrink-0">
-          <div className="flex-1 overflow-y-auto custom-scrollbar pt-16 px-6">
-          <div className="py-8 flex flex-col gap-10 pb-8">
+      {/* Mobile Sidebar Backdrop Overlay */}
+      {isSidebarOpen && (
+        <div 
+          onClick={() => setIsSidebarOpen(false)}
+          className="fixed inset-0 bg-black/50 dark:bg-black/75 backdrop-blur-xs z-[140] lg:hidden animate-in fade-in duration-200"
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Responsive Sidebar Controls Panel */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-[150] lg:static lg:z-40
+        w-[92vw] max-w-[360px] sm:max-w-[380px] lg:w-[340px] xl:w-[370px]
+        ${isSidebarOpen 
+          ? 'translate-x-0 lg:w-[340px] xl:w-[370px] border-r' 
+          : '-translate-x-full lg:w-0 lg:border-r-0 pointer-events-none lg:pointer-events-auto'}
+        transition-all duration-300 ease-in-out
+        border-slate-200/80 dark:border-white/[0.08]
+        bg-white/95 dark:bg-slate-950/95 lg:bg-white/80 lg:dark:bg-slate-950/70
+        backdrop-blur-2xl backdrop-saturate-[180%]
+        flex flex-col shrink-0 h-full overflow-hidden
+        shadow-[8px_0_36px_rgba(0,0,0,0.14)] lg:shadow-[4px_0_24px_-12px_rgba(0,0,0,0.06)]
+      `}>
+        <div className="w-full flex flex-col h-full shrink-0">
+          {/* Mobile Drawer Header with Close Button */}
+          <div className="lg:hidden flex items-center justify-between px-5 pt-4 pb-2 border-b border-slate-200/60 dark:border-white/[0.06] shrink-0">
+            <div className="flex items-center gap-2">
+              <Command size={16} className="text-blue-500" />
+              <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">Architect Parameters</span>
+            </div>
+            <button 
+              onClick={() => setIsSidebarOpen(false)}
+              className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+              title="Close Drawer"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto custom-scrollbar pt-3 lg:pt-16 px-4 sm:px-6">
+          <div className="py-4 lg:py-8 flex flex-col gap-8 lg:gap-10 pb-8">
             
             {/* Mode Toggle */}
             <div className="flex bg-black/[0.04] dark:bg-white/[0.05] border border-black/[0.05] dark:border-white/[0.06] rounded-2xl p-1 gap-1 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)]">
@@ -2168,7 +2348,7 @@ export default function App() {
         </div>
 
         {/* Action Button */}
-        <div className="shrink-0 p-6 bg-transparent border-t border-slate-200/50 dark:border-slate-800/50 z-50 flex flex-col gap-3">
+        <div className="shrink-0 p-4 sm:p-5 md:p-6 bg-transparent border-t border-slate-200/50 dark:border-slate-800/50 z-50 flex flex-col gap-2.5 sm:gap-3">
           {errorMessage && (
             <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-xl text-red-600 dark:text-red-400 text-[11px] flex items-start gap-2 shadow-sm">
                <div className="mt-0.5"><X size={14} className="shrink-0" /></div>
@@ -2182,9 +2362,9 @@ export default function App() {
       </aside>
 
       {/* MAIN AREA */}
-      <main ref={mainScrollRef} className="flex-1 overflow-y-auto custom-scrollbar relative bg-transparent pt-16 z-10" style={{ backgroundImage: isDarkMode ? 'radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 1px)' : 'radial-gradient(circle, rgba(0,0,0,0.07) 1px, transparent 1px)', backgroundSize: '24px 24px' }}>
+      <main ref={mainScrollRef} className="flex-1 overflow-y-auto custom-scrollbar relative bg-transparent pt-16 z-10 transition-colors duration-500" style={mainCanvasBackgroundStyle}>
         {(isGenerating || apiTrackerState.visible) && (
-          <div className={`fixed inset-0 ${isSidebarOpen ? 'left-[340px]' : 'left-0'} z-[9999] flex items-center justify-center p-6 bg-black/25 dark:bg-black/45 backdrop-blur-[3px] backdrop-saturate-[140%] pointer-events-none transition-all duration-300 animate-in fade-in`}>
+          <div className={`fixed inset-0 ${isSidebarOpen ? 'lg:left-[340px] xl:left-[370px]' : 'left-0'} z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/25 dark:bg-black/45 backdrop-blur-[3px] backdrop-saturate-[140%] pointer-events-none transition-all duration-300 animate-in fade-in`}>
             <div className="bg-gradient-to-b from-white/96 via-white/92 to-white/90 dark:from-[#0d162a]/97 dark:via-[#090f1d]/95 dark:to-[#060a14]/97 backdrop-blur-3xl backdrop-saturate-[200%] border border-white/90 dark:border-white/20 shadow-[0_32px_80px_rgba(0,0,0,0.28),0_8px_24px_rgba(0,0,0,0.12),inset_0_1px_2px_rgba(255,255,255,1)] dark:shadow-[0_40px_90px_rgba(0,0,0,0.85),0_8px_24px_rgba(0,0,0,0.5),inset_0_1px_1.5px_rgba(255,255,255,0.22)] rounded-[28px] p-6 w-full max-w-sm relative overflow-hidden transition-all duration-300 animate-in zoom-in-95 pointer-events-auto">
               {/* Apple Specular Top Rim Highlight */}
               <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-white/95 dark:via-white/35 to-transparent pointer-events-none" />
@@ -2240,32 +2420,131 @@ export default function App() {
           </div>
         )}
 
-        <div className={`mx-auto px-8 py-16 min-h-full flex flex-col transition-all duration-300 ${promptLayout === 'grid' ? 'max-w-7xl' : 'max-w-4xl'}`}>
+        <div className={`mx-auto px-3.5 sm:px-6 md:px-8 py-6 sm:py-10 md:py-14 min-h-full flex flex-col transition-all duration-300 ${containerMaxWidth}`}>
           {batches.length > 0 ? (
-            <div className="flex flex-col gap-5 flex-1">
-                {batches.map((batch, idx) => {
-                  const priorPromptsCount = batches.slice(idx + 1).reduce((acc, b) => acc + b.prompts.length, 0);
-                  return (
-                    <div key={batch.id} className={`grid gap-5 ${promptLayout === 'grid' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
-                      {batch.prompts.map((p, pIdx) => {
-                        const globalPromptNum = priorPromptsCount + pIdx + 1;
-                        const isExpanded = !isCompactMode || expandedCardIds.has(p.id);
-                        return (
-                          <div key={p.id} className="bg-gradient-to-b from-white/90 via-white/80 to-white/70 dark:from-slate-900/80 dark:via-slate-900/70 dark:to-slate-950/80 backdrop-blur-2xl backdrop-saturate-[180%] border border-slate-200/80 dark:border-white/10 shadow-[0_16px_40px_-10px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.03),inset_0_1px_1.5px_rgba(255,255,255,0.95)] dark:shadow-[0_24px_60px_-12px_rgba(0,0,0,0.65),0_1px_2px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.12)] rounded-[26px] p-6 flex flex-col justify-between gap-4 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300 relative group overflow-hidden">
-                            {/* Apple Specular Top Rim Highlight */}
-                            <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/95 dark:via-white/20 to-transparent pointer-events-none" />
+            <div className="flex flex-col gap-5 sm:gap-6 flex-1">
+              
+              {/* Quick Responsive View Controls Toolbar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-3.5 rounded-2xl bg-white/75 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/80 dark:border-white/[0.08] shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
+                {/* Batch Stats & Summary */}
+                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-800 dark:text-slate-200">WORKSPACE</span>
+                  <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
+                  <span className="font-mono font-semibold text-slate-900 dark:text-white">{stats.total} Prompts</span>
+                  <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
+                  <span className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold">{stats.copied} Copied</span>
+                  {stats.pending > 0 && (
+                    <>
+                      <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
+                      <span className="font-mono text-amber-500 font-semibold">{stats.pending} Pending</span>
+                    </>
+                  )}
+                </div>
 
-                            <div className="flex items-center justify-between">
-                              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/[0.04] dark:bg-white/[0.05] border border-black/[0.04] dark:border-white/[0.06] shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]">
-                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500/80"></span>
-                                <span className="text-[11px] font-mono font-bold tracking-widest text-slate-500 dark:text-slate-400 uppercase">
-                                  #{globalPromptNum.toString().padStart(2, '0')}
-                                </span>
-                              </div>
+                {/* View Adjusters */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* View Size Scale */}
+                  <div className="flex items-center p-0.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.05] border border-black/[0.04] dark:border-white/[0.06]">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-1.5 select-none hidden md:inline">Scale</span>
+                    <button
+                      type="button"
+                      onClick={() => setViewScale('compact')}
+                      className={`px-2 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${viewScale === 'compact' ? 'bg-white dark:bg-white/15 text-blue-600 dark:text-blue-400 shadow-xs' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+                      title="Compact Scale (Tighter cards & compact text)"
+                    >
+                      S
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewScale('normal')}
+                      className={`px-2 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${viewScale === 'normal' ? 'bg-white dark:bg-white/15 text-blue-600 dark:text-blue-400 shadow-xs' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+                      title="Balanced Scale (Standard readable sizing)"
+                    >
+                      M
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewScale('spacious')}
+                      className={`px-2 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${viewScale === 'spacious' ? 'bg-white dark:bg-white/15 text-blue-600 dark:text-blue-400 shadow-xs' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+                      title="Spacious Scale (Generous padding & larger text)"
+                    >
+                      L
+                    </button>
+                  </div>
+
+                  {/* Grid Layout Switcher */}
+                  <div className="flex items-center p-0.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.05] border border-black/[0.04] dark:border-white/[0.06]">
+                    <button
+                      type="button"
+                      onClick={() => setPromptLayout('auto')}
+                      className={`flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${promptLayout === 'auto' ? 'bg-white dark:bg-white/15 text-blue-600 dark:text-blue-400 shadow-xs' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+                      title="Auto Responsive (Adapts dynamically by screen width)"
+                    >
+                      <LayoutGrid size={12} />
+                      <span className="hidden xs:inline">Auto</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPromptLayout('single')}
+                      className={`flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${promptLayout === 'single' ? 'bg-white dark:bg-white/15 text-blue-600 dark:text-blue-400 shadow-xs' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+                      title="Single Column Feed"
+                    >
+                      <LayoutList size={12} />
+                      <span className="hidden xs:inline">1-Col</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPromptLayout('grid')}
+                      className={`flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${promptLayout === 'grid' ? 'bg-white dark:bg-white/15 text-blue-600 dark:text-blue-400 shadow-xs' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+                      title="2 Columns Split Grid"
+                    >
+                      <Columns2 size={12} />
+                      <span className="hidden xs:inline">2-Col</span>
+                    </button>
+                  </div>
+
+                  {/* Card Truncation Toggle */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCompactMode(!isCompactMode);
+                      setExpandedCardIds(new Set());
+                    }}
+                    className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold rounded-xl bg-black/[0.04] dark:bg-white/[0.05] border border-black/[0.04] dark:border-white/[0.06] text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
+                    title={isCompactMode ? "Show Full Prompts" : "Show 2-Line Preview"}
+                  >
+                    {isCompactMode ? <FoldVertical size={13} className="text-blue-500" /> : <UnfoldVertical size={13} className="text-blue-500" />}
+                    <span>{isCompactMode ? 'Compact' : 'Full'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {batches.map((batch, idx) => {
+                const priorPromptsCount = batches.slice(idx + 1).reduce((acc, b) => acc + b.prompts.length, 0);
+                return (
+                  <div key={batch.id} className={`grid gap-4 sm:gap-5 ${gridClasses}`}>
+                    {batch.prompts.map((p, pIdx) => {
+                      const globalPromptNum = priorPromptsCount + pIdx + 1;
+                      const isExpanded = !isCompactMode || expandedCardIds.has(p.id);
+                      return (
+                        <div 
+                          key={p.id} 
+                          className={`bg-gradient-to-b from-white/90 via-white/80 to-white/70 dark:from-slate-900/80 dark:via-slate-900/70 dark:to-slate-950/80 backdrop-blur-2xl backdrop-saturate-[180%] border border-slate-200/80 dark:border-white/10 shadow-[0_16px_40px_-10px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.03),inset_0_1px_1.5px_rgba(255,255,255,0.95)] dark:shadow-[0_24px_60px_-12px_rgba(0,0,0,0.65),0_1px_2px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.12)] rounded-[22px] sm:rounded-[26px] ${cardScaleConfig.cardPadding} flex flex-col justify-between gap-3.5 sm:gap-4 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300 relative group overflow-hidden`}
+                        >
+                          {/* Apple Specular Top Rim Highlight */}
+                          <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/95 dark:via-white/20 to-transparent pointer-events-none" />
+
+                          <div className="flex items-center justify-between">
+                            <div className={`inline-flex items-center gap-1.5 ${cardScaleConfig.pillPadding} rounded-full bg-black/[0.04] dark:bg-white/[0.05] border border-black/[0.04] dark:border-white/[0.06] shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]`}>
+                              <span className="w-1.5 h-1.5 rounded-full bg-blue-500/80"></span>
+                              <span className="font-mono font-bold tracking-widest text-slate-500 dark:text-slate-400 uppercase">
+                                #{globalPromptNum.toString().padStart(2, '0')}
+                              </span>
                             </div>
+                          </div>
 
                           <div className="flex-1 flex flex-col justify-start">
-                            <p className={`text-[14px] leading-relaxed text-slate-800 dark:text-slate-200 select-text transition-all duration-200 ${!isExpanded ? 'line-clamp-2' : ''}`}>
+                            <p className={`${cardScaleConfig.textSize} text-slate-800 dark:text-slate-200 select-text transition-all duration-200 ${!isExpanded ? 'line-clamp-2' : ''}`}>
                               {p.text}
                             </p>
                             {isCompactMode && (
@@ -2287,18 +2566,18 @@ export default function App() {
                             )}
                           </div>
 
-                          <div className="flex items-end justify-between pt-3.5 border-t border-black/[0.06] dark:border-white/[0.06] gap-3">
+                          <div className={`flex flex-col sm:flex-row sm:items-end justify-between ${cardScaleConfig.footerPadding} border-t border-black/[0.06] dark:border-white/[0.06] gap-2.5 sm:gap-3`}>
                              <div className="flex flex-col gap-0.5">
-                               <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 font-mono">
+                               <span className={`${cardScaleConfig.metaSize} font-semibold text-slate-500 dark:text-slate-400 font-mono`}>
                                  {p.text.split(/\s+/).filter(Boolean).length} words
                                 </span>
-                               <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono tracking-tight">
+                               <span className={`${cardScaleConfig.metaSize} text-slate-400 dark:text-slate-500 font-mono tracking-tight`}>
                                  {new Date(batch.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}, {new Date(batch.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                                </span>
                              </div>
                              <button 
                                onClick={() => copyIndividual(batch.id, p.id, p.text)} 
-                               className={`px-5 py-2 rounded-2xl text-[11px] font-bold uppercase tracking-wider transition-all shrink-0 active:scale-[0.96] ${
+                               className={`w-full sm:w-auto ${cardScaleConfig.buttonPadding} rounded-xl sm:rounded-2xl font-bold uppercase tracking-wider transition-all shrink-0 active:scale-[0.96] text-center cursor-pointer ${
                                  p.copied 
                                    ? 'bg-emerald-500/90 text-white backdrop-blur-md shadow-lg shadow-emerald-500/20 border border-emerald-400/30' 
                                    : 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:opacity-90 backdrop-blur-xl border border-white/20 dark:border-white/50 shadow-[0_4px_14px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.3)] dark:shadow-[0_4px_14px_rgba(255,255,255,0.15),inset_0_1px_0_rgba(255,255,255,0.9)]'
@@ -2349,12 +2628,22 @@ export default function App() {
             </a>
           </footer>
         </div>
-        <div className="fixed bottom-10 right-10 z-[90] flex flex-col gap-3 pointer-events-none">
-          <button onClick={scrollToTop} className={`pointer-events-auto p-3.5 bg-white/80 dark:bg-slate-900/80 text-slate-800 dark:text-white backdrop-blur-2xl backdrop-saturate-[180%] border border-white/70 dark:border-white/10 rounded-full shadow-[0_12px_32px_rgba(0,0,0,0.12),inset_0_1px_1px_rgba(255,255,255,0.8)] dark:shadow-[0_12px_32px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.15)] transition-all duration-300 ease-out transform hover:scale-110 active:scale-95 ${showScrollTop ? 'translate-y-0 opacity-100 rotate-0' : 'translate-y-10 opacity-0 pointer-events-none'}`}>
-            <ChevronUp size={20} strokeWidth={2.5} />
+        <div className="fixed bottom-4 right-3.5 sm:bottom-6 sm:right-6 md:bottom-8 md:right-8 z-[90] flex flex-col gap-2 sm:gap-2.5 pointer-events-none">
+          <button 
+            onClick={scrollToTop} 
+            className={`pointer-events-auto p-2.5 sm:p-3.5 bg-white/85 dark:bg-slate-900/85 text-slate-800 dark:text-white backdrop-blur-2xl backdrop-saturate-[180%] border border-white/70 dark:border-white/10 rounded-full shadow-[0_8px_24px_rgba(0,0,0,0.12),inset_0_1px_1px_rgba(255,255,255,0.8)] dark:shadow-[0_12px_32px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.15)] transition-all duration-300 ease-out transform hover:scale-110 active:scale-95 cursor-pointer ${showScrollTop ? 'translate-y-0 opacity-100 rotate-0' : 'translate-y-10 opacity-0 pointer-events-none'}`}
+            title="Scroll to top"
+            aria-label="Scroll to top"
+          >
+            <ChevronUp size={18} strokeWidth={2.5} className="sm:w-5 sm:h-5" />
           </button>
-          <button onClick={scrollToBottom} className={`pointer-events-auto p-3.5 bg-white/80 dark:bg-slate-900/80 text-slate-800 dark:text-white backdrop-blur-2xl backdrop-saturate-[180%] border border-white/70 dark:border-white/10 rounded-full shadow-[0_12px_32px_rgba(0,0,0,0.12),inset_0_1px_1px_rgba(255,255,255,0.8)] dark:shadow-[0_12px_32px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.15)] transition-all duration-300 ease-out transform hover:scale-110 active:scale-95 ${showScrollBottom ? 'translate-y-0 opacity-100 rotate-0' : '-translate-y-10 opacity-0 pointer-events-none'}`}>
-            <ChevronDown size={20} strokeWidth={2.5} />
+          <button 
+            onClick={scrollToBottom} 
+            className={`pointer-events-auto p-2.5 sm:p-3.5 bg-white/85 dark:bg-slate-900/85 text-slate-800 dark:text-white backdrop-blur-2xl backdrop-saturate-[180%] border border-white/70 dark:border-white/10 rounded-full shadow-[0_8px_24px_rgba(0,0,0,0.12),inset_0_1px_1px_rgba(255,255,255,0.8)] dark:shadow-[0_12px_32px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.15)] transition-all duration-300 ease-out transform hover:scale-110 active:scale-95 cursor-pointer ${showScrollBottom ? 'translate-y-0 opacity-100 rotate-0' : '-translate-y-10 opacity-0 pointer-events-none'}`}
+            title="Scroll to bottom"
+            aria-label="Scroll to bottom"
+          >
+            <ChevronDown size={18} strokeWidth={2.5} className="sm:w-5 sm:h-5" />
           </button>
         </div>
       </main>
@@ -2399,52 +2688,63 @@ export default function App() {
       )}
       
       {isModalOpen && (
-        <div className="fixed inset-0 z-[2500] flex items-center justify-center p-6 bg-black/40 backdrop-blur-xl animate-in fade-in duration-300">
-          <div className="bg-gradient-to-b from-white/90 via-white/80 to-white/70 dark:from-slate-900/90 dark:via-slate-900/80 dark:to-slate-950/90 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/70 dark:border-white/10 shadow-[0_32px_80px_rgba(0,0,0,0.25)] dark:shadow-[0_32px_80px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.12)] w-full max-w-4xl rounded-[32px] p-0 shadow-2xl relative overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+        <div 
+          onClick={(e) => { if (e.target === e.currentTarget) setIsModalOpen(false); }}
+          className="fixed inset-0 z-[2500] flex items-center justify-center p-3 sm:p-5 md:p-6 bg-black/60 dark:bg-black/75 backdrop-blur-2xl animate-in fade-in duration-200"
+        >
+          <div className="bg-gradient-to-b from-white/98 via-white/94 to-white/90 dark:from-[#0d162a]/98 dark:via-[#0a1122]/96 dark:to-[#070c18]/98 backdrop-blur-3xl backdrop-saturate-[200%] border border-white/90 dark:border-white/12 shadow-[0_32px_90px_rgba(0,0,0,0.25)] dark:shadow-[0_40px_100px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.15)] w-full max-w-[96vw] sm:max-w-2xl md:max-w-3xl lg:max-w-4xl max-h-[92vh] sm:max-h-[88vh] rounded-[24px] sm:rounded-[32px] p-0 relative overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
             {/* Top Specular Rim */}
-            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/90 dark:via-white/20 to-transparent pointer-events-none" />
+            <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/95 dark:via-white/35 to-transparent pointer-events-none" />
             
             {/* Header */}
-            <div className="flex items-center justify-between p-7 pb-5 border-b border-black/[0.04] dark:border-white/[0.06]">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-slate-950 dark:bg-white text-white dark:text-slate-950 rounded-2xl flex items-center justify-center shadow-lg"><Settings size={22} /></div>
-                <div>
-                  <h2 className="text-lg font-black uppercase text-slate-900 dark:text-white tracking-wide">System Configuration</h2>
-                  <p className="text-xs text-slate-500 font-medium mt-0.5">Manage AI connectivity, display layouts, theme and workspace controls</p>
+            <div className="flex items-center justify-between p-4 sm:p-6 pb-3.5 sm:pb-4 border-b border-black/[0.04] dark:border-white/[0.06] shrink-0">
+              <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                <div className="w-10 h-10 sm:w-11 sm:h-11 bg-slate-950 dark:bg-white text-white dark:text-slate-950 rounded-2xl flex items-center justify-center shadow-lg shrink-0">
+                  <Settings className="w-5 h-5 sm:w-5.5 sm:h-5.5" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-base sm:text-lg font-black uppercase text-slate-900 dark:text-white tracking-wide truncate">System Configuration</h2>
+                  <p className="text-[11px] sm:text-xs text-slate-500 font-medium mt-0.5 truncate">AI connectivity, display layouts, theme & workspace controls</p>
                 </div>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors rounded-xl hover:bg-black/5 dark:hover:bg-white/5">
+              <button 
+                onClick={() => setIsModalOpen(false)} 
+                className="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors rounded-xl hover:bg-black/5 dark:hover:bg-white/5 shrink-0 cursor-pointer"
+                title="Close (Esc)"
+              >
                 <X size={20} />
               </button>
             </div>
 
-            {/* Navigation Tabs (Apple Vision Style) */}
-            <div className="px-8 pt-4 pb-2 border-b border-black/[0.04] dark:border-white/[0.06] flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setConfigActiveTab('api')}
-                className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                  configActiveTab === 'api'
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-blue-500/40'
-                    : 'bg-black/[0.03] dark:bg-white/[0.04] text-slate-600 dark:text-slate-400 hover:bg-black/[0.06] dark:hover:bg-white/[0.08] hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <Key size={15} />
-                <span>API & AI Models</span>
-              </button>
+            {/* Segmented Control Navigation Bar */}
+            <div className="px-4 sm:px-6 py-2.5 sm:py-3 border-b border-black/[0.04] dark:border-white/[0.06] flex items-center shrink-0">
+              <div className="flex items-center gap-1 p-1 bg-black/[0.04] dark:bg-white/[0.05] border border-black/[0.04] dark:border-white/[0.06] rounded-2xl w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setConfigActiveTab('api')}
+                  className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 sm:px-5 py-2 rounded-xl text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                    configActiveTab === 'api'
+                      ? 'bg-white dark:bg-white/15 text-blue-600 dark:text-blue-400 shadow-sm border border-white/80 dark:border-white/10'
+                      : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <Key size={13} className="shrink-0" />
+                  <span className="truncate">API & AI Models</span>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => setConfigActiveTab('preferences')}
-                className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                  configActiveTab === 'preferences'
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-blue-500/40'
-                    : 'bg-black/[0.03] dark:bg-white/[0.04] text-slate-600 dark:text-slate-400 hover:bg-black/[0.06] dark:hover:bg-white/[0.08] hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <SlidersHorizontal size={15} />
-                <span>Display & System</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setConfigActiveTab('preferences')}
+                  className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 sm:px-5 py-2 rounded-xl text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                    configActiveTab === 'preferences'
+                      ? 'bg-white dark:bg-white/15 text-blue-600 dark:text-blue-400 shadow-sm border border-white/80 dark:border-white/10'
+                      : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <SlidersHorizontal size={13} className="shrink-0" />
+                  <span className="truncate">Display & Preferences</span>
+                </button>
+              </div>
             </div>
             
             {errorMessage && (
@@ -2455,28 +2755,28 @@ export default function App() {
             )}
 
             {configActiveTab === 'api' ? (
-              <div className="p-8 max-h-[580px] overflow-y-auto custom-scrollbar">
-              {/* Provider Tabs */}
-              <div className="flex items-center gap-2 bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.04] dark:border-white/[0.06] p-1.5 rounded-2xl mb-8">
-                {PROVIDERS.map(p => (
-                  <button
-                    key={p.id}
-                    onClick={() => {
-                      setActiveProviderTab(p.id as any);
-                      const modelsForProvider = OPTIONS.model.filter(m => m.provider === p.id);
-                      if (modelsForProvider.length > 0 && !modelsForProvider.find(m => m.value === options.model)) {
-                        setOptions(prev => ({...prev, model: modelsForProvider[0].value as any}));
-                      }
-                    }}
-                    className={`flex-1 py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-sm font-bold transition-all ${activeProviderTab === p.id ? 'bg-white/90 dark:bg-white/[0.15] text-blue-600 dark:text-blue-400 shadow-sm border border-white/80 dark:border-white/10' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
-                  >
-                     <p.icon size={16} />
-                     {p.name}
-                  </button>
-                ))}
-              </div>
+              <div className="p-4 sm:p-8 flex-1 overflow-y-auto custom-scrollbar">
+                {/* Provider Tabs */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2 bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.04] dark:border-white/[0.06] p-1.5 rounded-2xl mb-6 sm:mb-8">
+                  {PROVIDERS.map(p => (
+                    <button
+                      key={p.id}
+                      onClick={() => {
+                        setActiveProviderTab(p.id as any);
+                        const modelsForProvider = OPTIONS.model.filter(m => m.provider === p.id);
+                        if (modelsForProvider.length > 0 && !modelsForProvider.find(m => m.value === options.model)) {
+                          setOptions(prev => ({...prev, model: modelsForProvider[0].value as any}));
+                        }
+                      }}
+                      className={`py-2 sm:py-3 px-2 sm:px-4 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-bold transition-all ${activeProviderTab === p.id ? 'bg-white/90 dark:bg-white/[0.15] text-blue-600 dark:text-blue-400 shadow-sm border border-white/80 dark:border-white/10' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+                    >
+                       <p.icon size={15} />
+                       <span className="truncate">{p.name}</span>
+                    </button>
+                  ))}
+                </div>
 
-              <div className="grid grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
                 {/* Left Column: Configuration */}
                 <div className="space-y-6">
                   <div>
@@ -2498,7 +2798,7 @@ export default function App() {
 
                       <div>
                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">Add New API Key</label>
-                        <div className="flex gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2">
                           <input 
                             type="password"
                             value={newKeyInput}
@@ -2509,7 +2809,7 @@ export default function App() {
                           <button 
                             onClick={handleAddKey}
                             disabled={!newKeyInput.trim()}
-                            className="px-6 py-3 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-bold rounded-xl transition-colors text-sm"
+                            className="px-6 py-3 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-bold rounded-xl transition-colors text-sm shrink-0"
                           >
                             Save
                           </button>
@@ -2564,8 +2864,8 @@ export default function App() {
                     ) : (
                       <div className="space-y-3 overflow-y-auto max-h-[250px] custom-scrollbar pr-2">
                         {apiKeys.filter(k => k.provider === activeProviderTab).map(k => (
-                          <div key={k.id} className={`flex items-center justify-between p-3 rounded-xl border transition-colors ${activeKeyId === k.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/10' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'}`}>
-                               <div className="flex items-center gap-3 overflow-hidden">
+                          <div key={k.id} className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl border transition-colors gap-2.5 sm:gap-3 ${activeKeyId === k.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/10' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'}`}>
+                               <div className="flex items-center gap-2.5 overflow-hidden min-w-0 w-full sm:w-auto">
                                  <div 
                                    onClick={() => setActiveKeyId(k.id)}
                                    className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 cursor-pointer transition-colors ${activeKeyId === k.id ? 'border-blue-500' : 'border-slate-300 dark:border-slate-600'}`}
@@ -2579,7 +2879,7 @@ export default function App() {
                                     {k.status}
                                  </span>
                                </div>
-                               <div className="flex items-center gap-2 shrink-0">
+                               <div className="flex items-center justify-end gap-2 shrink-0 self-end sm:self-auto">
                                  <button 
                                    onClick={() => handleTestKey(k.id)} 
                                    disabled={k.status === 'testing'} 
@@ -2601,37 +2901,37 @@ export default function App() {
             </div>
             ) : (
               /* Display & System Preferences Tab */
-              <div className="p-8 space-y-6 max-h-[580px] overflow-y-auto custom-scrollbar">
+              <div className="p-4 sm:p-8 space-y-5 sm:space-y-6 flex-1 overflow-y-auto custom-scrollbar">
                 {/* Section 1: Appearance & Theme */}
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
                     <div>
                       <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">Appearance & Theme</h3>
                       <p className="text-[11px] text-slate-500 font-medium">Switch between daytime clarity and dark visionOS mode</p>
                     </div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                    <span className="self-start sm:self-auto text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
                       {isDarkMode ? 'Night Mode' : 'Day Mode'}
                     </span>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     {/* Light Mode */}
                     <button
                       type="button"
                       onClick={() => setIsDarkMode(false)}
-                      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all text-left cursor-pointer ${
+                      className={`flex items-center gap-3.5 sm:gap-4 p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border transition-all text-left cursor-pointer ${
                         !isDarkMode 
                           ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-900/20 ring-2 ring-blue-500/30 shadow-md' 
                           : 'border-slate-200/80 dark:border-white/[0.08] bg-white/60 dark:bg-white/[0.03] hover:bg-white dark:hover:bg-white/[0.06]'
                       }`}
                     >
-                      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${!isDarkMode ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
+                      <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 ${!isDarkMode ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
                         <Sun size={20} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-bold text-slate-900 dark:text-white">Daylight Mode</span>
-                          {!isDarkMode && <Check size={16} className="text-blue-600 dark:text-blue-400" />}
+                          {!isDarkMode && <Check size={16} className="text-blue-600 dark:text-blue-400 shrink-0" />}
                         </div>
                         <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">Crisp frosted glass daylight theme</p>
                       </div>
@@ -2641,19 +2941,19 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => setIsDarkMode(true)}
-                      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all text-left cursor-pointer ${
+                      className={`flex items-center gap-3.5 sm:gap-4 p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border transition-all text-left cursor-pointer ${
                         isDarkMode 
                           ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-900/20 ring-2 ring-blue-500/30 shadow-md' 
                           : 'border-slate-200/80 dark:border-white/[0.08] bg-white/60 dark:bg-white/[0.03] hover:bg-white dark:hover:bg-white/[0.06]'
                       }`}
                     >
-                      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${isDarkMode ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
+                      <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 ${isDarkMode ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
                         <Moon size={20} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-bold text-slate-900 dark:text-white">Night Mode</span>
-                          {isDarkMode && <Check size={16} className="text-blue-600 dark:text-blue-400" />}
+                          {isDarkMode && <Check size={16} className="text-blue-600 dark:text-blue-400 shrink-0" />}
                         </div>
                         <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">Deep OLED visionOS dark glass</p>
                       </div>
@@ -2663,55 +2963,93 @@ export default function App() {
 
                 <div className="h-px bg-black/[0.04] dark:bg-white/[0.06]" />
 
-                {/* Section 2: Canvas Layout */}
+                {/* Section 2: Workspace Background Pattern */}
                 <div className="space-y-3">
-                  <div>
-                    <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">Prompt Canvas Layout</h3>
-                    <p className="text-[11px] text-slate-500 font-medium">Choose how generated prompt cards are arranged in columns</p>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
+                    <div>
+                      <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">Workspace Background Pattern</h3>
+                      <p className="text-[11px] text-slate-500 font-medium">Choose the texture and pattern of your main architect workspace canvas</p>
+                    </div>
+                    <span className="self-start sm:self-auto text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                      {canvasBackground === 'grid' ? 'Blueprint Grid' : canvasBackground === 'minimal' ? 'Studio Minimal' : 'Dot Matrix (Default)'}
+                    </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    {/* Single Column */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {/* Option 1: Dot Matrix */}
                     <button
                       type="button"
-                      onClick={() => setPromptLayout('single')}
-                      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all text-left cursor-pointer ${
-                        promptLayout === 'single'
+                      onClick={() => setCanvasBackground('dots')}
+                      className={`flex items-center gap-3.5 p-3.5 rounded-xl sm:rounded-2xl border transition-all text-left cursor-pointer group ${
+                        canvasBackground === 'dots'
                           ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-900/20 ring-2 ring-blue-500/30 shadow-md'
                           : 'border-slate-200/80 dark:border-white/[0.08] bg-white/60 dark:bg-white/[0.03] hover:bg-white dark:hover:bg-white/[0.06]'
                       }`}
                     >
-                      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${promptLayout === 'single' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
-                        <LayoutList size={20} />
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 relative overflow-hidden ${canvasBackground === 'dots' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
+                        <div 
+                          className="absolute inset-0 opacity-40" 
+                          style={{ backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)', backgroundSize: '6px 6px' }} 
+                        />
+                        <CircleDot size={18} className="relative z-10" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-bold text-slate-900 dark:text-white">Single Column</span>
-                          {promptLayout === 'single' && <Check size={16} className="text-blue-600 dark:text-blue-400" />}
+                          <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">Dot Matrix</span>
+                          {canvasBackground === 'dots' && <Check size={15} className="text-blue-600 dark:text-blue-400 shrink-0" />}
                         </div>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">Full-width readable feed view</p>
+                        <p className="text-[10.5px] text-slate-500 dark:text-slate-400 truncate mt-0.5">Subtle visionOS dots</p>
                       </div>
                     </button>
 
-                    {/* 2 Columns */}
+                    {/* Option 2: Blueprint Grid */}
                     <button
                       type="button"
-                      onClick={() => setPromptLayout('grid')}
-                      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all text-left cursor-pointer ${
-                        promptLayout === 'grid'
+                      onClick={() => setCanvasBackground('grid')}
+                      className={`flex items-center gap-3.5 p-3.5 rounded-xl sm:rounded-2xl border transition-all text-left cursor-pointer group ${
+                        canvasBackground === 'grid'
                           ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-900/20 ring-2 ring-blue-500/30 shadow-md'
                           : 'border-slate-200/80 dark:border-white/[0.08] bg-white/60 dark:bg-white/[0.03] hover:bg-white dark:hover:bg-white/[0.06]'
                       }`}
                     >
-                      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${promptLayout === 'grid' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
-                        <Columns2 size={20} />
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 relative overflow-hidden ${canvasBackground === 'grid' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
+                        <div 
+                          className="absolute inset-0 opacity-35" 
+                          style={{ backgroundImage: 'linear-gradient(to right, currentColor 1px, transparent 1px), linear-gradient(to bottom, currentColor 1px, transparent 1px)', backgroundSize: '7px 7px' }} 
+                        />
+                        <Grid3X3 size={18} className="relative z-10" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-bold text-slate-900 dark:text-white">2 Columns</span>
-                          {promptLayout === 'grid' && <Check size={16} className="text-blue-600 dark:text-blue-400" />}
+                          <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">Blueprint Grid</span>
+                          {canvasBackground === 'grid' && <Check size={15} className="text-blue-600 dark:text-blue-400 shrink-0" />}
                         </div>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">Side-by-side comparative split grid</p>
+                        <p className="text-[10.5px] text-slate-500 dark:text-slate-400 truncate mt-0.5">Architectural micro-grid</p>
+                      </div>
+                    </button>
+
+                    {/* Option 3: Studio Minimal */}
+                    <button
+                      type="button"
+                      onClick={() => setCanvasBackground('minimal')}
+                      className={`flex items-center gap-3.5 p-3.5 rounded-xl sm:rounded-2xl border transition-all text-left cursor-pointer group ${
+                        canvasBackground === 'minimal'
+                          ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-900/20 ring-2 ring-blue-500/30 shadow-md'
+                          : 'border-slate-200/80 dark:border-white/[0.08] bg-white/60 dark:bg-white/[0.03] hover:bg-white dark:hover:bg-white/[0.06]'
+                      }`}
+                    >
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 relative overflow-hidden ${canvasBackground === 'minimal' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
+                        <div 
+                          className="absolute inset-0 opacity-20 bg-gradient-to-tr from-transparent via-current to-transparent" 
+                        />
+                        <Sparkles size={18} className="relative z-10" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">Studio Minimal</span>
+                          {canvasBackground === 'minimal' && <Check size={15} className="text-blue-600 dark:text-blue-400 shrink-0" />}
+                        </div>
+                        <p className="text-[10.5px] text-slate-500 dark:text-slate-400 truncate mt-0.5">Smooth solid clean canvas</p>
                       </div>
                     </button>
                   </div>
@@ -2719,14 +3057,175 @@ export default function App() {
 
                 <div className="h-px bg-black/[0.04] dark:bg-white/[0.06]" />
 
-                {/* Section 3: Card Prompt Density */}
+                {/* Section 3: View Size & Card Scale */}
+                <div className="space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
+                    <div>
+                      <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">Screen View Size & Card Scale</h3>
+                      <p className="text-[11px] text-slate-500 font-medium">Adjust prompt card scale and typography to match your screen size</p>
+                    </div>
+                    <span className="self-start sm:self-auto text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                      {viewScale === 'compact' ? 'Compact (S)' : viewScale === 'spacious' ? 'Spacious (L)' : 'Balanced (M)'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {/* Compact Scale */}
+                    <button
+                      type="button"
+                      onClick={() => setViewScale('compact')}
+                      className={`flex items-center gap-3.5 p-3.5 rounded-xl sm:rounded-2xl border transition-all text-left cursor-pointer ${
+                        viewScale === 'compact'
+                          ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-900/20 ring-2 ring-blue-500/30 shadow-md'
+                          : 'border-slate-200/80 dark:border-white/[0.08] bg-white/60 dark:bg-white/[0.03] hover:bg-white dark:hover:bg-white/[0.06]'
+                      }`}
+                    >
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${viewScale === 'compact' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
+                        <Rows3 size={18} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">Compact (S)</span>
+                          {viewScale === 'compact' && <Check size={15} className="text-blue-600 dark:text-blue-400 shrink-0" />}
+                        </div>
+                        <p className="text-[10.5px] text-slate-500 dark:text-slate-400 truncate mt-0.5">Dense, tight card padding</p>
+                      </div>
+                    </button>
+
+                    {/* Balanced Scale */}
+                    <button
+                      type="button"
+                      onClick={() => setViewScale('normal')}
+                      className={`flex items-center gap-3.5 p-3.5 rounded-xl sm:rounded-2xl border transition-all text-left cursor-pointer ${
+                        viewScale === 'normal'
+                          ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-900/20 ring-2 ring-blue-500/30 shadow-md'
+                          : 'border-slate-200/80 dark:border-white/[0.08] bg-white/60 dark:bg-white/[0.03] hover:bg-white dark:hover:bg-white/[0.06]'
+                      }`}
+                    >
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${viewScale === 'normal' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
+                        <LayoutList size={18} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">Balanced (M)</span>
+                          {viewScale === 'normal' && <Check size={15} className="text-blue-600 dark:text-blue-400 shrink-0" />}
+                        </div>
+                        <p className="text-[10.5px] text-slate-500 dark:text-slate-400 truncate mt-0.5">Optimal standard reading</p>
+                      </div>
+                    </button>
+
+                    {/* Spacious Scale */}
+                    <button
+                      type="button"
+                      onClick={() => setViewScale('spacious')}
+                      className={`flex items-center gap-3.5 p-3.5 rounded-xl sm:rounded-2xl border transition-all text-left cursor-pointer ${
+                        viewScale === 'spacious'
+                          ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-900/20 ring-2 ring-blue-500/30 shadow-md'
+                          : 'border-slate-200/80 dark:border-white/[0.08] bg-white/60 dark:bg-white/[0.03] hover:bg-white dark:hover:bg-white/[0.06]'
+                      }`}
+                    >
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${viewScale === 'spacious' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
+                        <UnfoldVertical size={18} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">Spacious (L)</span>
+                          {viewScale === 'spacious' && <Check size={15} className="text-blue-600 dark:text-blue-400 shrink-0" />}
+                        </div>
+                        <p className="text-[10.5px] text-slate-500 dark:text-slate-400 truncate mt-0.5">Roomy cards & larger type</p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="h-px bg-black/[0.04] dark:bg-white/[0.06]" />
+
+                {/* Section 4: Canvas Layout */}
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">Prompt Canvas Layout</h3>
+                    <p className="text-[11px] text-slate-500 font-medium">Choose how generated prompt cards are arranged across columns</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {/* Auto Responsive */}
+                    <button
+                      type="button"
+                      onClick={() => setPromptLayout('auto')}
+                      className={`flex items-center gap-3.5 p-3.5 rounded-xl sm:rounded-2xl border transition-all text-left cursor-pointer ${
+                        promptLayout === 'auto'
+                          ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-900/20 ring-2 ring-blue-500/30 shadow-md'
+                          : 'border-slate-200/80 dark:border-white/[0.08] bg-white/60 dark:bg-white/[0.03] hover:bg-white dark:hover:bg-white/[0.06]'
+                      }`}
+                    >
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${promptLayout === 'auto' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
+                        <LayoutGrid size={18} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">Auto Grid</span>
+                          {promptLayout === 'auto' && <Check size={15} className="text-blue-600 dark:text-blue-400 shrink-0" />}
+                        </div>
+                        <p className="text-[10.5px] text-slate-500 dark:text-slate-400 truncate mt-0.5">Smart screen adaptive</p>
+                      </div>
+                    </button>
+
+                    {/* Single Column */}
+                    <button
+                      type="button"
+                      onClick={() => setPromptLayout('single')}
+                      className={`flex items-center gap-3.5 p-3.5 rounded-xl sm:rounded-2xl border transition-all text-left cursor-pointer ${
+                        promptLayout === 'single'
+                          ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-900/20 ring-2 ring-blue-500/30 shadow-md'
+                          : 'border-slate-200/80 dark:border-white/[0.08] bg-white/60 dark:bg-white/[0.03] hover:bg-white dark:hover:bg-white/[0.06]'
+                      }`}
+                    >
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${promptLayout === 'single' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
+                        <LayoutList size={18} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">Single Column</span>
+                          {promptLayout === 'single' && <Check size={15} className="text-blue-600 dark:text-blue-400 shrink-0" />}
+                        </div>
+                        <p className="text-[10.5px] text-slate-500 dark:text-slate-400 truncate mt-0.5">Linear reading feed</p>
+                      </div>
+                    </button>
+
+                    {/* 2 Columns */}
+                    <button
+                      type="button"
+                      onClick={() => setPromptLayout('grid')}
+                      className={`flex items-center gap-3.5 p-3.5 rounded-xl sm:rounded-2xl border transition-all text-left cursor-pointer ${
+                        promptLayout === 'grid'
+                          ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-900/20 ring-2 ring-blue-500/30 shadow-md'
+                          : 'border-slate-200/80 dark:border-white/[0.08] bg-white/60 dark:bg-white/[0.03] hover:bg-white dark:hover:bg-white/[0.06]'
+                      }`}
+                    >
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${promptLayout === 'grid' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
+                        <Columns2 size={18} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">2 Columns</span>
+                          {promptLayout === 'grid' && <Check size={15} className="text-blue-600 dark:text-blue-400 shrink-0" />}
+                        </div>
+                        <p className="text-[10.5px] text-slate-500 dark:text-slate-400 truncate mt-0.5">Side-by-side split</p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="h-px bg-black/[0.04] dark:bg-white/[0.06]" />
+
+                {/* Section 5: Card Prompt Density */}
                 <div className="space-y-3">
                   <div>
                     <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">Card Prompt Density</h3>
                     <p className="text-[11px] text-slate-500 font-medium">Control whether prompt texts expand fully or stay neatly collapsed</p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     {/* Full Prompts */}
                     <button
                       type="button"
@@ -2734,19 +3233,19 @@ export default function App() {
                         setIsCompactMode(false);
                         setExpandedCardIds(new Set());
                       }}
-                      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all text-left cursor-pointer ${
+                      className={`flex items-center gap-3.5 sm:gap-4 p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border transition-all text-left cursor-pointer ${
                         !isCompactMode
                           ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-900/20 ring-2 ring-blue-500/30 shadow-md'
                           : 'border-slate-200/80 dark:border-white/[0.08] bg-white/60 dark:bg-white/[0.03] hover:bg-white dark:hover:bg-white/[0.06]'
                       }`}
                     >
-                      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${!isCompactMode ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
+                      <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 ${!isCompactMode ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
                         <UnfoldVertical size={20} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-bold text-slate-900 dark:text-white">Full Prompts</span>
-                          {!isCompactMode && <Check size={16} className="text-blue-600 dark:text-blue-400" />}
+                          {!isCompactMode && <Check size={16} className="text-blue-600 dark:text-blue-400 shrink-0" />}
                         </div>
                         <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">Display full prompt texts on all cards</p>
                       </div>
@@ -2759,19 +3258,19 @@ export default function App() {
                         setIsCompactMode(true);
                         setExpandedCardIds(new Set());
                       }}
-                      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all text-left cursor-pointer ${
+                      className={`flex items-center gap-3.5 sm:gap-4 p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border transition-all text-left cursor-pointer ${
                         isCompactMode
                           ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-900/20 ring-2 ring-blue-500/30 shadow-md'
                           : 'border-slate-200/80 dark:border-white/[0.08] bg-white/60 dark:bg-white/[0.03] hover:bg-white dark:hover:bg-white/[0.06]'
                       }`}
                     >
-                      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${isCompactMode ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
+                      <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 ${isCompactMode ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
                         <FoldVertical size={20} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-bold text-slate-900 dark:text-white">2-Line Compact</span>
-                          {isCompactMode && <Check size={16} className="text-blue-600 dark:text-blue-400" />}
+                          {isCompactMode && <Check size={16} className="text-blue-600 dark:text-blue-400 shrink-0" />}
                         </div>
                         <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">2-line preview with click to expand</p>
                       </div>
@@ -2781,21 +3280,21 @@ export default function App() {
 
                 <div className="h-px bg-black/[0.04] dark:bg-white/[0.06]" />
 
-                {/* Section 4: Danger Zone / System Reset */}
+                {/* Section 6: Danger Zone / System Reset */}
                 <div className="space-y-3">
                   <div>
                     <h3 className="text-xs font-black text-red-500 uppercase tracking-wider">Danger Zone</h3>
                     <p className="text-[11px] text-slate-500 font-medium">Irreversible actions on current workspace data</p>
                   </div>
 
-                  <div className="p-5 rounded-2xl border border-red-500/25 bg-red-500/[0.04] dark:bg-red-500/[0.06] flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-11 h-11 rounded-2xl bg-red-500/15 text-red-500 flex items-center justify-center shrink-0">
+                  <div className="p-4 sm:p-5 rounded-2xl border border-red-500/25 bg-red-500/[0.04] dark:bg-red-500/[0.06] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-start sm:items-center gap-3.5 sm:gap-4">
+                      <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-red-500/15 text-red-500 flex items-center justify-center shrink-0">
                         <Trash2 size={20} />
                       </div>
                       <div>
                         <div className="text-sm font-bold text-slate-900 dark:text-white">Reset Workspace & History</div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Clear all generated prompt batches, restore parameter defaults, and clear history.</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">Clear all generated prompt batches, restore parameter defaults, and clear history.</p>
                       </div>
                     </div>
                     <button
@@ -2804,7 +3303,7 @@ export default function App() {
                         setIsModalOpen(false);
                         setIsResetConfirmOpen(true);
                       }}
-                      className="px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-red-500 hover:bg-red-600 text-white shadow-md shadow-red-500/25 transition-all shrink-0 active:scale-95 cursor-pointer"
+                      className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-red-500 hover:bg-red-600 text-white shadow-md shadow-red-500/25 transition-all shrink-0 active:scale-95 cursor-pointer text-center"
                     >
                       Reset Workspace
                     </button>
@@ -2813,14 +3312,38 @@ export default function App() {
               </div>
             )}
             
-            {/* Footer */}
-            <div className="p-8 pt-4 border-t border-black/[0.04] dark:border-white/[0.06]">
-               <button 
-                 onClick={() => setIsModalOpen(false)} 
-                 className="w-full py-4 bg-slate-950 dark:bg-white text-white dark:text-slate-950 rounded-full font-black uppercase tracking-widest text-xs shadow-lg active:scale-[0.98] transition-all cursor-pointer"
-               >
-                 Close Settings
-               </button>
+            {/* Standard International Modal Footer */}
+            <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-t border-black/[0.04] dark:border-white/[0.06] bg-slate-50/70 dark:bg-slate-950/60 backdrop-blur-xl flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+               <div className="flex items-center gap-2 text-[11px] text-slate-400 dark:text-slate-500">
+                 <ShieldCheck size={14} className="text-emerald-500 shrink-0" />
+                 <span>Preferences & API keys are securely saved locally</span>
+               </div>
+               
+               <div className="flex items-center justify-end gap-2.5 w-full sm:w-auto">
+                 {configActiveTab === 'preferences' && (
+                   <button
+                     type="button"
+                     onClick={() => {
+                       setViewScale('normal');
+                       setPromptLayout('auto');
+                       setIsCompactMode(true);
+                       setCanvasBackground('dots');
+                     }}
+                     className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                     title="Reset visual preferences to defaults"
+                   >
+                     <RotateCcw size={12} />
+                     <span>Reset Display</span>
+                   </button>
+                 )}
+                 <button 
+                   type="button"
+                   onClick={() => setIsModalOpen(false)} 
+                   className="flex-1 sm:flex-initial px-6 py-2.5 bg-slate-950 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 rounded-xl font-bold uppercase tracking-widest text-[11px] shadow-md active:scale-95 transition-all cursor-pointer text-center"
+                 >
+                   Done
+                 </button>
+               </div>
             </div>
           </div>
         </div>

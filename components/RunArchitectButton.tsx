@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Sparkles, Check } from 'lucide-react';
 
 interface Props {
   onClick: () => void;
@@ -7,7 +8,12 @@ interface Props {
   disabled?: boolean;
 }
 
-export const RunArchitectButton: React.FC<Props> = ({ onClick, isGenerating, label = "RUN ARCHITECT", disabled }) => {
+export const RunArchitectButton: React.FC<Props> = ({ 
+  onClick, 
+  isGenerating, 
+  label = "Run Architect", 
+  disabled 
+}) => {
   const [phase, setPhase] = useState<'idle' | 'loading' | 'success' | 'reset'>('idle');
 
   useEffect(() => {
@@ -15,33 +21,82 @@ export const RunArchitectButton: React.FC<Props> = ({ onClick, isGenerating, lab
       setPhase('loading');
     } else if (!isGenerating && phase === 'loading') {
       setPhase('success');
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         setPhase('reset');
-        setTimeout(() => {
+        const resetTimer = setTimeout(() => {
           setPhase('idle');
-        }, 50);
-      }, 2000);
+        }, 60);
+        return () => clearTimeout(resetTimer);
+      }, 1800);
+      return () => clearTimeout(timer);
     }
   }, [isGenerating, phase]);
 
-  const getLabelStyle = () => {
-    if (phase === 'idle') return { transform: 'translateY(0)', opacity: 1, transition: 'all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)' };
-    if (phase === 'loading' || phase === 'success') return { transform: 'translateY(30px)', opacity: 0, transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' };
-    if (phase === 'reset') return { transform: 'translateY(-30px)', opacity: 0, transition: 'none' };
+  const getLabelStyle = (): React.CSSProperties => {
+    if (phase === 'idle') {
+      return { 
+        transform: 'translateY(0)', 
+        opacity: 1, 
+        transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease' 
+      };
+    }
+    if (phase === 'loading' || phase === 'success') {
+      return { 
+        transform: 'translateY(24px)', 
+        opacity: 0, 
+        transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease' 
+      };
+    }
+    return { 
+      transform: 'translateY(-24px)', 
+      opacity: 0, 
+      transition: 'none' 
+    };
   };
+
+  // Mathematically precise continuous sine wave paths (Period = 40px, cy = 13px)
+  // Perfectly loops when translating by -80px (exact 2 full periods) with zero deviation
+  const primaryWavePath = "M -40,13 C -32.80,6.50 -27.20,6.50 -20.00,13 C -12.80,19.50 -7.20,19.50 0.00,13 C 7.20,6.50 12.80,6.50 20.00,13 C 27.20,19.50 32.80,19.50 40.00,13 C 47.20,6.50 52.80,6.50 60.00,13 C 67.20,19.50 72.80,19.50 80.00,13 C 87.20,6.50 92.80,6.50 100.00,13 C 107.20,19.50 112.80,19.50 120.00,13 C 127.20,6.50 132.80,6.50 140.00,13 C 147.20,19.50 152.80,19.50 160.00,13 C 167.20,6.50 172.80,6.50 180.00,13 C 187.20,19.50 192.80,19.50 200.00,13 C 207.20,6.50 212.80,6.50 220.00,13 C 227.20,19.50 232.80,19.50 240.00,13 C 247.20,6.50 252.80,6.50 260.00,13 C 267.20,19.50 272.80,19.50 280.00,13 C 287.20,6.50 292.80,6.50 300.00,13 C 307.20,19.50 312.80,19.50 320.00,13 C 327.20,6.50 332.80,6.50 340.00,13 C 347.20,19.50 352.80,19.50 360.00,13 C 367.20,6.50 372.80,6.50 380.00,13 C 387.20,19.50 392.80,19.50 400.00,13 C 407.20,6.50 412.80,6.50 420.00,13 C 427.20,19.50 432.80,19.50 440.00,13";
+  
+  const secondaryWavePath = "M -40,13 C -32.80,9.00 -27.20,9.00 -20.00,13 C -12.80,17.00 -7.20,17.00 0.00,13 C 7.20,9.00 12.80,9.00 20.00,13 C 27.20,17.00 32.80,17.00 40.00,13 C 47.20,9.00 52.80,9.00 60.00,13 C 67.20,17.00 72.80,17.00 80.00,13 C 87.20,9.00 92.80,9.00 100.00,13 C 107.20,17.00 112.80,17.00 120.00,13 C 127.20,9.00 132.80,9.00 140.00,13 C 147.20,17.00 152.80,17.00 160.00,13 C 167.20,9.00 172.80,9.00 180.00,13 C 187.20,17.00 192.80,17.00 200.00,13 C 207.20,9.00 212.80,9.00 220.00,13 C 227.20,17.00 232.80,17.00 240.00,13 C 247.20,9.00 252.80,9.00 260.00,13 C 267.20,17.00 272.80,17.00 280.00,13 C 287.20,9.00 292.80,9.00 300.00,13 C 307.20,17.00 312.80,17.00 320.00,13 C 327.20,9.00 332.80,9.00 340.00,13 C 347.20,17.00 352.80,17.00 360.00,13 C 367.20,9.00 372.80,9.00 380.00,13 C 387.20,17.00 392.80,17.00 400.00,13 C 407.20,9.00 412.80,9.00 420.00,13 C 427.20,17.00 432.80,17.00 440.00,13";
 
   return (
     <>
       <style>{`
-        @keyframes archProgress {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-350px); }
+        @keyframes modernAiWavePrimary {
+          0% { transform: translate3d(0, 0, 0); }
+          100% { transform: translate3d(-80px, 0, 0); }
         }
-        .animate-arch-progress {
-          animation: archProgress 2.8s linear infinite;
+        @keyframes modernAiWaveSecondary {
+          0% { transform: translate3d(-80px, 0, 0); }
+          100% { transform: translate3d(0, 0, 0); }
+        }
+        @keyframes modernAiWaveBreathe {
+          0%, 100% { transform: scaleY(0.92); opacity: 0.92; }
+          50% { transform: scaleY(1.14); opacity: 1; }
+        }
+        @keyframes modernBorderBeam {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        .animate-ai-wave-primary {
+          animation: modernAiWavePrimary 2.2s linear infinite;
+          will-change: transform;
+        }
+        .animate-ai-wave-secondary {
+          animation: modernAiWaveSecondary 3.1s linear infinite;
+          will-change: transform;
+        }
+        .animate-ai-wave-breathe {
+          animation: modernAiWaveBreathe 2.8s ease-in-out infinite;
+        }
+        .animate-border-beam {
+          animation: modernBorderBeam 3.5s linear infinite;
+          will-change: transform;
         }
       `}</style>
-      <div className="relative w-full group">
+
+      <div className="relative w-full group select-none">
         <button 
           onClick={(e) => {
             e.preventDefault();
@@ -50,55 +105,136 @@ export const RunArchitectButton: React.FC<Props> = ({ onClick, isGenerating, lab
             }
           }}
           disabled={disabled || phase !== 'idle'}
-          className={`relative z-10 w-full h-[52px] rounded-full bg-gradient-to-b from-white/90 via-white/80 to-white/70 hover:from-white hover:to-white/85 dark:from-white/[0.12] dark:via-white/[0.08] dark:to-white/[0.05] dark:hover:from-white/[0.18] dark:hover:to-white/[0.1] text-slate-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 font-black uppercase tracking-widest text-[13px] flex items-center justify-center backdrop-blur-2xl backdrop-saturate-[190%] border border-slate-200/90 dark:border-white/[0.15] shadow-[0_8px_24px_rgba(0,0,0,0.05),inset_0_1px_1.5px_rgba(255,255,255,0.95)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.4),inset_0_1px_1.5px_rgba(255,255,255,0.18)] hover:shadow-[0_12px_32px_rgba(59,130,246,0.18)] hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] overflow-hidden cursor-pointer ${
-            disabled && phase === 'idle' ? 'opacity-40 cursor-not-allowed' : 'opacity-100'
+          aria-busy={phase === 'loading'}
+          aria-label={phase === 'loading' ? 'Generating prompts...' : label}
+          className={`relative z-10 w-full h-[50px] sm:h-[52px] rounded-full overflow-hidden flex items-center justify-center font-black uppercase tracking-[0.14em] text-[12.5px] sm:text-[13px] backdrop-blur-2xl backdrop-saturate-[190%] transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] cursor-pointer ${
+            phase === 'loading' 
+              ? 'bg-gradient-to-b from-white/95 via-white/90 to-white/85 dark:from-slate-900/95 dark:via-slate-900/90 dark:to-[#0b1329]/95 text-blue-600 dark:text-blue-400 border border-blue-500/40 dark:border-blue-400/30 shadow-[0_0_24px_rgba(59,130,246,0.22),inset_0_1px_1.5px_rgba(255,255,255,0.95)] dark:shadow-[0_0_28px_rgba(99,102,241,0.3),inset_0_1px_1.5px_rgba(255,255,255,0.2)]'
+              : phase === 'success'
+              ? 'bg-gradient-to-b from-emerald-500/15 via-emerald-500/10 to-transparent dark:from-emerald-500/20 dark:via-emerald-500/10 dark:to-transparent text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 shadow-[0_0_24px_rgba(16,185,129,0.25)]'
+              : 'bg-gradient-to-b from-white/90 via-white/80 to-white/70 hover:from-white hover:to-white/90 dark:from-white/[0.12] dark:via-white/[0.08] dark:to-white/[0.05] dark:hover:from-white/[0.18] dark:hover:to-white/[0.1] text-slate-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 border border-slate-200/90 dark:border-white/[0.15] shadow-[0_8px_24px_rgba(0,0,0,0.05),inset_0_1px_1.5px_rgba(255,255,255,0.95)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.4),inset_0_1px_1.5px_rgba(255,255,255,0.18)] hover:shadow-[0_12px_32px_rgba(59,130,246,0.18)] hover:-translate-y-0.5 active:scale-[0.98]'
+          } ${
+            disabled && phase === 'idle' ? 'opacity-40 cursor-not-allowed hover:translate-y-0 hover:shadow-none' : 'opacity-100'
           }`}
         >
           {/* Top Specular Rim Reflection */}
-          <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/95 dark:via-white/30 to-transparent pointer-events-none" />
+          <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/95 dark:via-white/35 to-transparent pointer-events-none z-20" />
 
           {/* Liquid Gloss Top Arc */}
-          <div className="absolute top-0 left-2 right-2 h-1/2 bg-gradient-to-b from-white/25 dark:from-white/10 to-transparent rounded-t-full pointer-events-none" />
+          <div className="absolute top-0 left-2 right-2 h-1/2 bg-gradient-to-b from-white/30 dark:from-white/10 to-transparent rounded-t-full pointer-events-none z-10" />
 
-          {/* Loading Original Wavy Line - Extended Width (88px) with Soft Faded Edges */}
+          {/* Dynamic Border Beam (Active during loading phase) */}
+          {phase === 'loading' && (
+            <div className="absolute -inset-[150%] pointer-events-none flex items-center justify-center opacity-60 dark:opacity-75 z-0">
+              <div className="w-[300%] h-[300%] bg-[conic-gradient(from_0deg,transparent_0_310deg,#38bdf8_335deg,#818cf8_350deg,#ec4899_360deg)] animate-border-beam" />
+            </div>
+          )}
+
+          {/* Inner Surface Card Mask (Overlays border beam so only thin 1.5px border glows) */}
+          {phase === 'loading' && (
+            <div className="absolute inset-[1.5px] rounded-full bg-white/95 dark:bg-[#0c1527]/95 backdrop-blur-xl pointer-events-none z-[1]" />
+          )}
+
+          {/* Ambient Radial Glow behind waves during loading */}
           <div 
-            className={`absolute inset-0 flex items-center justify-center pointer-events-none transition-all duration-500 ${phase === 'loading' ? 'opacity-100 scale-100 delay-150' : 'opacity-0 scale-90'}`}
+            className={`absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-500 z-[2] ${
+              phase === 'loading' ? 'opacity-100' : 'opacity-0'
+            }`}
           >
-             <div 
-               className="relative w-[88px] h-[32px] overflow-hidden flex items-center"
-               style={{
-                 WebkitMaskImage: 'linear-gradient(to right, transparent, black 14%, black 86%, transparent)',
-                 maskImage: 'linear-gradient(to right, transparent, black 14%, black 86%, transparent)'
-               }}
-             >
-                <svg 
-                  className="animate-arch-progress absolute left-0 top-[11px] w-[444px] h-[10px]" 
-                  viewBox="0 0 444 10" 
-                  stroke="currentColor" 
-                  strokeWidth="2.5" 
-                  fill="none" 
-                  strokeLinecap="round" 
+            <div className="w-32 h-6 rounded-full bg-gradient-to-r from-cyan-500/25 via-blue-500/30 to-fuchsia-500/25 blur-md" />
+          </div>
+
+          {/* MODERN AI GENERATIVE WAVE ANIMATION CONTAINER */}
+          <div 
+            className={`absolute inset-0 flex items-center justify-center pointer-events-none transition-all duration-500 z-[3] ${
+              phase === 'loading' ? 'opacity-100 scale-100' : 'opacity-0 scale-90'
+            }`}
+          >
+            {/* Viewport Capsule with Silky Edge Gradient Mask */}
+            <div 
+              className="relative w-[116px] sm:w-[130px] h-[28px] overflow-hidden flex items-center justify-center animate-ai-wave-breathe"
+              style={{
+                WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%)',
+                maskImage: 'linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%)'
+              }}
+            >
+              <svg 
+                className="absolute left-0 top-[1px] w-[440px] h-[26px]" 
+                viewBox="0 0 440 26" 
+                fill="none"
+              >
+                <defs>
+                  {/* Primary Apple Intelligence / Gemini Gradient */}
+                  <linearGradient id="modernAiWaveGradPrimary" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#38bdf8" />
+                    <stop offset="30%" stopColor="#3b82f6" />
+                    <stop offset="65%" stopColor="#818cf8" />
+                    <stop offset="85%" stopColor="#c084fc" />
+                    <stop offset="100%" stopColor="#f472b6" />
+                  </linearGradient>
+
+                  {/* Secondary Harmonic Wave Gradient */}
+                  <linearGradient id="modernAiWaveGradSecondary" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#67e8f9" stopOpacity="0.75" />
+                    <stop offset="50%" stopColor="#a855f7" stopOpacity="0.75" />
+                    <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.75" />
+                  </linearGradient>
+
+                  {/* Luminous Glow Filter */}
+                  <filter id="modernAiGlow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="1" result="glow" />
+                    <feComposite in="SourceGraphic" in2="glow" operator="over" />
+                  </filter>
+                </defs>
+
+                {/* Secondary Harmonic Resonance Wave (Opposite flow for quantum fluid depth) */}
+                <path 
+                  d={secondaryWavePath}
+                  className="animate-ai-wave-secondary"
+                  stroke="url(#modernAiWaveGradSecondary)"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
                   strokeLinejoin="round"
-                >
-                   <path d="M2,5 L42,5 C60.0089086,6.33131695 73.3422419,6.99798362 82,7 C87.572404,7.00129781 91.0932494,1.72677301 102,1.99944178 C112.906751,2.27211054 112.000464,7.99986045 122,8 C131.999536,8.00013955 132,2 142,2 C152,2 152,8 162,8 C172,8 172,2 182,2 C192,2 192,8 202,8 C212,8 212,2 222,2 C232,2 232,8 242,8 C252,8 252,2 262,2 C272,2 272,8 282,8 C292,8 292,2 302,2 C312,2 312,8 322,8 C332,8 332,2 342,2 C352,2 351.897852,7.49489262 362,8 C372.102148,8.50510738 378.620177,5.22532154 402,5 L442,5"></path>
-                </svg>
-             </div>
+                  opacity="0.65"
+                />
+
+                {/* Primary Radiant Wave (Forward silky smooth continuous sine flow) */}
+                <path 
+                  d={primaryWavePath}
+                  className="animate-ai-wave-primary"
+                  stroke="url(#modernAiWaveGradPrimary)"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  filter="url(#modernAiGlow)"
+                  style={{
+                    filter: 'drop-shadow(0 0 4px rgba(59, 130, 246, 0.7)) drop-shadow(0 0 8px rgba(139, 92, 246, 0.4))'
+                  }}
+                />
+              </svg>
+            </div>
           </div>
 
-          {/* Success Tick Mark */}
+          {/* Success State Indicator */}
           <div 
-            className={`absolute inset-0 flex items-center justify-center pointer-events-none transition-all duration-500 ${phase === 'success' ? 'opacity-100 scale-100 delay-100' : 'opacity-0 scale-50'}`}
+            className={`absolute inset-0 flex items-center justify-center gap-2 pointer-events-none transition-all duration-400 z-[4] ${
+              phase === 'success' ? 'opacity-100 scale-100' : 'opacity-0 scale-75'
+            }`}
           >
-            <svg className="w-7 h-7 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
+            <div className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-500 dark:text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.4)]">
+              <Check size={14} strokeWidth={3} className="animate-in zoom-in-50 duration-300" />
+            </div>
+            <span className="text-[12px] font-black tracking-wider text-emerald-600 dark:text-emerald-400">
+              SYNTHESIZED
+            </span>
           </div>
 
-          {/* Label Text */}
-          <div className="relative z-10 flex items-center justify-center w-full h-full pointer-events-none">
-              <span style={getLabelStyle()} className="absolute whitespace-nowrap">
-                  {label}
-              </span>
+          {/* Idle Label Text with Sparkles Icon */}
+          <div className="relative z-[5] flex items-center justify-center gap-2.5 w-full h-full pointer-events-none">
+            <span style={getLabelStyle()} className="absolute flex items-center gap-2 whitespace-nowrap">
+              <Sparkles size={16} className="text-blue-500 dark:text-blue-400 group-hover:rotate-12 group-hover:scale-110 transition-transform duration-300" />
+              <span>{label}</span>
+            </span>
           </div>
         </button>
       </div>
