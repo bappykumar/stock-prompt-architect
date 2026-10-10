@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Sparkles, Check } from 'lucide-react';
 
 interface Props {
@@ -6,31 +6,69 @@ interface Props {
   isGenerating: boolean;
   label?: string;
   disabled?: boolean;
+  hasError?: boolean;
 }
 
 export const RunArchitectButton: React.FC<Props> = ({ 
   onClick, 
   isGenerating, 
   label = "Run Architect", 
-  disabled 
+  disabled = false,
+  hasError = false
 }) => {
   const [phase, setPhase] = useState<'idle' | 'loading' | 'success' | 'reset'>('idle');
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wasGeneratingRef = useRef<boolean>(isGenerating);
+
+  const clearTimers = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    if (resetTimerRef.current) {
+      clearTimeout(resetTimerRef.current);
+      resetTimerRef.current = null;
+    }
+  };
 
   useEffect(() => {
-    if (isGenerating && phase === 'idle') {
+    if (isGenerating) {
+      clearTimers();
       setPhase('loading');
+    } else if (wasGeneratingRef.current && !isGenerating) {
+      clearTimers();
+      if (hasError) {
+        setPhase('idle');
+      } else {
+        setPhase('success');
+        timerRef.current = setTimeout(() => {
+          setPhase('reset');
+          resetTimerRef.current = setTimeout(() => {
+            setPhase('idle');
+          }, 60);
+        }, 1200);
+      }
     } else if (!isGenerating && phase === 'loading') {
-      setPhase('success');
-      const timer = setTimeout(() => {
-        setPhase('reset');
-        const resetTimer = setTimeout(() => {
-          setPhase('idle');
-        }, 60);
-        return () => clearTimeout(resetTimer);
-      }, 1800);
-      return () => clearTimeout(timer);
+      clearTimers();
+      setPhase('idle');
     }
-  }, [isGenerating, phase]);
+    wasGeneratingRef.current = isGenerating;
+  }, [isGenerating, hasError]);
+
+  useEffect(() => {
+    return () => {
+      clearTimers();
+    };
+  }, []);
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (disabled || isGenerating || phase === 'loading') return;
+    clearTimers();
+    setPhase('loading');
+    onClick();
+  };
 
   const getLabelStyle = (): React.CSSProperties => {
     if (phase === 'idle') {
@@ -98,23 +136,18 @@ export const RunArchitectButton: React.FC<Props> = ({
 
       <div className="relative w-full group select-none">
         <button 
-          onClick={(e) => {
-            e.preventDefault();
-            if (phase === 'idle' && !disabled) {
-              onClick();
-            }
-          }}
-          disabled={disabled || phase !== 'idle'}
+          onClick={handleClick}
+          disabled={disabled || isGenerating || phase === 'loading'}
           aria-busy={phase === 'loading'}
           aria-label={phase === 'loading' ? 'Generating prompts...' : label}
-          className={`relative z-10 w-full h-[50px] sm:h-[52px] rounded-full overflow-hidden flex items-center justify-center font-black uppercase tracking-[0.14em] text-[12.5px] sm:text-[13px] backdrop-blur-2xl backdrop-saturate-[190%] transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] cursor-pointer ${
+          className={`no-global-transition relative z-10 w-full min-h-[48px] h-12 xs:h-[50px] sm:h-[52px] md:h-[54px] rounded-full overflow-hidden flex items-center justify-center font-black uppercase tracking-[0.14em] text-[12px] xs:text-[12.5px] sm:text-[13px] md:text-[13.5px] backdrop-blur-2xl backdrop-saturate-[190%] transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] cursor-pointer ${
             phase === 'loading' 
               ? 'bg-gradient-to-b from-white/95 via-white/90 to-white/85 dark:from-slate-900/95 dark:via-slate-900/90 dark:to-[#0b1329]/95 text-blue-600 dark:text-blue-400 border border-blue-500/40 dark:border-blue-400/30 shadow-[0_0_24px_rgba(59,130,246,0.22),inset_0_1px_1.5px_rgba(255,255,255,0.95)] dark:shadow-[0_0_28px_rgba(99,102,241,0.3),inset_0_1px_1.5px_rgba(255,255,255,0.2)]'
               : phase === 'success'
               ? 'bg-gradient-to-b from-emerald-500/15 via-emerald-500/10 to-transparent dark:from-emerald-500/20 dark:via-emerald-500/10 dark:to-transparent text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 shadow-[0_0_24px_rgba(16,185,129,0.25)]'
               : 'bg-gradient-to-b from-white/90 via-white/80 to-white/70 hover:from-white hover:to-white/90 dark:from-white/[0.12] dark:via-white/[0.08] dark:to-white/[0.05] dark:hover:from-white/[0.18] dark:hover:to-white/[0.1] text-slate-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 border border-slate-200/90 dark:border-white/[0.15] shadow-[0_8px_24px_rgba(0,0,0,0.05),inset_0_1px_1.5px_rgba(255,255,255,0.95)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.4),inset_0_1px_1.5px_rgba(255,255,255,0.18)] hover:shadow-[0_12px_32px_rgba(59,130,246,0.18)] hover:-translate-y-0.5 active:scale-[0.98]'
           } ${
-            disabled && phase === 'idle' ? 'opacity-40 cursor-not-allowed hover:translate-y-0 hover:shadow-none' : 'opacity-100'
+            (disabled || isGenerating) && phase === 'idle' ? 'opacity-40 cursor-not-allowed hover:translate-y-0 hover:shadow-none' : 'opacity-100'
           }`}
         >
           {/* Top Specular Rim Reflection */}

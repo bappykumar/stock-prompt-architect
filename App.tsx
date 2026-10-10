@@ -1745,6 +1745,7 @@ export default function App() {
       setErrorMessage(error.message || "An unexpected error occurred while generating prompts.");
     } finally {
       setIsGenerating(false);
+      setApiTrackerState(prev => ({ ...prev, visible: false }));
       if (loadingIntervalRef.current) {
         clearInterval(loadingIntervalRef.current);
         loadingIntervalRef.current = null;
@@ -1854,34 +1855,35 @@ export default function App() {
         <div className="absolute -bottom-[10%] left-[25%] w-[550px] h-[550px] rounded-full bg-cyan-500/8 dark:bg-cyan-600/[0.07] blur-[140px] transform-gpu" />
       </div>
       
-      <header className="fixed top-0 left-0 right-0 h-16 bg-white/80 dark:bg-slate-950/70 backdrop-blur-2xl backdrop-saturate-[180%] border-b border-slate-200/80 dark:border-white/[0.08] shadow-[0_4px_24px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)] z-[100] flex items-center justify-between px-3 sm:px-6 md:px-8">
+      <header className="fixed top-0 left-0 right-0 h-16 sm:h-16 md:h-16 bg-white/85 dark:bg-slate-950/75 backdrop-blur-2xl backdrop-saturate-[180%] border-b border-slate-200/80 dark:border-white/[0.08] shadow-[0_4px_24px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)] z-[100] flex items-center justify-between px-3 sm:px-5 md:px-8">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <div className="w-9 h-9 sm:w-10 sm:h-10 bg-white/90 dark:bg-white text-slate-900 rounded-2xl flex items-center justify-center shadow-[0_4px_14px_rgba(0,0,0,0.08),inset_0_1px_1px_rgba(255,255,255,0.9)] border border-slate-200/80 dark:border-white/20 shrink-0">
             <Command className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
           </div>
           <div className="flex flex-col min-w-0">
-            <h1 className="text-[12px] sm:text-[13px] font-black uppercase tracking-tighter leading-none truncate">PROMPT MASTER</h1>
+            <h1 className="text-[12px] sm:text-[13px] md:text-[14px] font-black uppercase tracking-tighter leading-none truncate">PROMPT MASTER</h1>
             <div className="flex items-center gap-1.5 sm:gap-2 mt-1">
               <span className="text-[8px] sm:text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest shrink-0">SYS V1.5</span>
               <span className="w-px h-2 bg-slate-300 dark:bg-slate-700 shrink-0"></span>
-              <span className="text-[8px] sm:text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest max-w-[80px] xs:max-w-[120px] sm:max-w-[180px] truncate" title={activeModelLabel}>
+              <span className="text-[8px] sm:text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest max-w-[80px] xs:max-w-[120px] sm:max-w-[180px] md:max-w-[220px] truncate" title={activeModelLabel}>
                 {activeModelLabel}
               </span>
             </div>
           </div>
           <button 
             onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-            className="p-1.5 sm:p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-black/[0.04] dark:hover:bg-white/[0.08] rounded-xl transition-colors backdrop-blur-md shrink-0"
+            className="p-2 sm:p-2.5 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-black/[0.05] dark:hover:bg-white/[0.08] rounded-xl transition-all active:scale-95 backdrop-blur-md shrink-0 flex items-center justify-center min-w-[38px] min-h-[38px]"
             title="Toggle Controls Sidebar"
+            aria-label="Toggle Controls Sidebar"
           >
-            {isSidebarOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
+            {isSidebarOpen ? <PanelLeftClose size={19} /> : <PanelLeftOpen size={19} />}
           </button>
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-2.5 md:gap-3 shrink-0">
+        <div className="flex items-center gap-1.5 xs:gap-2 sm:gap-2.5 md:gap-3 shrink-0">
           {batches.length > 0 && (
             <div className="hidden lg:flex items-center mr-1">
-              <div className="flex items-center h-9 px-1 rounded-2xl border border-slate-200/80 dark:border-white/[0.08] bg-white/70 dark:bg-white/[0.04] backdrop-blur-xl shadow-[0_2px_8px_rgba(0,0,0,0.02),inset_0_1px_1px_rgba(255,255,255,0.8)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)]">
+              <div className="flex items-center h-9 sm:h-10 px-1 rounded-2xl border border-slate-200/80 dark:border-white/[0.08] bg-white/70 dark:bg-white/[0.04] backdrop-blur-xl shadow-[0_2px_8px_rgba(0,0,0,0.02),inset_0_1px_1px_rgba(255,255,255,0.8)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)]">
                 
                 {/* Total Segment */}
                 <div className="flex items-center gap-2 px-3 h-full">
@@ -1912,18 +1914,18 @@ export default function App() {
           <button 
             onClick={clearCopiedPrompts}
             disabled={stats.copied === 0}
-            className={`h-8 sm:h-9 flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 rounded-xl sm:rounded-2xl text-[10px] sm:text-[11px] font-bold uppercase tracking-widest border backdrop-blur-xl transition-all active:scale-[0.95] ${
+            className={`min-h-[38px] sm:min-h-[40px] h-9 sm:h-10 flex items-center gap-1.5 sm:gap-2 px-2.5 xs:px-3 sm:px-3.5 rounded-xl sm:rounded-2xl text-[10.5px] sm:text-[11.5px] font-bold uppercase tracking-wider sm:tracking-widest border backdrop-blur-xl transition-all duration-200 active:scale-[0.95] ${
               stats.copied > 0 
-                ? 'border-orange-500/35 bg-orange-500/10 text-orange-600 dark:text-orange-400 hover:bg-orange-500 hover:text-white shadow-[0_2px_8px_rgba(249,115,22,0.18)] cursor-pointer' 
+                ? 'border-orange-500/40 bg-orange-500/10 text-orange-600 dark:text-orange-400 hover:bg-orange-500 hover:text-white shadow-[0_2px_8px_rgba(249,115,22,0.18)] cursor-pointer' 
                 : 'border-slate-200/60 dark:border-white/[0.04] bg-white/40 dark:bg-white/[0.02] text-slate-300 dark:text-slate-600 opacity-40 cursor-not-allowed'
             }`}
             title={stats.copied > 0 ? `Remove ${stats.copied} copied prompts` : "No copied prompts to remove"}
           >
-            <ListX size={13} className="sm:w-3.5 sm:h-3.5 shrink-0" />
+            <ListX size={14} className="sm:w-3.5 sm:h-3.5 shrink-0" />
             <span className="hidden sm:inline">Clear Copied</span>
             <span className="inline sm:hidden">Clear</span>
             {stats.copied > 0 && (
-              <span className="font-mono text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-orange-500/20 text-orange-600 dark:text-orange-300">
+              <span className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-orange-500/20 text-orange-600 dark:text-orange-300">
                 {stats.copied}
               </span>
             )}
@@ -1933,7 +1935,7 @@ export default function App() {
           <div className="relative" ref={exportMenuRef}>
             <button 
               onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
-              className="h-8 sm:h-9 flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 rounded-xl sm:rounded-2xl text-[10px] sm:text-[11px] font-bold uppercase tracking-widest transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] active:scale-[0.96] bg-gradient-to-b from-white/90 via-white/80 to-white/70 hover:from-white hover:to-white/80 dark:from-white/[0.12] dark:via-white/[0.08] dark:to-white/[0.05] dark:hover:from-white/[0.18] dark:hover:to-white/[0.1] text-slate-800 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 backdrop-blur-2xl backdrop-saturate-[190%] border border-slate-200/90 dark:border-white/[0.15] shadow-[0_4px_16px_rgba(0,0,0,0.04),inset_0_1px_1.5px_rgba(255,255,255,0.95)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.18)] hover:shadow-[0_8px_24px_rgba(59,130,246,0.15)] relative overflow-hidden cursor-pointer"
+              className="min-h-[38px] sm:min-h-[40px] h-9 sm:h-10 flex items-center gap-1.5 sm:gap-2 px-2.5 xs:px-3 sm:px-3.5 rounded-xl sm:rounded-2xl text-[10.5px] sm:text-[11.5px] font-bold uppercase tracking-wider sm:tracking-widest transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] active:scale-[0.96] bg-gradient-to-b from-white/90 via-white/80 to-white/70 hover:from-white hover:to-white/80 dark:from-white/[0.12] dark:via-white/[0.08] dark:to-white/[0.05] dark:hover:from-white/[0.18] dark:hover:to-white/[0.1] text-slate-800 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 backdrop-blur-2xl backdrop-saturate-[190%] border border-slate-200/90 dark:border-white/[0.15] shadow-[0_4px_16px_rgba(0,0,0,0.04),inset_0_1px_1.5px_rgba(255,255,255,0.95)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.18)] hover:shadow-[0_8px_24px_rgba(59,130,246,0.15)] relative overflow-hidden cursor-pointer"
             >
               {/* Top Specular Rim */}
               <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/95 dark:via-white/30 to-transparent pointer-events-none" />
@@ -1968,12 +1970,12 @@ export default function App() {
           {/* Master Config Button - Anchored at the far right like standard settings */}
           <button 
             onClick={() => setIsModalOpen(true)} 
-            className="h-8 sm:h-9 flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 rounded-xl sm:rounded-2xl text-[10px] sm:text-[11px] font-bold uppercase tracking-widest transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] active:scale-[0.96] bg-gradient-to-b from-white/95 via-white/85 to-white/75 hover:from-white hover:to-white/90 dark:from-white/[0.14] dark:via-white/[0.09] dark:to-white/[0.06] dark:hover:from-white/[0.2] dark:hover:to-white/[0.12] text-slate-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 backdrop-blur-2xl backdrop-saturate-[190%] border border-slate-200/90 dark:border-white/[0.18] shadow-[0_4px_16px_rgba(0,0,0,0.04),inset_0_1px_1.5px_rgba(255,255,255,0.95)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.18)] hover:shadow-[0_8px_24px_rgba(59,130,246,0.18)] relative overflow-hidden cursor-pointer"
+            className="min-h-[38px] sm:min-h-[40px] h-9 sm:h-10 flex items-center gap-1.5 sm:gap-2 px-2.5 xs:px-3 sm:px-4 rounded-xl sm:rounded-2xl text-[10.5px] sm:text-[11.5px] font-bold uppercase tracking-wider sm:tracking-widest transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] active:scale-[0.96] bg-gradient-to-b from-white/95 via-white/85 to-white/75 hover:from-white hover:to-white/90 dark:from-white/[0.14] dark:via-white/[0.09] dark:to-white/[0.06] dark:hover:from-white/[0.2] dark:hover:to-white/[0.12] text-slate-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 backdrop-blur-2xl backdrop-saturate-[190%] border border-slate-200/90 dark:border-white/[0.18] shadow-[0_4px_16px_rgba(0,0,0,0.04),inset_0_1px_1.5px_rgba(255,255,255,0.95)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.18)] hover:shadow-[0_8px_24px_rgba(59,130,246,0.18)] relative overflow-hidden cursor-pointer"
             title="System Configuration (API & Display Preferences)"
           >
             {/* Top Specular Rim */}
             <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/95 dark:via-white/40 to-transparent pointer-events-none" />
-            <Settings size={13} className="sm:w-3.5 sm:h-3.5 text-blue-500 shrink-0" />
+            <Settings size={14} className="sm:w-3.5 sm:h-3.5 text-blue-500 shrink-0" />
             <span className="hidden xs:inline sm:inline">Config</span>
           </button>
         </div>
@@ -2154,7 +2156,7 @@ export default function App() {
                     </div>
 
                     {autoFillMode === 'image' ? (
-                      <div className="relative border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden text-center hover:bg-white/40 dark:hover:bg-white/[0.02] transition-colors flex items-center justify-center min-h-[8rem]">
+                      <div className="relative border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden text-center hover:bg-white/40 dark:hover:bg-white/[0.02] transition-colors flex items-center justify-center min-h-[8.5rem]">
                         <input type="file" accept="image/jpeg, image/png" onChange={(e) => setReferenceImage(e.target.files?.[0] || null)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-30" />
                         {referenceImage ? (
                           <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-slate-900/5 dark:bg-slate-900/50">
@@ -2167,6 +2169,20 @@ export default function App() {
                                 <div className="w-full h-0.5 bg-blue-500 shadow-[0_0_20px_4px_rgba(59,130,246,0.8)] absolute animate-[scan_1.5s_ease-in-out_infinite]" />
                               </div>
                             )}
+
+                            {/* Remove Image Action */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setReferenceImage(null);
+                                setLastUsedReference({ mode: null, value: null });
+                              }}
+                              className="absolute top-2 right-2 z-40 p-1.5 rounded-full bg-black/60 hover:bg-black/80 text-white backdrop-blur-md transition-colors shadow-md"
+                              title="Remove image"
+                            >
+                              <X size={13} />
+                            </button>
                           </div>
                         ) : (
                           <div className="text-[11px] font-medium text-slate-500 flex flex-col items-center gap-1 p-6 relative z-10">
@@ -2177,7 +2193,27 @@ export default function App() {
                         )}
                       </div>
                     ) : (
-                      <textarea value={options.smartRefinementText} onChange={(e) => setOptions({...options, smartRefinementText: e.target.value, isFromImageReference: false})} placeholder="Describe your concept (e.g. 'a moody cinematic shot of a businessman in rain')..." className="w-full h-24 bg-white/70 dark:bg-white/[0.04] backdrop-blur-md border border-white/80 dark:border-white/[0.08] shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] rounded-2xl px-4 py-3 text-[12px] outline-none focus:ring-2 focus:ring-blue-500/20 transition-all resize-none custom-scrollbar" />
+                      <div className="relative">
+                        <textarea 
+                          value={options.smartRefinementText} 
+                          onChange={(e) => setOptions({...options, smartRefinementText: e.target.value, isFromImageReference: false})} 
+                          placeholder="Describe your concept (e.g. 'a moody cinematic shot of a businessman in rain')..." 
+                          className="w-full h-24 bg-white/70 dark:bg-white/[0.04] backdrop-blur-md border border-white/80 dark:border-white/[0.08] shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] rounded-2xl px-4 py-3 text-[12px] outline-none focus:ring-2 focus:ring-blue-500/20 transition-all resize-none custom-scrollbar" 
+                        />
+                        {options.smartRefinementText && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOptions(prev => ({...prev, smartRefinementText: ''}));
+                              setLastUsedReference({ mode: null, value: null });
+                            }}
+                            className="absolute top-2.5 right-2.5 p-1 rounded-lg bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                            title="Clear prompt text"
+                          >
+                            <X size={12} />
+                          </button>
+                        )}
+                      </div>
                     )}
 
                     {(() => {
@@ -2186,21 +2222,53 @@ export default function App() {
                       const isSrUsed = hasSrContent && lastUsedReference.mode === autoFillMode && lastUsedReference.value === currentSrValue;
                       
                       return (
-                        <button 
-                          onClick={handleAutoFill}
-                          disabled={isAnalyzing || !hasSrContent}
-                          className={`w-full mt-4 py-2.5 rounded-2xl font-bold uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 backdrop-blur-md transition-all active:scale-[0.98] border disabled:opacity-50 disabled:cursor-not-allowed
-                            ${!hasSrContent
-                               ? 'bg-slate-200/80 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-transparent' 
-                               : isSrUsed 
-                                 ? 'bg-red-500/90 hover:bg-red-500 text-white shadow-md shadow-red-500/20 border-red-400/30' 
-                                 : 'bg-emerald-500/90 hover:bg-emerald-500 text-white shadow-md shadow-emerald-500/20 border-emerald-400/30'}`}
-                        >
-                          {isAnalyzing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                          {isSrUsed 
-                            ? (autoFillMode === 'image' ? 'Image Reference Applied' : 'Text Reference Applied') 
-                            : (autoFillMode === 'image' ? 'Analyze Image & Auto-Fill' : 'Auto-Fill Settings from Text')}
-                        </button>
+                        <div className="flex items-center gap-2 mt-4">
+                          <button 
+                            type="button"
+                            onClick={handleAutoFill}
+                            disabled={isAnalyzing || !hasSrContent}
+                            className={`flex-1 min-h-[42px] sm:min-h-[44px] py-2.5 px-3 rounded-2xl font-bold uppercase tracking-wider text-[11px] sm:text-[11.5px] flex items-center justify-center gap-2 backdrop-blur-md transition-all active:scale-[0.98] border shadow-xs disabled:opacity-50 disabled:cursor-not-allowed ${
+                              !hasSrContent
+                                ? 'bg-slate-200/70 dark:bg-white/[0.06] text-slate-400 dark:text-slate-500 border-transparent' 
+                                : isSrUsed 
+                                  ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white shadow-[0_4px_16px_rgba(16,185,129,0.25)] border-emerald-400/40' 
+                                  : 'bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-500 text-white shadow-[0_4px_16px_rgba(37,99,235,0.25)] border-blue-400/40'
+                            }`}
+                          >
+                            {isAnalyzing ? (
+                              <Loader2 size={15} className="animate-spin text-white" />
+                            ) : isSrUsed ? (
+                              <Check size={15} className="text-white" strokeWidth={2.5} />
+                            ) : (
+                              <Sparkles size={15} className="text-white" />
+                            )}
+                            <span className="truncate">
+                              {isAnalyzing 
+                                ? 'Analyzing Settings...' 
+                                : isSrUsed 
+                                  ? (autoFillMode === 'image' ? 'Image Applied • Re-analyze' : 'Text Applied • Re-analyze') 
+                                  : (autoFillMode === 'image' ? 'Analyze Image & Auto-Fill' : 'Auto-Fill Settings from Text')}
+                            </span>
+                          </button>
+                          
+                          {hasSrContent && !isAnalyzing && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (autoFillMode === 'image') {
+                                  setReferenceImage(null);
+                                } else {
+                                  setOptions(prev => ({ ...prev, smartRefinementText: '' }));
+                                }
+                                setLastUsedReference({ mode: null, value: null });
+                              }}
+                              title="Clear reference"
+                              className="shrink-0 h-[42px] sm:h-[44px] px-3 rounded-2xl bg-slate-200/70 hover:bg-slate-300/70 dark:bg-white/[0.06] dark:hover:bg-white/[0.12] text-slate-500 hover:text-red-500 dark:text-slate-400 dark:hover:text-red-400 border border-slate-300/60 dark:border-white/[0.08] transition-colors flex items-center justify-center"
+                            >
+                              <X size={15} />
+                            </button>
+                          )}
+                        </div>
                       );
                     })()}
 
@@ -2347,8 +2415,11 @@ export default function App() {
           </div>
         </div>
 
-        {/* Action Button */}
-        <div className="shrink-0 p-4 sm:p-5 md:p-6 bg-transparent border-t border-slate-200/50 dark:border-slate-800/50 z-50 flex flex-col gap-2.5 sm:gap-3">
+        {/* Action Button Docking Bar */}
+        <div className="shrink-0 p-3.5 sm:p-4 md:p-5 bg-white/95 dark:bg-slate-950/95 lg:bg-white/90 lg:dark:bg-slate-950/90 backdrop-blur-2xl backdrop-saturate-[180%] border-t border-slate-200/80 dark:border-white/[0.08] shadow-[0_-8px_24px_rgba(0,0,0,0.04)] dark:shadow-[0_-8px_24px_rgba(0,0,0,0.4)] z-50 flex flex-col gap-2.5 relative">
+          {/* Subtle top rim highlight */}
+          <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/20 to-transparent pointer-events-none" />
+
           {errorMessage && (
             <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-xl text-red-600 dark:text-red-400 text-[11px] flex items-start gap-2 shadow-sm">
                <div className="mt-0.5"><X size={14} className="shrink-0" /></div>
@@ -2356,7 +2427,13 @@ export default function App() {
                <button onClick={() => setErrorMessage(null)} className="opacity-50 hover:opacity-100 shrink-0"><X size={14} /></button>
             </div>
           )}
-          <RunArchitectButton onClick={handleGenerate} isGenerating={isGenerating} label="Run Architect" disabled={isGenerating} />
+          <RunArchitectButton 
+            onClick={handleGenerate} 
+            isGenerating={isGenerating} 
+            label="Run Architect" 
+            disabled={isGenerating} 
+            hasError={!!errorMessage}
+          />
         </div>
         </div>
       </aside>
@@ -2577,13 +2654,13 @@ export default function App() {
                              </div>
                              <button 
                                onClick={() => copyIndividual(batch.id, p.id, p.text)} 
-                               className={`w-full sm:w-auto ${cardScaleConfig.buttonPadding} rounded-xl sm:rounded-2xl font-bold uppercase tracking-wider transition-all shrink-0 active:scale-[0.96] text-center cursor-pointer ${
+                               className={`w-full sm:w-auto min-h-[40px] sm:min-h-[38px] ${cardScaleConfig.buttonPadding} rounded-xl sm:rounded-2xl font-bold uppercase tracking-wider transition-all duration-200 shrink-0 active:scale-[0.96] flex items-center justify-center text-center cursor-pointer ${
                                  p.copied 
                                    ? 'bg-emerald-500/90 text-white backdrop-blur-md shadow-lg shadow-emerald-500/20 border border-emerald-400/30' 
                                    : 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:opacity-90 backdrop-blur-xl border border-white/20 dark:border-white/50 shadow-[0_4px_14px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.3)] dark:shadow-[0_4px_14px_rgba(255,255,255,0.15),inset_0_1px_0_rgba(255,255,255,0.9)]'
                                }`}
                              >
-                               {p.copied ? <><Check size={13} className="inline mr-1.5" />Copied</> : 'Copy Prompt'}
+                               {p.copied ? <><Check size={14} className="inline mr-1.5" />Copied</> : 'Copy Prompt'}
                              </button>
                           </div>
                         </div>
