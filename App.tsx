@@ -2305,26 +2305,49 @@ export default function App() {
                         )}
                       </div>
                     ) : (
-                      <div className="relative">
-                        <textarea 
-                          value={options.smartRefinementText} 
-                          onChange={(e) => setOptions({...options, smartRefinementText: e.target.value, isFromImageReference: false})} 
-                          placeholder="Describe your concept (e.g. 'a moody cinematic shot of a businessman in rain')..." 
-                          className="w-full h-24 bg-white/70 dark:bg-white/[0.04] backdrop-blur-md border border-white/80 dark:border-white/[0.08] shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] rounded-2xl px-4 py-3 text-[12px] outline-none focus:ring-2 focus:ring-blue-500/20 transition-all resize-none custom-scrollbar" 
-                        />
-                        {options.smartRefinementText && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOptions(prev => ({...prev, smartRefinementText: ''}));
-                              setLastUsedReference({ mode: null, value: null });
-                            }}
-                            className="absolute top-2.5 right-2.5 p-1 rounded-lg bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-                            title="Clear prompt text"
-                          >
-                            <X size={12} />
-                          </button>
-                        )}
+                      <div className="space-y-1">
+                        <div className="relative">
+                          <textarea 
+                            value={options.smartRefinementText} 
+                            onChange={(e) => setOptions({...options, smartRefinementText: e.target.value, isFromImageReference: false})} 
+                            placeholder="Describe your concept (e.g. 'a moody cinematic shot of a businessman in rain')..." 
+                            className="w-full h-24 bg-white/70 dark:bg-white/[0.04] backdrop-blur-md border border-white/80 dark:border-white/[0.08] shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] rounded-2xl pl-3.5 pr-9 py-2.5 text-[12px] leading-relaxed text-slate-900 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all resize-none custom-scrollbar" 
+                          />
+                          {options.smartRefinementText && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOptions(prev => ({...prev, smartRefinementText: ''}));
+                                setLastUsedReference({ mode: null, value: null });
+                              }}
+                              className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full bg-slate-200/80 dark:bg-slate-800/90 hover:bg-red-500/15 dark:hover:bg-red-500/20 text-slate-400 hover:text-red-500 dark:hover:text-red-400 border border-black/5 dark:border-white/10 flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-90 z-20"
+                              title="Clear prompt text"
+                              aria-label="Clear prompt text"
+                            >
+                              <X size={12} strokeWidth={2.5} />
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between px-1 text-[10px] text-slate-400 font-medium">
+                          <span>
+                            {options.smartRefinementText.trim() 
+                              ? `${options.smartRefinementText.trim().split(/\s+/).filter(Boolean).length} words` 
+                              : 'Type concept or paste prompt'}
+                          </span>
+                          {options.smartRefinementText && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOptions(prev => ({ ...prev, smartRefinementText: '' }));
+                                setLastUsedReference({ mode: null, value: null });
+                              }}
+                              className="hover:text-red-500 dark:hover:text-red-400 transition-colors cursor-pointer"
+                            >
+                              Clear
+                            </button>
+                          )}
+                        </div>
                       </div>
                     )}
 
@@ -2334,12 +2357,12 @@ export default function App() {
                       const isSrUsed = hasSrContent && lastUsedReference.mode === autoFillMode && lastUsedReference.value === currentSrValue;
                       
                       return (
-                        <div className="flex items-center gap-2 mt-4">
+                        <div className="mt-3.5 space-y-2">
                           <button 
                             type="button"
                             onClick={handleAutoFill}
                             disabled={isAnalyzing || !hasSrContent}
-                            className={`flex-1 min-h-[42px] sm:min-h-[44px] py-2.5 px-3 rounded-2xl font-bold uppercase tracking-wider text-[11px] sm:text-[11.5px] flex items-center justify-center gap-2 backdrop-blur-md transition-all active:scale-[0.98] border shadow-xs disabled:opacity-50 disabled:cursor-not-allowed ${
+                            className={`w-full min-h-[42px] sm:min-h-[44px] py-2.5 px-4 rounded-2xl font-bold uppercase tracking-wider text-[11px] sm:text-[11.5px] flex items-center justify-center gap-2 backdrop-blur-md transition-all active:scale-[0.98] border shadow-xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${
                               !hasSrContent
                                 ? 'bg-slate-200/70 dark:bg-white/[0.06] text-slate-400 dark:text-slate-500 border-transparent' 
                                 : isSrUsed 
@@ -2363,22 +2386,24 @@ export default function App() {
                             </span>
                           </button>
                           
-                          {hasSrContent && !isAnalyzing && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (autoFillMode === 'image') {
-                                  setReferenceImage(null);
-                                } else {
-                                  setOptions(prev => ({ ...prev, smartRefinementText: '' }));
-                                }
-                                setLastUsedReference({ mode: null, value: null });
-                              }}
-                              title="Clear reference"
-                              className="shrink-0 h-[42px] sm:h-[44px] px-3 rounded-2xl bg-slate-200/70 hover:bg-slate-300/70 dark:bg-white/[0.06] dark:hover:bg-white/[0.12] text-slate-500 hover:text-red-500 dark:text-slate-400 dark:hover:text-red-400 border border-slate-300/60 dark:border-white/[0.08] transition-colors flex items-center justify-center"
-                            >
-                              <X size={15} />
-                            </button>
+                          {isSrUsed && !isAnalyzing && (
+                            <div className="flex items-center justify-center pt-0.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (autoFillMode === 'image') {
+                                    setReferenceImage(null);
+                                  } else {
+                                    setOptions(prev => ({ ...prev, smartRefinementText: '' }));
+                                  }
+                                  setLastUsedReference({ mode: null, value: null });
+                                }}
+                                className="text-[10px] text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors flex items-center gap-1 cursor-pointer"
+                              >
+                                <RotateCcw size={10} />
+                                <span>Reset Applied Refinement</span>
+                              </button>
+                            </div>
                           )}
                         </div>
                       );
