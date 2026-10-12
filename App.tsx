@@ -1,5 +1,6 @@
 import { RunArchitectButton } from "./components/RunArchitectButton";
 import { QuantumOrbitalCore } from "./components/QuantumOrbitalCore";
+import { ApiKeyVaultModal } from "./components/ApiKeyVaultModal";
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { 
   Sparkles, Check, Copy, ChevronDown, Loader2, 
@@ -10,7 +11,7 @@ import {
   Layout, Fingerprint, Focus, Settings2, Download, MessageSquareCode, Send, AlertCircle, X, Cpu, Paintbrush,
   ChevronUp, Key, Lock, Unlock, Info, Settings, ToggleLeft, ToggleRight, Activity, Power, Video, Target, Lightbulb, Search, Shuffle, Image, Type, RefreshCw, ListX, PanelLeftClose, PanelLeftOpen, Upload,
   LayoutList, Columns2, UnfoldVertical, FoldVertical, SlidersHorizontal, LayoutGrid, Rows3,
-  CircleDot, Grid3X3, RotateCcw
+  CircleDot, Grid3X3, RotateCcw, FileUp, FileDown, Database, AlertTriangle
 } from 'lucide-react';
 import { PromptOptions, GeneratedPrompt, PromptBatch, HistoricalPrompt, ApiKeyRecord } from './types';
 import { generateStockPrompts, testApiKey, analyzeReferenceAndSuggestSettings } from './services/geminiService';
@@ -979,6 +980,10 @@ export default function App() {
 
   const [newKeyInput, setNewKeyInput] = useState("");
   const [activeProviderTab, setActiveProviderTab] = useState<'gemini' | 'groq' | 'mistral' | 'openrouter'>('gemini');
+  const [isVaultModalOpen, setIsVaultModalOpen] = useState(false);
+  const [vaultInitialTab, setVaultInitialTab] = useState<'import' | 'export' | 'clean'>('import');
+  const [isClearApiConfirmOpen, setIsClearApiConfirmOpen] = useState(false);
+  const [clearApiScope, setClearApiScope] = useState<'all' | 'current'>('all');
 
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
@@ -1361,6 +1366,85 @@ export default function App() {
     setIsTestingAll(false);
     
     setTimeout(() => setTestAllSummary(null), 5000);
+  };
+
+  const handleImportKeys = async (newKeys: ApiKeyRecord[], autoTest: boolean) => {
+    if (newKeys.length === 0) return;
+    
+    setApiKeys(prev => {
+      const existingKeySet = new Set(prev.map(k => k.key.trim()));
+      const filtered = newKeys.filter(k => !existingKeySet.has(k.key.trim()));
+      return [...prev, ...filtered];
+    });
+
+    if (!activeKeyId && newKeys.length > 0) {
+      setActiveKeyId(newKeys[0].id);
+    }
+
+    if (autoTest) {
+      // Test the newly added keys in background
+      setTimeout(async () => {
+        for (const k of newKeys) {
+          try {
+            await handleTestKey(k.id);
+          } catch (e) {
+            // Error captured inside handleTestKey
+          }
+        }
+      }, 200);
+    }
+  };
+
+  const handleCleanKeys = (scope: 'all' | 'gemini' | 'groq' | 'mistral' | 'openrouter') => {
+    if (scope === 'all') {
+      setApiKeys([]);
+      setActiveKeyId('');
+      safeLocalStorage.removeItem('user_api_keys');
+      safeLocalStorage.removeItem('active_api_key_id');
+      safeLocalStorage.removeItem('user_gemini_api_key');
+      safeLocalStorage.setItem('user_api_keys', '[]');
+    } else {
+      setApiKeys(prev => {
+        const remaining = prev.filter(k => k.provider !== scope);
+        if (!remaining.some(k => k.id === activeKeyId)) {
+          setActiveKeyId(remaining.length > 0 ? remaining[0].id : '');
+        }
+        safeLocalStorage.setItem('user_api_keys', JSON.stringify(remaining));
+        return remaining;
+      });
+    }
+  };
+
+  const handleOpenClearConfirm = (scope: 'all' | 'current' = 'all') => {
+    const totalCount = apiKeys.length;
+    const providerCount = apiKeys.filter(k => k.provider === activeProviderTab).length;
+    
+    if (scope === 'all' && totalCount === 0) {
+      addToast('No stored API keys found in vault to clear.', 'info', 3000);
+      return;
+    }
+    if (scope === 'current' && providerCount === 0) {
+      const providerName = PROVIDERS.find(p => p.id === activeProviderTab)?.name || activeProviderTab;
+      addToast(`No API keys found for ${providerName} to clear.`, 'info', 3000);
+      return;
+    }
+    
+    setClearApiScope(scope);
+    setIsClearApiConfirmOpen(true);
+  };
+
+  const handleConfirmClearApiKeys = () => {
+    if (clearApiScope === 'all') {
+      const count = apiKeys.length;
+      handleCleanKeys('all');
+      addToast(`Permanently cleared all ${count} API keys from vault.`, 'success', 4000);
+    } else {
+      const count = apiKeys.filter(k => k.provider === activeProviderTab).length;
+      const providerName = PROVIDERS.find(p => p.id === activeProviderTab)?.name || activeProviderTab;
+      handleCleanKeys(activeProviderTab);
+      addToast(`Cleared ${count} keys for ${providerName}.`, 'success', 4000);
+    }
+    setIsClearApiConfirmOpen(false);
   };
 
   const toggleField = (field: string, isActive: boolean) => {
@@ -1826,10 +1910,16 @@ export default function App() {
   }, []);
 
   const clearCopiedPrompts = () => {
+    if (stats.copied === 0) {
+      addToast('No copied prompts to remove yet. Click any prompt card to copy it first.', 'info', 3000);
+      return;
+    }
+    const count = stats.copied;
     setBatches(prev => prev.map(batch => ({
       ...batch,
       prompts: batch.prompts.filter(p => !p.copied)
     })).filter(batch => batch.prompts.length > 0));
+    addToast(`Removed ${count} copied prompt${count > 1 ? 's' : ''}.`, 'success', 2500);
   };
 
   const isMaterialFinishVisible = true;
@@ -1914,17 +2004,16 @@ export default function App() {
           {/* Action 1: Clear Copied Prompts */}
           <button 
             onClick={clearCopiedPrompts}
-            disabled={stats.copied === 0}
-            className={`min-h-[38px] sm:min-h-[40px] h-9 sm:h-10 flex items-center gap-1.5 sm:gap-2 px-2.5 xs:px-3 sm:px-3.5 rounded-xl sm:rounded-2xl text-[10.5px] sm:text-[11.5px] font-bold uppercase tracking-wider sm:tracking-widest border backdrop-blur-xl transition-all duration-200 active:scale-[0.95] ${
+            className={`min-h-[38px] sm:min-h-[40px] h-9 sm:h-10 flex items-center gap-1.5 sm:gap-2 px-2.5 xs:px-3 sm:px-3.5 rounded-xl sm:rounded-2xl text-[10.5px] sm:text-[11.5px] font-bold uppercase tracking-wider sm:tracking-widest border backdrop-blur-xl transition-all duration-200 active:scale-[0.95] cursor-pointer ${
               stats.copied > 0 
-                ? 'border-orange-500/40 bg-orange-500/10 text-orange-600 dark:text-orange-400 hover:bg-orange-500 hover:text-white shadow-[0_2px_8px_rgba(249,115,22,0.18)] cursor-pointer' 
-                : 'border-slate-200/60 dark:border-white/[0.04] bg-white/40 dark:bg-white/[0.02] text-slate-300 dark:text-slate-600 opacity-40 cursor-not-allowed'
+                ? 'border-orange-500/40 bg-orange-500/10 text-orange-600 dark:text-orange-400 hover:bg-orange-500 hover:text-white shadow-[0_2px_8px_rgba(249,115,22,0.18)]' 
+                : 'border-slate-200/60 dark:border-white/[0.04] bg-white/40 dark:bg-white/[0.02] text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
             }`}
-            title={stats.copied > 0 ? `Remove ${stats.copied} copied prompts` : "No copied prompts to remove"}
+            title={stats.copied > 0 ? `Remove ${stats.copied} copied prompts` : "Remove copied prompts from view"}
           >
             <ListX size={14} className="sm:w-3.5 sm:h-3.5 shrink-0" />
             <span className="hidden sm:inline">Clear Copied</span>
-            <span className="inline sm:hidden">Clear</span>
+            <span className="inline sm:hidden">Clear Copied</span>
             {stats.copied > 0 && (
               <span className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-orange-500/20 text-orange-600 dark:text-orange-300">
                 {stats.copied}
@@ -1946,20 +2035,40 @@ export default function App() {
             </button>
             
             {isExportMenuOpen && (
-              <div className="absolute right-0 top-full mt-2 w-60 bg-gradient-to-b from-white/95 via-white/90 to-white/85 dark:from-slate-900/95 dark:via-slate-900/90 dark:to-slate-950/95 backdrop-blur-3xl backdrop-saturate-[180%] rounded-2xl shadow-[0_24px_60px_-10px_rgba(0,0,0,0.18),inset_0_1px_1.5px_rgba(255,255,255,0.9)] dark:shadow-[0_28px_70px_-10px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(255,255,255,0.15)] border border-slate-200/90 dark:border-white/[0.12] p-1.5 overflow-hidden flex flex-col z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="absolute right-0 top-full mt-2 w-64 bg-gradient-to-b from-white/95 via-white/90 to-white/85 dark:from-slate-900/95 dark:via-slate-900/90 dark:to-slate-950/95 backdrop-blur-3xl backdrop-saturate-[180%] rounded-2xl shadow-[0_24px_60px_-10px_rgba(0,0,0,0.18),inset_0_1px_1.5px_rgba(255,255,255,0.9)] dark:shadow-[0_28px_70px_-10px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(255,255,255,0.15)] border border-slate-200/90 dark:border-white/[0.12] p-1.5 overflow-hidden flex flex-col z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                 {/* Top Specular Highlight */}
                 <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/90 dark:via-white/20 to-transparent pointer-events-none" />
-                <button onClick={copyAllWorkspacePrompts} disabled={batches.length === 0} className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 hover:bg-black/[0.04] dark:hover:bg-white/[0.08] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                <button onClick={copyAllWorkspacePrompts} disabled={batches.length === 0} className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 hover:bg-black/[0.04] dark:hover:bg-white/[0.08] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
                   {isAllCopied ? <Check size={14} className="text-emerald-500 shrink-0" /> : <Copy size={14} className="shrink-0" />}
                   <span>{isAllCopied ? 'Copied' : 'Copy All'}</span>
                 </button>
-                <button onClick={handleExportFile} disabled={batches.length === 0} className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 hover:bg-black/[0.04] dark:hover:bg-white/[0.08] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                <button onClick={handleExportFile} disabled={batches.length === 0} className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 hover:bg-black/[0.04] dark:hover:bg-white/[0.08] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
                   <Download size={14} className="shrink-0" />
                   <span>Export JSON Backup</span>
                 </button>
-                <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 hover:bg-black/[0.04] dark:hover:bg-white/[0.08] transition-colors">
+                <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 hover:bg-black/[0.04] dark:hover:bg-white/[0.08] transition-colors cursor-pointer">
                   <Upload size={14} className="shrink-0" />
                   <span>Import JSON Backup</span>
+                </button>
+                <div className="my-1 border-t border-slate-200/60 dark:border-white/[0.08]" />
+                <button 
+                  onClick={() => {
+                    if (batches.length === 0) {
+                      addToast('No generated prompts to clear.', 'info', 3000);
+                      return;
+                    }
+                    if (window.confirm('Clear all generated prompt batches from the workspace?')) {
+                      setBatches([]);
+                      safeLocalStorage.removeItem('prompt_session_history');
+                      addToast('Cleared all prompts from workspace.', 'success', 3000);
+                      setIsExportMenuOpen(false);
+                    }
+                  }} 
+                  disabled={batches.length === 0} 
+                  className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[12px] font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  <Trash2 size={14} className="shrink-0" />
+                  <span>Clear All Prompts</span>
                 </button>
               </div>
             )}
@@ -2782,6 +2891,92 @@ export default function App() {
            </div>
         </div>
       )}
+
+      {/* Clear API Keys Confirmation Modal */}
+      {isClearApiConfirmOpen && (
+        <div 
+          onClick={(e) => { if (e.target === e.currentTarget) setIsClearApiConfirmOpen(false); }}
+          className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200"
+        >
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-2xl rounded-3xl p-6 sm:p-7 max-w-md w-full relative overflow-hidden space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-red-500/10 text-red-500 flex items-center justify-center shrink-0 border border-red-500/20">
+                <Trash2 size={24} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Clear Stored API Keys</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Permanently remove API keys from this device</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Choose Scope to Clear:</label>
+              <div className="grid grid-cols-1 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setClearApiScope('all')}
+                  className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                    clearApiScope === 'all'
+                      ? 'border-red-500 bg-red-50/60 dark:bg-red-950/30 ring-2 ring-red-500/20'
+                      : 'border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">All Providers (Entire Vault)</span>
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400">
+                      {apiKeys.length} keys
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-1">Clears all keys for Gemini, Groq, Mistral, and OpenRouter</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setClearApiScope('current')}
+                  className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                    clearApiScope === 'current'
+                      ? 'border-red-500 bg-red-50/60 dark:bg-red-950/30 ring-2 ring-red-500/20'
+                      : 'border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">
+                      {PROVIDERS.find(p => p.id === activeProviderTab)?.name || activeProviderTab} Only
+                    </span>
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400">
+                      {apiKeys.filter(k => k.provider === activeProviderTab).length} keys
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-1">Clears only keys for the active provider tab</p>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs flex items-start gap-2">
+              <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+              <span>This will delete keys from local storage. This action cannot be undone.</span>
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => setIsClearApiConfirmOpen(false)}
+                className="flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmClearApiKeys}
+                className="flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-red-600 hover:bg-red-700 shadow-lg shadow-red-600/25 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <Trash2 size={14} />
+                <span>Clear Now</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       {isModalOpen && (
         <div 
@@ -2872,6 +3067,58 @@ export default function App() {
                   ))}
                 </div>
 
+                {/* Vault & Multi-Device Sync Banner */}
+                <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-blue-500/[0.08] via-indigo-500/[0.05] to-cyan-500/[0.08] border border-blue-500/20 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-sm">
+                      <Database size={18} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">API Vault & Multi-Device Sync</h4>
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                          {apiKeys.length} saved
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        Transfer keys between laptop & PC with automatic duplicate detection, refinement, or full clean
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => { setVaultInitialTab('import'); setIsVaultModalOpen(true); }}
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-all shadow-sm shadow-blue-600/25 active:scale-95 cursor-pointer"
+                      title="Import keys from another PC or file with automatic duplicate detection"
+                    >
+                      <FileUp size={14} />
+                      <span>Import Keys</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => { setVaultInitialTab('export'); setIsVaultModalOpen(true); }}
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 font-bold text-xs transition-all shadow-sm active:scale-95 cursor-pointer"
+                      title="Export all stored keys to JSON file or clipboard"
+                    >
+                      <FileDown size={14} />
+                      <span>Export Vault</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleOpenClearConfirm('all')}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-900/30 border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 font-bold text-xs transition-all active:scale-95 cursor-pointer shadow-sm"
+                      title="Safely clear all stored API keys from this device"
+                    >
+                      <Trash2 size={13} />
+                      <span>Clear All</span>
+                    </button>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
                 {/* Left Column: Configuration */}
                 <div className="space-y-6">
@@ -2928,17 +3175,57 @@ export default function App() {
                 {/* Right Column: Stored Keys */}
                 <div className="flex flex-col">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 tracking-widest uppercase">Stored Keys</h3>
-                    {apiKeys.filter(k => k.provider === activeProviderTab).length > 0 && (
-                      <button 
-                        onClick={handleTestAllKeys}
-                        disabled={isTestingAll}
-                        className="text-xs font-bold text-blue-500 hover:text-blue-600 dark:hover:text-blue-400 disabled:opacity-50 transition-colors flex items-center gap-1.5"
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 tracking-widest uppercase">Stored Keys</h3>
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono">
+                        {apiKeys.filter(k => k.provider === activeProviderTab).length}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => { setVaultInitialTab('import'); setIsVaultModalOpen(true); }}
+                        className="text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-blue-500 dark:hover:text-blue-400 transition-colors flex items-center gap-1 cursor-pointer"
+                        title="Import API keys"
                       >
-                         {isTestingAll ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-                         Test All
+                        <FileUp size={12} />
+                        <span className="hidden sm:inline">Import</span>
                       </button>
-                    )}
+
+                      <button
+                        type="button"
+                        onClick={() => { setVaultInitialTab('export'); setIsVaultModalOpen(true); }}
+                        className="text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-blue-500 dark:hover:text-blue-400 transition-colors flex items-center gap-1 cursor-pointer"
+                        title="Export API keys"
+                      >
+                        <FileDown size={12} />
+                        <span className="hidden sm:inline">Export</span>
+                      </button>
+
+                      {apiKeys.filter(k => k.provider === activeProviderTab).length > 0 && (
+                        <button 
+                          onClick={handleTestAllKeys}
+                          disabled={isTestingAll}
+                          className="text-xs font-bold text-blue-500 hover:text-blue-600 dark:hover:text-blue-400 disabled:opacity-50 transition-colors flex items-center gap-1.5 cursor-pointer ml-1"
+                        >
+                           {isTestingAll ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+                           Test All
+                        </button>
+                      )}
+
+                      {apiKeys.filter(k => k.provider === activeProviderTab).length > 0 && (
+                        <button 
+                          type="button"
+                          onClick={() => handleOpenClearConfirm('current')}
+                          className="text-xs font-bold text-red-500 hover:text-red-600 dark:hover:text-red-400 transition-colors flex items-center gap-1 cursor-pointer ml-1"
+                          title={`Clear all ${PROVIDERS.find(p => p.id === activeProviderTab)?.name} keys`}
+                        >
+                          <Trash2 size={12} />
+                          <span>Clear All</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                   
                   {testAllSummary && (
@@ -2951,45 +3238,70 @@ export default function App() {
                     </div>
                   )}
 
-                  <div className="flex-1 min-h-[250px] bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl p-4">
+                  <div className="flex-1 min-h-[250px] bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl p-4 flex flex-col justify-between">
                     {apiKeys.filter(k => k.provider === activeProviderTab).length === 0 ? (
-                      <div className="h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 gap-3 mt-10">
+                      <div className="h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 gap-3 py-8">
                         <Key size={32} className="opacity-50" />
-                        <p className="text-sm font-medium">No keys found</p>
+                        <p className="text-sm font-medium">No keys found for {PROVIDERS.find(p => p.id === activeProviderTab)?.name}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <button
+                            type="button"
+                            onClick={() => { setVaultInitialTab('import'); setIsVaultModalOpen(true); }}
+                            className="px-3.5 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-bold hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <FileUp size={13} />
+                            <span>Import from PC or File</span>
+                          </button>
+                        </div>
                       </div>
                     ) : (
-                      <div className="space-y-3 overflow-y-auto max-h-[250px] custom-scrollbar pr-2">
-                        {apiKeys.filter(k => k.provider === activeProviderTab).map(k => (
-                          <div key={k.id} className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl border transition-colors gap-2.5 sm:gap-3 ${activeKeyId === k.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/10' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'}`}>
-                               <div className="flex items-center gap-2.5 overflow-hidden min-w-0 w-full sm:w-auto">
-                                 <div 
-                                   onClick={() => setActiveKeyId(k.id)}
-                                   className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 cursor-pointer transition-colors ${activeKeyId === k.id ? 'border-blue-500' : 'border-slate-300 dark:border-slate-600'}`}
-                                 >
-                                   {activeKeyId === k.id && <div className="w-2 h-2 bg-blue-500 rounded-full" />}
+                      <>
+                        <div className="space-y-3 overflow-y-auto max-h-[250px] custom-scrollbar pr-2">
+                          {apiKeys.filter(k => k.provider === activeProviderTab).map(k => (
+                            <div key={k.id} className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl border transition-colors gap-2.5 sm:gap-3 ${activeKeyId === k.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/10' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'}`}>
+                                 <div className="flex items-center gap-2.5 overflow-hidden min-w-0 w-full sm:w-auto">
+                                   <div 
+                                     onClick={() => setActiveKeyId(k.id)}
+                                     className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 cursor-pointer transition-colors ${activeKeyId === k.id ? 'border-blue-500' : 'border-slate-300 dark:border-slate-600'}`}
+                                   >
+                                     {activeKeyId === k.id && <div className="w-2 h-2 bg-blue-500 rounded-full" />}
+                                   </div>
+                                   <span className="text-xs font-mono text-slate-700 dark:text-slate-300 truncate">
+                                     {k.key.substring(0, 8)}...{k.key.substring(k.key.length - 4)}
+                                   </span>
+                                   <span className={`text-[9px] font-bold uppercase tracking-wider shrink-0 px-2 py-0.5 rounded-full ${k.status === 'valid' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : k.status === 'invalid' ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' : k.status === 'testing' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>
+                                      {k.status}
+                                   </span>
                                  </div>
-                                 <span className="text-xs font-mono text-slate-700 dark:text-slate-300 truncate">
-                                   {k.key.substring(0, 8)}...{k.key.substring(k.key.length - 4)}
-                                 </span>
-                                 <span className={`text-[9px] font-bold uppercase tracking-wider shrink-0 px-2 py-0.5 rounded-full ${k.status === 'valid' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : k.status === 'invalid' ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' : k.status === 'testing' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>
-                                    {k.status}
-                                 </span>
-                               </div>
-                               <div className="flex items-center justify-end gap-2 shrink-0 self-end sm:self-auto">
-                                 <button 
-                                   onClick={() => handleTestKey(k.id)} 
-                                   disabled={k.status === 'testing'} 
-                                   className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-300 transition-colors disabled:opacity-50"
-                                 >
-                                   {k.status === 'testing' ? 'Testing...' : 'Test'}
-                                 </button>
-                                 <button onClick={() => handleRemoveKey(k.id)} className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
-                                   <Trash2 size={14} />
-                                 </button>
-                               </div>
-                          </div>
-                        ))}
-                      </div>
+                                 <div className="flex items-center justify-end gap-2 shrink-0 self-end sm:self-auto">
+                                   <button 
+                                     onClick={() => handleTestKey(k.id)} 
+                                     disabled={k.status === 'testing'} 
+                                     className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-300 transition-colors disabled:opacity-50"
+                                   >
+                                     {k.status === 'testing' ? 'Testing...' : 'Test'}
+                                   </button>
+                                   <button onClick={() => handleRemoveKey(k.id)} className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                                     <Trash2 size={14} />
+                                   </button>
+                                 </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Stored Keys Footer */}
+                        <div className="mt-3 pt-2.5 border-t border-slate-200 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500">
+                          <span>{apiKeys.filter(k => k.provider === activeProviderTab).length} key(s) in active provider</span>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenClearConfirm('current')}
+                            className="text-red-500 hover:text-red-600 dark:hover:text-red-400 hover:underline flex items-center gap-1 cursor-pointer font-semibold"
+                          >
+                            <Trash2 size={11} />
+                            <span>Clear Provider Keys</span>
+                          </button>
+                        </div>
+                      </>
                     )}
                   </div>
                 </div>
@@ -3445,7 +3757,17 @@ export default function App() {
         </div>
       )}
 
-
+      {/* API Key Vault & Sync Modal */}
+      <ApiKeyVaultModal
+        isOpen={isVaultModalOpen}
+        onClose={() => setIsVaultModalOpen(false)}
+        apiKeys={apiKeys}
+        activeProvider={activeProviderTab}
+        onImportKeys={handleImportKeys}
+        onCleanKeys={handleCleanKeys}
+        addToast={addToast}
+        initialTab={vaultInitialTab}
+      />
 
       {/* Toast Notification Container */}
       {toasts.length > 0 && (
