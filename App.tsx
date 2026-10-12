@@ -1371,25 +1371,42 @@ export default function App() {
   const handleImportKeys = async (newKeys: ApiKeyRecord[], autoTest: boolean) => {
     if (newKeys.length === 0) return;
     
+    let mergedList: ApiKeyRecord[] = [];
     setApiKeys(prev => {
       const existingKeySet = new Set(prev.map(k => k.key.trim()));
       const filtered = newKeys.filter(k => !existingKeySet.has(k.key.trim()));
-      return [...prev, ...filtered];
+      mergedList = [...prev, ...filtered];
+      safeLocalStorage.setItem('user_api_keys', JSON.stringify(mergedList));
+      return mergedList;
     });
 
-    if (!activeKeyId && newKeys.length > 0) {
-      setActiveKeyId(newKeys[0].id);
-    }
+    // If current tab doesn't have an active key, activate newly imported key for this tab
+    setActiveKeyId(currentActive => {
+      if (currentActive && apiKeys.some(k => k.id === currentActive)) {
+        return currentActive;
+      }
+      const matchForTab = newKeys.find(k => k.provider === activeProviderTab);
+      if (matchForTab) return matchForTab.id;
+      return newKeys[0]?.id || currentActive;
+    });
 
     if (autoTest) {
-      // Test the newly added keys in background
       setTimeout(async () => {
+        let validCount = 0;
+        let invalidCount = 0;
         for (const k of newKeys) {
+          setApiKeys(prev => prev.map(item => item.id === k.id ? { ...item, status: 'testing' } : item));
           try {
-            await handleTestKey(k.id);
+            await testApiKey(k.key, k.provider);
+            validCount++;
+            setApiKeys(prev => prev.map(item => item.id === k.id ? { ...item, status: 'valid' } : item));
           } catch (e) {
-            // Error captured inside handleTestKey
+            invalidCount++;
+            setApiKeys(prev => prev.map(item => item.id === k.id ? { ...item, status: 'invalid' } : item));
           }
+        }
+        if (newKeys.length > 1) {
+          addToast(`Auto-test complete: ${validCount} valid, ${invalidCount} invalid.`, validCount > 0 ? 'success' : 'warning', 4000);
         }
       }, 200);
     }

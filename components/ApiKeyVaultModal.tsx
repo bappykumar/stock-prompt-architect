@@ -1,9 +1,10 @@
-import React, { useState, useId, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   Download, Upload, Trash2, Check, Copy, AlertTriangle, 
   FileText, ShieldAlert, Sparkles, Zap, Command, Globe, 
   CheckCircle2, XCircle, ArrowRight, RefreshCw, Key, Filter,
-  FileDown, FileUp, Database, AlertCircle, Eye, EyeOff, X
+  FileDown, FileUp, Database, AlertCircle, Eye, EyeOff, X,
+  ClipboardPaste, RotateCcw
 } from 'lucide-react';
 import { ApiKeyRecord } from '../types';
 
@@ -43,6 +44,13 @@ const PROVIDER_ICONS: Record<string, any> = {
   openrouter: Globe
 };
 
+const PROVIDER_ENV_NAMES: Record<string, string> = {
+  gemini: 'GEMINI_API_KEY',
+  groq: 'GROQ_API_KEY',
+  mistral: 'MISTRAL_API_KEY',
+  openrouter: 'OPENROUTER_API_KEY'
+};
+
 export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
   isOpen,
   onClose,
@@ -57,6 +65,7 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
   
   // --- Export State ---
   const [exportScope, setExportScope] = useState<'all' | 'gemini' | 'groq' | 'mistral' | 'openrouter'>('all');
+  const [exportFormat, setExportFormat] = useState<'json' | 'env'>('json');
   const [exportCopied, setExportCopied] = useState(false);
   const [showExportMasked, setShowExportMasked] = useState(true);
 
@@ -67,19 +76,16 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
   const [candidates, setCandidates] = useState<ParsedCandidate[]>([]);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
   const [isExecutingImport, setIsExecutingImport] = useState(false);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // --- Clean State ---
   const [cleanScope, setCleanScope] = useState<'all' | 'current'>('all');
-  const [cleanConfirmText, setCleanConfirmText] = useState('');
-  const [cleanStep, setCleanStep] = useState<1 | 2>(1);
 
   // Sync tab when initialTab changes
   useEffect(() => {
     if (isOpen) {
       setActiveTab(initialTab);
-      setCleanStep(1);
-      setCleanConfirmText('');
     }
   }, [isOpen, initialTab]);
 
@@ -102,6 +108,7 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
     return apiKeys.filter(k => k.provider === exportScope);
   }, [apiKeys, exportScope]);
 
+  // Generated JSON export string
   const exportJsonString = useMemo(() => {
     const payload = {
       app: 'PromptArchitect',
@@ -117,6 +124,14 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
       }))
     };
     return JSON.stringify(payload, null, 2);
+  }, [keysToExport, exportScope]);
+
+  // Generated ENV / Plain text export string
+  const exportEnvString = useMemo(() => {
+    const dateStr = new Date().toISOString().split('T')[0];
+    const header = `# PromptArchitect API Keys Export\n# Exported on: ${dateStr}\n# Scope: ${exportScope} (${keysToExport.length} keys)\n\n`;
+    const lines = keysToExport.map(k => `${PROVIDER_ENV_NAMES[k.provider] || 'API_KEY'}=${k.key}`);
+    return header + lines.join('\n');
   }, [keysToExport, exportScope]);
 
   // Helper to infer provider from key pattern or env prefix
@@ -155,9 +170,8 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
     }
     const colonIdx = clean.indexOf(':');
     if (colonIdx !== -1 && !clean.startsWith('http')) {
-      // Check if it's key: value format
       const left = clean.substring(0, colonIdx).trim().toLowerCase();
-      if (['key', 'apikey', 'api_key', 'token', 'secret'].includes(left)) {
+      if (['key', 'apikey', 'api_key', 'token', 'secret', 'gemini', 'groq', 'mistral', 'openrouter'].includes(left)) {
         clean = clean.substring(colonIdx + 1).trim();
       }
     }
@@ -170,6 +184,59 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
     // Strip quotes or commas/semicolons
     clean = clean.replace(/^['"`\s]+|['"`\s,;]+$/g, '');
     return clean;
+  };
+
+  // Smart line extractor for mixed TXT, CSV, ENV, and raw formats
+  const extractLineProviderAndKey = (
+    line: string, 
+    fallbackProvider: 'gemini' | 'groq' | 'mistral' | 'openrouter'
+  ): { provider: 'gemini' | 'groq' | 'mistral' | 'openrouter'; key: string } => {
+    let cleanLine = line.trim();
+    if (cleanLine.includes('#')) cleanLine = cleanLine.split('#')[0].trim();
+    if (cleanLine.toLowerCase().startsWith('export ')) cleanLine = cleanLine.substring(7).trim();
+
+    let detectedProvider = inferProviderFromRaw(cleanLine, fallbackProvider);
+    let rawKey = cleanLine;
+
+    // Handle CSV comma separation (e.g. gemini,AIzaSy... or AIzaSy...,gemini)
+    if (cleanLine.includes(',')) {
+      const parts = cleanLine.split(',').map(p => p.trim());
+      for (const part of parts) {
+        const lower = part.toLowerCase();
+        if (['gemini', 'groq', 'mistral', 'openrouter'].includes(lower)) {
+          detectedProvider = lower as any;
+        } else if (part.length > 8 && !part.includes(' ')) {
+          rawKey = part;
+        }
+      }
+    } else if (cleanLine.includes('=')) {
+      const eqIdx = cleanLine.indexOf('=');
+      const left = cleanLine.substring(0, eqIdx).trim().toLowerCase();
+      const right = cleanLine.substring(eqIdx + 1).trim();
+      if (left.includes('gemini') || left.includes('google')) detectedProvider = 'gemini';
+      else if (left.includes('groq')) detectedProvider = 'groq';
+      else if (left.includes('mistral')) detectedProvider = 'mistral';
+      else if (left.includes('openrouter')) detectedProvider = 'openrouter';
+      rawKey = right;
+    } else if (cleanLine.includes(':') && !cleanLine.startsWith('http')) {
+      const colonIdx = cleanLine.indexOf(':');
+      const left = cleanLine.substring(0, colonIdx).trim().toLowerCase();
+      const right = cleanLine.substring(colonIdx + 1).trim();
+      if (['gemini', 'groq', 'mistral', 'openrouter'].includes(left)) {
+        detectedProvider = left as any;
+        rawKey = right;
+      } else if (['key', 'apikey', 'api_key', 'token', 'secret'].includes(left)) {
+        rawKey = right;
+      }
+    }
+
+    const refined = sanitizeKey(rawKey);
+    // Explicit prefix re-check
+    if (refined.startsWith('AIzaSy')) detectedProvider = 'gemini';
+    else if (refined.startsWith('gsk_')) detectedProvider = 'groq';
+    else if (refined.startsWith('sk-or-')) detectedProvider = 'openrouter';
+
+    return { provider: detectedProvider, key: refined };
   };
 
   // Parse text into candidates
@@ -193,7 +260,6 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
       } else if (parsed && Array.isArray(parsed.keys)) {
         list = parsed.keys;
       } else if (parsed && typeof parsed === 'object') {
-        // Maybe object of provider: key or key-value pairs
         list = Object.entries(parsed).map(([k, v]) => {
           if (typeof v === 'string') return { provider: inferProviderFromRaw(k, importFallbackProvider), key: v };
           if (typeof v === 'object' && v !== null && (v as any).key) return v;
@@ -228,7 +294,7 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
 
           if (refined.length < 8) {
             status = 'invalid_format';
-            reason = 'Key too short or malformed (< 8 characters)';
+            reason = 'Key too short (< 8 characters)';
           } else if (existingKeysSet.has(refined)) {
             status = 'duplicate_existing';
             reason = 'Already saved in your local vault';
@@ -251,21 +317,17 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
         }
       }
     } catch (e) {
-      // Not pure JSON, parse line by line
       handledAsJson = false;
     }
 
     if (!handledAsJson) {
-      // Split by line breaks, commas, semicolons, or whitespace
+      // Split by line breaks
       const lines = text.split(/[\r\n]+/);
       for (const line of lines) {
         const trimmedLine = line.trim();
         if (!trimmedLine) continue;
 
-        // Extract key and infer provider from the line
-        const provider = inferProviderFromRaw(trimmedLine, importFallbackProvider);
-        const refined = sanitizeKey(trimmedLine);
-
+        const { provider, key: refined } = extractLineProviderAndKey(trimmedLine, importFallbackProvider);
         if (!refined) continue;
 
         let status: ParsedCandidate['status'] = 'valid_new';
@@ -273,7 +335,7 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
 
         if (refined.length < 8) {
           status = 'invalid_format';
-          reason = 'Key too short (< 8 chars)';
+          reason = 'Key too short (< 8 characters)';
         } else if (existingKeysSet.has(refined)) {
           status = 'duplicate_existing';
           reason = 'Already exists in your saved keys';
@@ -299,14 +361,37 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
     setCandidates(result);
   };
 
-  // Re-run parse when text or fallback provider changes
+  // Re-run parse when text changes
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
     setImportInputText(val);
     parseAndAnalyzeText(val);
   };
 
-  // File import handler
+  // Clipboard paste helper
+  const handlePasteFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text || !text.trim()) {
+        addToast('Clipboard is empty or contains no readable text.', 'warning', 3000);
+        return;
+      }
+      setImportInputText(text);
+      parseAndAnalyzeText(text);
+      addToast('Pasted & analyzed keys from clipboard!', 'success', 3000);
+    } catch (e) {
+      addToast('Clipboard access was blocked. Please paste into the box.', 'info', 3000);
+    }
+  };
+
+  // File import helper
+  const processFileContent = (content: string, fileName: string) => {
+    setImportInputText(content);
+    parseAndAnalyzeText(content);
+    setIsProcessingFile(false);
+    addToast(`Loaded "${fileName}" with candidate keys.`, 'info', 3000);
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -315,31 +400,45 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
     const reader = new FileReader();
     reader.onload = (event) => {
       const content = event.target?.result as string;
-      setImportInputText(content);
-      parseAndAnalyzeText(content);
-      setIsProcessingFile(false);
-      addToast(`Loaded "${file.name}" with candidate keys.`, 'info', 3000);
+      processFileContent(content, file.name);
     };
     reader.onerror = () => {
       setIsProcessingFile(false);
       addToast('Failed to read selected file.', 'error', 4000);
     };
     reader.readAsText(file);
-    // Reset file input
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // Toggle selection of a candidate
+  // Drag and drop file handling
+  const handleFileDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingFile(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+
+    setIsProcessingFile(true);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      processFileContent(content, file.name);
+    };
+    reader.onerror = () => {
+      setIsProcessingFile(false);
+      addToast('Failed to read dropped file.', 'error', 4000);
+    };
+    reader.readAsText(file);
+  };
+
+  // Candidate action helpers
   const toggleCandidateSelection = (id: string) => {
     setCandidates(prev => prev.map(c => c.id === id ? { ...c, selected: !c.selected } : c));
   };
 
-  // Remove individual candidate
   const removeCandidate = (id: string) => {
     setCandidates(prev => prev.filter(c => c.id !== id));
   };
 
-  // Change provider for a candidate
   const updateCandidateProvider = (id: string, newProvider: 'gemini' | 'groq' | 'mistral' | 'openrouter') => {
     setCandidates(prev => prev.map(c => c.id === id ? { ...c, provider: newProvider } : c));
   };
@@ -373,7 +472,6 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
         'success',
         5000
       );
-      // Clear import input and close
       setImportInputText('');
       setCandidates([]);
       onClose();
@@ -386,22 +484,26 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
   };
 
   // Export handlers
+  const activeExportContent = exportFormat === 'json' ? exportJsonString : exportEnvString;
+
   const handleDownloadExport = () => {
     if (keysToExport.length === 0) {
       addToast('No keys available to export for this scope.', 'warning', 3000);
       return;
     }
-    const blob = new Blob([exportJsonString], { type: 'application/json' });
+    const mime = exportFormat === 'json' ? 'application/json' : 'text/plain';
+    const ext = exportFormat === 'json' ? 'json' : 'env';
+    const blob = new Blob([activeExportContent], { type: mime });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     const dateStr = new Date().toISOString().split('T')[0];
     a.href = url;
-    a.download = `prompt-architect-api-keys-${exportScope}-${dateStr}.json`;
+    a.download = `prompt-architect-api-keys-${exportScope}-${dateStr}.${ext}`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    addToast(`Exported ${keysToExport.length} keys to JSON.`, 'success', 4000);
+    addToast(`Exported ${keysToExport.length} keys as .${ext} file.`, 'success', 4000);
   };
 
   const handleCopyExport = () => {
@@ -409,9 +511,9 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
       addToast('No keys to copy.', 'warning', 3000);
       return;
     }
-    navigator.clipboard.writeText(exportJsonString).then(() => {
+    navigator.clipboard.writeText(activeExportContent).then(() => {
       setExportCopied(true);
-      addToast(`Copied ${keysToExport.length} keys to clipboard as JSON.`, 'success', 3000);
+      addToast(`Copied ${keysToExport.length} keys to clipboard as ${exportFormat.toUpperCase()}.`, 'success', 3000);
       setTimeout(() => setExportCopied(false), 2500);
     }).catch(() => {
       addToast('Could not copy to clipboard.', 'error', 3000);
@@ -436,8 +538,6 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
       onCleanKeys(activeProvider);
       addToast(`Deleted ${currentProviderCount} keys for ${PROVIDER_NAMES[activeProvider]}.`, 'success', 4000);
     }
-    setCleanStep(1);
-    setCleanConfirmText('');
     onClose();
   };
 
@@ -446,6 +546,9 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
   return (
     <div 
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onDragOver={(e) => { e.preventDefault(); setIsDraggingFile(true); }}
+      onDragLeave={() => setIsDraggingFile(false)}
+      onDrop={handleFileDrop}
       className="fixed inset-0 z-[3500] flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-md animate-in fade-in duration-200"
     >
       <div 
@@ -454,6 +557,18 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
         aria-modal="true"
         aria-labelledby="api-vault-title"
       >
+        {/* Apple Specular Top Rim Highlight */}
+        <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-blue-500/50 dark:via-blue-400/30 to-transparent pointer-events-none z-30" />
+
+        {/* Drag Overlay Feedback */}
+        {isDraggingFile && (
+          <div className="absolute inset-0 z-50 bg-blue-600/90 backdrop-blur-sm flex flex-col items-center justify-center text-white pointer-events-none animate-in fade-in duration-150">
+            <Upload size={48} className="animate-bounce mb-3" />
+            <h3 className="text-lg font-bold">Drop File to Import Keys</h3>
+            <p className="text-xs text-blue-100 mt-1">Accepts JSON, TXT, ENV, CSV files</p>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-center justify-between p-4 sm:px-6 sm:py-4.5 border-b border-slate-100 dark:border-white/[0.08] bg-slate-50/50 dark:bg-white/[0.02] shrink-0">
           <div className="flex items-center gap-3 min-w-0 flex-1 mr-3">
@@ -486,18 +601,18 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex items-center gap-1.5 px-6 pt-3 pb-2 border-b border-slate-100 dark:border-white/[0.06] bg-slate-50/20 dark:bg-slate-950/20">
+        <div className="flex items-center gap-1.5 px-4 sm:px-6 pt-3 pb-2 border-b border-slate-100 dark:border-white/[0.06] bg-slate-50/20 dark:bg-slate-950/20 overflow-x-auto">
           <button
             onClick={() => setActiveTab('import')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
               activeTab === 'import'
                 ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25 ring-1 ring-blue-500'
                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5'
             }`}
           >
             <FileUp size={15} />
-            <span>Import & Sync Keys</span>
-            {candidates.length > 0 && (
+            <span>Import & Sync</span>
+            {selectedCandidates.length > 0 && (
               <span className="text-[10px] px-1.5 py-0.2 bg-white/20 rounded-md font-mono">
                 {selectedCandidates.length}
               </span>
@@ -506,19 +621,22 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
 
           <button
             onClick={() => setActiveTab('export')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
               activeTab === 'export'
                 ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25 ring-1 ring-blue-500'
                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5'
             }`}
           >
             <FileDown size={15} />
-            <span>Export Keys ({apiKeys.length})</span>
+            <span>Export & Backup</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-black/10 dark:bg-white/10 font-mono">
+              {apiKeys.length}
+            </span>
           </button>
 
           <button
             onClick={() => setActiveTab('clean')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ml-auto ${
+            className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all ml-auto shrink-0 cursor-pointer ${
               activeTab === 'clean'
                 ? 'bg-red-600 text-white shadow-md shadow-red-600/25 ring-1 ring-red-500'
                 : 'text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30'
@@ -544,28 +662,38 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
                     <Sparkles size={16} />
                   </div>
                   <div>
-                    <h4 className="font-bold text-slate-800 dark:text-slate-200">Import from PC or Backup File</h4>
+                    <h4 className="font-bold text-slate-800 dark:text-slate-200">Import from Laptop, PC or File</h4>
                     <p className="text-slate-500 dark:text-slate-400 text-[11px] mt-0.5">
-                      Upload your exported JSON file or paste API keys directly. Duplicates will be detected automatically and skipped!
+                      Drag & drop backup files, upload JSON/TXT/ENV, or paste keys directly. Duplicates are auto-filtered!
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handlePasteFromClipboard}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 transition-colors shadow-xs cursor-pointer active:scale-95"
+                    title="Paste keys directly from clipboard"
+                  >
+                    <ClipboardPaste size={14} className="text-blue-500" />
+                    <span>Paste Clipboard</span>
+                  </button>
+
                   <input 
                     type="file" 
                     ref={fileInputRef}
-                    accept=".json,.txt"
+                    accept=".json,.txt,.env,.csv"
                     onChange={handleFileUpload}
                     className="hidden" 
                     id="vault-file-input"
                   />
                   <label
                     htmlFor="vault-file-input"
-                    className="cursor-pointer flex items-center gap-2 px-3.5 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-bold text-blue-600 dark:text-blue-400 transition-colors shadow-sm"
+                    className="cursor-pointer flex items-center gap-2 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-600/25 active:scale-95"
                   >
                     <Upload size={14} />
-                    <span>Upload JSON / TXT</span>
+                    <span>Browse File</span>
                   </label>
                 </div>
               </div>
@@ -575,7 +703,7 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
                     <FileText size={14} className="text-blue-500" />
-                    <span>Or Paste Raw Keys or JSON Content:</span>
+                    <span>Paste Raw Keys, JSON, .ENV, or CSV:</span>
                   </label>
                   <div className="flex items-center gap-2 text-[11px] text-slate-500">
                     <span>Default Provider:</span>
@@ -584,7 +712,6 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
                       onChange={e => {
                         const prov = e.target.value as any;
                         setImportFallbackProvider(prov);
-                        // Re-parse with updated provider
                         if (importInputText) parseAndAnalyzeText(importInputText);
                       }}
                       className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg px-2 py-1 text-xs font-bold outline-none cursor-pointer"
@@ -597,13 +724,28 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
                   </div>
                 </div>
 
-                <textarea
-                  value={importInputText}
-                  onChange={handleTextChange}
-                  placeholder={`Paste exported JSON or multiple keys here...\nExamples:\n• {"keys": [{"provider": "gemini", "key": "AIzaSy..."}]}\n• AIzaSyYourKeyHere (one per line)\n• GEMINI_API_KEY=AIzaSy...\n• gsk_yourGroqKeyHere`}
-                  rows={4}
-                  className="w-full bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-white/10 rounded-2xl p-3.5 text-xs font-mono text-slate-900 dark:text-slate-100 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 custom-scrollbar resize-y"
-                />
+                <div className="relative">
+                  <textarea
+                    value={importInputText}
+                    onChange={handleTextChange}
+                    placeholder={`Paste exported JSON, .env, or keys here...\nExamples:\n• {"keys": [{"provider": "gemini", "key": "AIzaSy..."}]}\n• GEMINI_API_KEY=AIzaSy...\n• gsk_yourGroqKeyHere (one per line)\n• gemini,AIzaSy...`}
+                    rows={4}
+                    className="w-full bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-white/10 rounded-2xl p-3.5 pr-20 text-xs font-mono text-slate-900 dark:text-slate-100 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 custom-scrollbar resize-y"
+                  />
+                  {importInputText && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImportInputText('');
+                        setCandidates([]);
+                      }}
+                      className="absolute top-3 right-3 text-[11px] font-bold text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors px-2 py-1 rounded-lg bg-black/5 dark:bg-white/10 cursor-pointer"
+                      title="Clear textarea"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Duplicate & Refinement Analytics Header */}
@@ -657,14 +799,14 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => setCandidates(prev => prev.map(c => c.status === 'valid_new' ? { ...c, selected: true } : c))}
-                          className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                          className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-bold"
                         >
                           Select All New
                         </button>
                         <span>•</span>
                         <button
                           onClick={() => setCandidates(prev => prev.map(c => ({ ...c, selected: false })))}
-                          className="text-[11px] text-slate-500 hover:underline cursor-pointer"
+                          className="text-[11px] text-slate-500 hover:underline cursor-pointer font-bold"
                         >
                           Deselect All
                         </button>
@@ -736,7 +878,7 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
                                   value={cand.provider}
                                   disabled={isDup || isInvalid}
                                   onChange={e => updateCandidateProvider(cand.id, e.target.value as any)}
-                                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg px-2 py-1 text-xs font-semibold outline-none disabled:opacity-50"
+                                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg px-2 py-1 text-xs font-semibold outline-none disabled:opacity-50 cursor-pointer"
                                 >
                                   <option value="gemini">Gemini</option>
                                   <option value="groq">Groq</option>
@@ -775,7 +917,7 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
                     <button
                       onClick={handleExecuteImport}
                       disabled={selectedCandidates.length === 0 || isExecutingImport}
-                      className="px-6 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 transition-all cursor-pointer"
+                      className="px-6 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 transition-all cursor-pointer active:scale-95"
                     >
                       {isExecutingImport ? (
                         <>
@@ -808,64 +950,95 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
                   <div>
                     <h4 className="font-bold text-slate-800 dark:text-slate-200">Export Keys to Transfer to Other Computers</h4>
                     <p className="text-slate-500 dark:text-slate-400 text-[11px] mt-0.5">
-                      Export your configured API keys into a standard JSON file. You can load this file onto your laptop or any other device.
+                      Export your configured API keys into a JSON or .ENV format. You can import this file on your laptop or another device.
                     </p>
                   </div>
                 </div>
 
                 <div className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 px-3 py-1.5 rounded-xl self-start sm:self-auto">
-                  Total in Vault: {apiKeys.length} keys
+                  Vault Keys: {apiKeys.length}
                 </div>
               </div>
 
-              {/* Scope filter */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <Filter size={14} className="text-blue-500" />
-                  <span>Choose Export Scope:</span>
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                  <button
-                    onClick={() => setExportScope('all')}
-                    className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border ${
-                      exportScope === 'all'
-                        ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 text-blue-600 dark:text-blue-400 ring-1 ring-blue-500/20'
-                        : 'border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5'
-                    }`}
-                  >
-                    All Providers ({apiKeys.length})
-                  </button>
+              {/* Format Switcher */}
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="space-y-1.5 flex-1 min-w-[200px]">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <Filter size={14} className="text-blue-500" />
+                    <span>Choose Export Scope:</span>
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                    <button
+                      onClick={() => setExportScope('all')}
+                      className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                        exportScope === 'all'
+                          ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 text-blue-600 dark:text-blue-400 ring-1 ring-blue-500/20'
+                          : 'border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5'
+                      }`}
+                    >
+                      All Providers ({apiKeys.length})
+                    </button>
 
-                  {(['gemini', 'groq', 'mistral', 'openrouter'] as const).map(p => {
-                    const count = apiKeys.filter(k => k.provider === p).length;
-                    const Icon = PROVIDER_ICONS[p];
-                    return (
-                      <button
-                        key={p}
-                        onClick={() => setExportScope(p)}
-                        className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-1.5 ${
-                          exportScope === p
-                            ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 text-blue-600 dark:text-blue-400 ring-1 ring-blue-500/20'
-                            : 'border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5'
-                        }`}
-                      >
-                        <Icon size={13} />
-                        <span>{PROVIDER_NAMES[p].split(' ')[0]} ({count})</span>
-                      </button>
-                    );
-                  })}
+                    {(['gemini', 'groq', 'mistral', 'openrouter'] as const).map(p => {
+                      const count = apiKeys.filter(k => k.provider === p).length;
+                      const Icon = PROVIDER_ICONS[p];
+                      return (
+                        <button
+                          key={p}
+                          onClick={() => setExportScope(p)}
+                          className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-1.5 cursor-pointer ${
+                            exportScope === p
+                              ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 text-blue-600 dark:text-blue-400 ring-1 ring-blue-500/20'
+                              : 'border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5'
+                          }`}
+                        >
+                          <Icon size={13} />
+                          <span>{PROVIDER_NAMES[p].split(' ')[0]} ({count})</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Format selection */}
+                <div className="space-y-1.5 shrink-0">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Export Format:</label>
+                  <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-white/10 gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setExportFormat('json')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        exportFormat === 'json'
+                          ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
+                          : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+                      }`}
+                    >
+                      JSON File
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setExportFormat('env')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        exportFormat === 'env'
+                          ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
+                          : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+                      }`}
+                    >
+                      .ENV / Text
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* JSON Preview Box */}
+              {/* Preview Box */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    Export JSON Preview ({keysToExport.length} keys ready):
+                    {exportFormat.toUpperCase()} Preview ({keysToExport.length} keys ready):
                   </span>
                   <button
                     onClick={() => setShowExportMasked(prev => !prev)}
-                    className="text-[11px] text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center gap-1 transition-colors"
+                    className="text-[11px] text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center gap-1 transition-colors cursor-pointer"
                   >
                     {showExportMasked ? <Eye size={12} /> : <EyeOff size={12} />}
                     <span>{showExportMasked ? 'Reveal raw keys' : 'Mask preview keys'}</span>
@@ -879,22 +1052,28 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
                     </div>
                   ) : (
                     <pre className="whitespace-pre-wrap break-all leading-relaxed">
-                      {showExportMasked
-                        ? JSON.stringify({
-                            app: "PromptArchitect",
-                            version: "2.0",
-                            exportedAt: new Date().toISOString(),
-                            scope: exportScope,
-                            totalKeys: keysToExport.length,
-                            keys: keysToExport.map(k => ({
-                              provider: k.provider,
-                              key: `${k.key.substring(0, 6)}...${k.key.substring(k.key.length - 4)}`,
-                              status: k.status,
-                              addedAt: k.addedAt
-                            }))
-                          }, null, 2)
-                        : exportJsonString
-                      }
+                      {exportFormat === 'json' ? (
+                        showExportMasked
+                          ? JSON.stringify({
+                              app: "PromptArchitect",
+                              version: "2.0",
+                              exportedAt: new Date().toISOString(),
+                              scope: exportScope,
+                              totalKeys: keysToExport.length,
+                              keys: keysToExport.map(k => ({
+                                provider: k.provider,
+                                key: `${k.key.substring(0, 6)}...${k.key.substring(k.key.length - 4)}`,
+                                status: k.status,
+                                addedAt: k.addedAt
+                              }))
+                            }, null, 2)
+                          : exportJsonString
+                      ) : (
+                        showExportMasked
+                          ? `# PromptArchitect API Keys (.env)\n# Scope: ${exportScope}\n\n` +
+                            keysToExport.map(k => `${PROVIDER_ENV_NAMES[k.provider]}=${k.key.substring(0, 6)}...${k.key.substring(k.key.length - 4)}`).join('\n')
+                          : exportEnvString
+                      )}
                     </pre>
                   )}
                 </div>
@@ -905,17 +1084,17 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
                 <button
                   onClick={handleCopyExport}
                   disabled={keysToExport.length === 0}
-                  className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                  className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer active:scale-95"
                 >
                   {exportCopied ? (
                     <>
                       <Check size={15} className="text-emerald-500" />
-                      <span>Copied JSON!</span>
+                      <span>Copied {exportFormat.toUpperCase()}!</span>
                     </>
                   ) : (
                     <>
                       <Copy size={15} />
-                      <span>Copy JSON to Clipboard</span>
+                      <span>Copy {exportFormat.toUpperCase()} to Clipboard</span>
                     </>
                   )}
                 </button>
@@ -923,10 +1102,10 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
                 <button
                   onClick={handleDownloadExport}
                   disabled={keysToExport.length === 0}
-                  className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 transition-all cursor-pointer"
+                  className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 transition-all cursor-pointer active:scale-95"
                 >
                   <Download size={16} />
-                  <span>Download JSON File</span>
+                  <span>Download .{exportFormat === 'json' ? 'json' : 'env'} File</span>
                 </button>
               </div>
             </div>
@@ -954,11 +1133,8 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <button
-                    onClick={() => {
-                      setCleanScope('all');
-                      setCleanStep(1);
-                    }}
-                    className={`p-4 rounded-2xl border text-left transition-all ${
+                    onClick={() => setCleanScope('all')}
+                    className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
                       cleanScope === 'all'
                         ? 'border-red-500 bg-red-50/50 dark:bg-red-950/20 ring-2 ring-red-500/20'
                         : 'border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5'
@@ -976,11 +1152,8 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
                   </button>
 
                   <button
-                    onClick={() => {
-                      setCleanScope('current');
-                      setCleanStep(1);
-                    }}
-                    className={`p-4 rounded-2xl border text-left transition-all ${
+                    onClick={() => setCleanScope('current')}
+                    className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
                       cleanScope === 'current'
                         ? 'border-red-500 bg-red-50/50 dark:bg-red-950/20 ring-2 ring-red-500/20'
                         : 'border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5'
@@ -995,13 +1168,13 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
                       </span>
                     </div>
                     <p className="text-xs text-slate-500 mt-1">
-                      Removes only the keys for the active provider, keeping others intact.
+                      Removes only the keys for the active provider tab, keeping others intact.
                     </p>
                   </button>
                 </div>
               </div>
 
-              {/* Action & Confirmation Box */}
+              {/* Action Box */}
               <div className="p-5 border border-red-200 dark:border-red-900/40 rounded-2xl bg-white dark:bg-slate-950/40 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
@@ -1057,12 +1230,12 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
         <div className="px-6 py-3 border-t border-slate-100 dark:border-white/[0.08] bg-slate-50/50 dark:bg-white/[0.02] flex items-center justify-between text-xs text-slate-500">
           <div className="flex items-center gap-2 text-[11px]">
             <Key size={13} className="text-slate-400" />
-            <span>Secure Client Storage (localStorage)</span>
+            <span>Secure Client-Side Storage (AES localStorage)</span>
           </div>
 
           <button
             onClick={onClose}
-            className="px-4 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 font-semibold text-xs text-slate-600 dark:text-slate-300 transition-colors"
+            className="px-4 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 font-semibold text-xs text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
           >
             Close
           </button>
