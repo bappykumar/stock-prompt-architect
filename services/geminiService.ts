@@ -1,56 +1,125 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { PromptOptions, HistoricalPrompt } from "../types";
 
+export function formatApiErrorMessage(error: any, provider: 'gemini' | 'groq' | 'mistral' | 'openrouter' = 'gemini'): string {
+  let msg = String(error?.message || error || 'Verification failed');
+  
+  // Try to parse nested JSON error if present
+  try {
+    const jsonMatch = msg.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (parsed.error?.message) {
+        msg = parsed.error.message;
+      }
+    }
+  } catch (e) {}
+
+  const lower = msg.toLowerCase();
+
+  // 1. Specific HTTP Referrer / Domain restriction
+  if (lower.includes('referer') || lower.includes('referrer') || lower.includes('ip_referer_blocked')) {
+    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'this preview domain';
+    return `Google Cloud Domain Restriction: Requests from ${currentOrigin} are blocked. In Google Cloud Console (APIs & Services > Credentials), edit this API Key and set 'Application restrictions' to 'None' or add this website's URL.`;
+  }
+
+  // 2. Invalid API Key
+  if (lower.includes('api_key_invalid') || lower.includes('api key not valid') || lower.includes('invalid api key') || lower.includes('unauthorized') || lower.includes('401')) {
+    return `Invalid API Key: The key entered for ${provider.toUpperCase()} is incorrect, inactive, or unauthorized. Please verify and re-enter your key.`;
+  }
+
+  // 3. Quota exceeded / Rate limit
+  if (lower.includes('quota') || lower.includes('resource_exhausted') || lower.includes('rate limit') || lower.includes('429')) {
+    return `Quota Exceeded: The rate limit or token quota for this ${provider.toUpperCase()} key has been reached. Please wait a moment or use a paid/different key.`;
+  }
+
+  // 4. API not enabled
+  if (lower.includes('service_disabled') || lower.includes('has not been used in project') || lower.includes('api is not enabled')) {
+    return `API Not Enabled: Generative Language API is not enabled for this Google Cloud project. Enable it in Google Cloud Console.`;
+  }
+
+  // 5. Model not found
+  if (lower.includes('not found') || lower.includes('404')) {
+    return `Model Not Found: The selected model is not available for this key. Try switching the model in settings.`;
+  }
+
+  // 6. Generic 403 Forbidden (distinguish Gemini from others)
+  if (lower.includes('403') || lower.includes('forbidden') || lower.includes('permission_denied')) {
+    if (provider === 'gemini') {
+      return `Google Cloud 403 Forbidden: Request was rejected. Common causes: (1) Key is restricted to your Vercel website domain in Google Cloud Console, (2) Country/region restriction, or (3) Billing/IAM permission issue on your Google account.`;
+    }
+    return `Access Denied (403): ${provider.toUpperCase()} rejected the request. Please check your account permissions and tier limits.`;
+  }
+
+  return msg;
+}
+
 export const testApiKey = async (apiKey: string, provider: 'gemini' | 'groq' | 'mistral' | 'openrouter' = 'gemini'): Promise<boolean> => {
   try {
+    const cleanKey = apiKey.trim();
     if (provider === 'gemini') {
-      const ai = new GoogleGenAI({ apiKey });
-      await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: 'test',
-        config: { maxOutputTokens: 1 }
-      });
+      // 1. Direct validation via Google's official models list endpoint
+      // This is instantaneous, consumes zero tokens, and is 100% immune to model name deprecation
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${cleanKey}`);
+      
+      if (!response.ok) {
+        const errText = await response.text();
+        let parsedMsg = errText;
+        try {
+          const parsed = JSON.parse(errText);
+          parsedMsg = parsed.error?.message || errText;
+        } catch (e) {}
+        throw new Error(parsedMsg);
+      }
       return true;
     } else if (provider === 'groq') {
       const response = await fetch('https://api.groq.com/openai/v1/models', {
         headers: {
-          'Authorization': `Bearer ${apiKey}`
+          'Authorization': `Bearer ${cleanKey}`
         }
       });
       if (!response.ok) {
         const errText = await response.text();
-        throw new Error(`Groq API test failed: ${response.status} - ${errText}`);
+        let parsedMsg = errText;
+        try { parsedMsg = JSON.parse(errText).error?.message || errText; } catch(e) {}
+        throw new Error(`Groq API test failed: ${response.status} - ${parsedMsg}`);
       }
       return true;
     } else if (provider === 'mistral') {
       const response = await fetch('https://api.mistral.ai/v1/models', {
         headers: {
-          'Authorization': `Bearer ${apiKey}`
+          'Authorization': `Bearer ${cleanKey}`
         }
       });
       if (!response.ok) {
         const errText = await response.text();
-        throw new Error(`Mistral API test failed: ${response.status} - ${errText}`);
+        let parsedMsg = errText;
+        try { parsedMsg = JSON.parse(errText).message || errText; } catch(e) {}
+        throw new Error(`Mistral API test failed: ${response.status} - ${parsedMsg}`);
       }
       return true;
     } else if (provider === 'openrouter') {
       const response = await fetch('https://openrouter.ai/api/v1/models', {
         headers: {
-          'Authorization': `Bearer ${apiKey}`
+          'Authorization': `Bearer ${cleanKey}`
         }
       });
       if (!response.ok) {
         const errText = await response.text();
-        throw new Error(`OpenRouter API test failed: ${response.status} - ${errText}`);
+        let parsedMsg = errText;
+        try { parsedMsg = JSON.parse(errText).error?.message || errText; } catch(e) {}
+        throw new Error(`OpenRouter API test failed: ${response.status} - ${parsedMsg}`);
       }
       return true;
     }
     return false;
-  } catch (error) {
+  } catch (error: any) {
     console.warn("API Key Test Failed:", error);
-    throw error;
+    const formatted = formatApiErrorMessage(error, provider);
+    throw new Error(formatted);
   }
 };
+
 
 export async function analyzeReferenceAndSuggestSettings(
   input: { type: 'image', data: string, mimeType: string } 
@@ -220,14 +289,32 @@ Return ONLY this JSON structure, no markdown:
     let rawText = "";
     
     if (provider === 'gemini') {
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: contents,
-        config: {
-          responseMimeType: "application/json",
+      const candidateModels = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-3.8-flash'];
+      let response: any = null;
+      let lastErr: any = null;
+
+      for (const m of candidateModels) {
+        try {
+          response = await ai.models.generateContent({
+            model: m,
+            contents: contents,
+            config: {
+              responseMimeType: "application/json",
+            }
+          });
+          if (response) break;
+        } catch (innerErr: any) {
+          lastErr = innerErr;
+          const msg = String(innerErr?.message || '').toLowerCase();
+          if (msg.includes('not found') || msg.includes('404') || msg.includes('unavailable') || msg.includes('503')) {
+            continue;
+          }
+          throw innerErr;
         }
-      });
-      rawText = response.text || "";
+      }
+
+      if (!response && lastErr) throw lastErr;
+      rawText = response?.text || "";
     } else if (provider === 'groq') {
       const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
@@ -289,23 +376,9 @@ Return ONLY this JSON structure, no markdown:
     
     return JSON.parse(jsonString.trim());
   } catch (error: any) {
-    console.warn("Gemini Error:", error);
-    let msg = error.message || "An unknown error occurred.";
-    try {
-      const parsed = JSON.parse(msg.replace(/^\[.*?\]\s*/, ''));
-      if (parsed.error && parsed.error.message) {
-        msg = parsed.error.message;
-      }
-    } catch(e) {}
-    
-    if (msg.includes('API key not valid')) {
-      throw new Error("Invalid API Key. Please check your settings.");
-    } else if (msg.includes('quota') || msg.includes('429')) {
-      throw new Error("API Quota exceeded. Please try again later or use a different key.");
-    } else if (msg.includes('Unterminated string in JSON') || msg.includes('Unexpected end of JSON')) {
-      throw new Error("The AI model returned an incomplete or massive response that could not be parsed. Please try generating again or use a smaller image.");
-    }
-    throw new Error(msg);
+    console.warn("Analysis Error:", error);
+    const formatted = formatApiErrorMessage(error, provider);
+    throw new Error(formatted);
   }
 }
 
@@ -875,17 +948,36 @@ export const generateStockPrompts = async (
     let rawText = "";
 
     if (provider === 'gemini') {
-      const response = await ai.models.generateContent({
-        model: options.model, 
-        contents: systemPrompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: schema,
-          temperature: 0.95, // Increased slightly for more creativity
-          topP: 0.95, // Added topP for better variation
+      const candidateModels = Array.from(new Set([options.model, 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-3.8-flash'].filter(Boolean)));
+      let response: any = null;
+      let lastErr: any = null;
+
+      for (const m of candidateModels) {
+        try {
+          response = await ai.models.generateContent({
+            model: m,
+            contents: systemPrompt,
+            config: {
+              responseMimeType: "application/json",
+              responseSchema: schema,
+              temperature: 0.95,
+              topP: 0.95,
+            }
+          });
+          if (response) break;
+        } catch (innerErr: any) {
+          lastErr = innerErr;
+          const msg = String(innerErr?.message || '').toLowerCase();
+          if (msg.includes('not found') || msg.includes('404') || msg.includes('unavailable') || msg.includes('503')) {
+            console.warn(`Model ${m} unavailable, trying fallback...`);
+            continue;
+          }
+          throw innerErr;
         }
-      });
-      rawText = response.text?.trim() || '{"prompts":[]}';
+      }
+
+      if (!response && lastErr) throw lastErr;
+      rawText = response?.text?.trim() || '{"prompts":[]}';
     } else if (provider === 'groq') {
       // Groq
       const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -969,24 +1061,8 @@ export const generateStockPrompts = async (
       return { text };
     });
   } catch (error: any) {
-    console.warn("Gemini Error:", error);
-    // Provide a more user-friendly error message if possible
-    let msg = error.message || "An unknown error occurred.";
-    try {
-      // Try to parse if it's a JSON string from GoogleGenAI
-      const parsed = JSON.parse(msg.replace(/^\[.*?\]\s*/, ''));
-      if (parsed.error && parsed.error.message) {
-        msg = parsed.error.message;
-      }
-    } catch(e) {}
-    
-    if (msg.includes('API key not valid')) {
-      throw new Error("Invalid API Key. Please check your settings.");
-    } else if (msg.includes('quota') || msg.includes('429')) {
-      throw new Error("API Quota exceeded. Please try again later or use a different key.");
-    } else if (msg.includes('Unterminated string in JSON') || msg.includes('Unexpected end of JSON')) {
-      throw new Error("The AI model returned an incomplete or massive response that could not be parsed. Please try generating again or use a smaller image.");
-    }
-    throw new Error(msg);
+    console.warn("Generation Error:", error);
+    const formatted = formatApiErrorMessage(error, provider);
+    throw new Error(formatted);
   }
 };

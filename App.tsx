@@ -402,6 +402,8 @@ const OPTIONS = {
   ],
   model: [
     { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', desc: 'Fast & efficient. Best for Free Tier limits.', provider: 'gemini' },
+    { value: 'gemini-flash-latest', label: 'Gemini Flash (Latest)', desc: 'Auto-adapts to latest stable Gemini Flash.', provider: 'gemini' },
+    { value: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash', desc: 'High intelligence & reasoning.', provider: 'gemini' },
     { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', desc: 'Complex reasoning. Recommended for Pro/Paid limits.', provider: 'gemini' },
     { value: 'llama-3.3-70b-versatile', label: 'Llama 3 70B', desc: 'Lightning fast generation via Groq.', provider: 'groq' },
     { value: 'llama-3.1-8b-instant', label: 'Llama 3 8B', desc: 'Faster and free tier optimized.', provider: 'groq' },
@@ -1330,13 +1332,16 @@ export default function App() {
     const keyRecord = apiKeys.find(k => k.id === id);
     if (!keyRecord) return;
     
-    setApiKeys(prev => prev.map(k => k.id === id ? { ...k, status: 'testing' } : k));
+    setApiKeys(prev => prev.map(k => k.id === id ? { ...k, status: 'testing', errorMessage: undefined } : k));
     
     try {
       await testApiKey(keyRecord.key, keyRecord.provider);
-      setApiKeys(prev => prev.map(k => k.id === id ? { ...k, status: 'valid' } : k));
-    } catch (error) {
-      setApiKeys(prev => prev.map(k => k.id === id ? { ...k, status: 'invalid' } : k));
+      setApiKeys(prev => prev.map(k => k.id === id ? { ...k, status: 'valid', errorMessage: undefined } : k));
+      addToast(`API Key for ${PROVIDERS.find(p => p.id === keyRecord.provider)?.name || keyRecord.provider} verified successfully!`, 'success', 3000);
+    } catch (error: any) {
+      const errorMsg = error?.message || 'Verification failed';
+      setApiKeys(prev => prev.map(k => k.id === id ? { ...k, status: 'invalid', errorMessage: errorMsg } : k));
+      addToast(`Test Failed: ${errorMsg}`, 'error', 6000);
     }
   };
 
@@ -1345,7 +1350,7 @@ export default function App() {
     setIsTestingAll(true);
     setTestAllSummary(null);
     
-    setApiKeys(prev => prev.map(k => ({ ...k, status: 'testing' })));
+    setApiKeys(prev => prev.map(k => ({ ...k, status: 'testing', errorMessage: undefined })));
 
     let validCount = 0;
     let invalidCount = 0;
@@ -1354,10 +1359,11 @@ export default function App() {
       try {
         await testApiKey(k.key, k.provider);
         validCount++;
-        return { ...k, status: 'valid' as const };
-      } catch (e) {
+        return { ...k, status: 'valid' as const, errorMessage: undefined };
+      } catch (e: any) {
         invalidCount++;
-        return { ...k, status: 'invalid' as const };
+        const errorMsg = e?.message || 'Verification failed';
+        return { ...k, status: 'invalid' as const, errorMessage: errorMsg };
       }
     }));
 
@@ -3240,6 +3246,29 @@ export default function App() {
                         <Key size={16} />
                         Get API Key from {PROVIDERS.find(p => p.id === activeProviderTab)?.name}
                       </a>
+
+                      {/* Vercel vs Preview Domain Guidance */}
+                      {activeProviderTab === 'gemini' ? (
+                        <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-800 dark:text-amber-300 space-y-1 mt-2">
+                          <div className="flex items-center gap-1.5 font-bold">
+                            <Globe size={13} className="shrink-0 text-amber-600 dark:text-amber-400" />
+                            <span>Works on Vercel but fails here?</span>
+                          </div>
+                          <p className="text-[10.5px] leading-relaxed opacity-90">
+                            If your Google Gemini API key has <strong>HTTP Referrer restrictions</strong> in Google Cloud Console (e.g. set to <code className="font-mono bg-black/5 dark:bg-white/10 px-1 py-0.2 rounded">*.vercel.app</code>), Google blocks requests from this AI Studio preview domain. In Google Cloud Console &gt; Credentials, edit the key and set <strong>Application restrictions</strong> to <em>None</em> or add this preview URL.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="p-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-[11px] text-blue-800 dark:text-blue-300 space-y-1 mt-2">
+                          <div className="flex items-center gap-1.5 font-bold">
+                            <Info size={13} className="shrink-0 text-blue-600 dark:text-blue-400" />
+                            <span>{PROVIDERS.find(p => p.id === activeProviderTab)?.name} Key Configuration</span>
+                          </div>
+                          <p className="text-[10.5px] leading-relaxed opacity-90">
+                            Ensure your API key is active and has sufficient quota/credits for chat completions. Keys are securely stored only in your local browser storage.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -3344,6 +3373,15 @@ export default function App() {
                                    <span className={`text-[9px] font-bold uppercase tracking-wider shrink-0 px-2 py-0.5 rounded-full ${k.status === 'valid' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : k.status === 'invalid' ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' : k.status === 'testing' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>
                                       {k.status}
                                    </span>
+                                   {k.status === 'invalid' && k.errorMessage && (
+                                     <span 
+                                       className="text-[10px] text-red-500 dark:text-red-400 font-medium truncate max-w-[130px] sm:max-w-[220px] flex items-center gap-1 cursor-help shrink-0"
+                                       title={k.errorMessage}
+                                     >
+                                       <AlertCircle size={10} className="shrink-0 text-red-500" />
+                                       <span className="truncate">{k.errorMessage}</span>
+                                     </span>
+                                   )}
                                  </div>
                                  <div className="flex items-center justify-end gap-2 shrink-0 self-end sm:self-auto">
                                    <button 

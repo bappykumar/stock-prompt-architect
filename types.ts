@@ -58,4 +58,5 @@ export interface ApiKeyRecord {
   key: string;
   status: 'untested' | 'valid' | 'invalid' | 'testing';
   addedAt: number;
+  errorMessage?: string;
 }
