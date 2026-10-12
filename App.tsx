@@ -2122,11 +2122,13 @@ export default function App() {
               <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">Architect Parameters</span>
             </div>
             <button 
+              type="button"
               onClick={() => setIsSidebarOpen(false)}
-              className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+              className="w-8 h-8 flex items-center justify-center rounded-xl bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.08] dark:hover:bg-white/[0.12] border border-black/[0.06] dark:border-white/[0.08] text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition-all shrink-0 cursor-pointer active:scale-95"
               title="Close Drawer"
+              aria-label="Close drawer"
             >
-              <X size={18} />
+              <X size={16} />
             </button>
           </div>
 
@@ -2531,10 +2533,18 @@ export default function App() {
           <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/20 to-transparent pointer-events-none" />
 
           {errorMessage && (
-            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-xl text-red-600 dark:text-red-400 text-[11px] flex items-start gap-2 shadow-sm">
-               <div className="mt-0.5"><X size={14} className="shrink-0" /></div>
+            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-xl text-red-600 dark:text-red-400 text-[11px] flex items-start gap-2.5 shadow-sm">
+               <div className="mt-0.5"><AlertCircle size={15} className="shrink-0 text-red-500" /></div>
                <div className="flex-1 font-medium leading-tight">{errorMessage}</div>
-               <button onClick={() => setErrorMessage(null)} className="opacity-50 hover:opacity-100 shrink-0"><X size={14} /></button>
+               <button 
+                 type="button"
+                 onClick={() => setErrorMessage(null)} 
+                 className="p-1 rounded-lg hover:bg-red-500/10 text-red-500 hover:text-red-700 dark:hover:text-red-300 transition-colors shrink-0 cursor-pointer"
+                 title="Dismiss error"
+                 aria-label="Dismiss error"
+               >
+                 <X size={14} />
+               </button>
             </div>
           )}
           <RunArchitectButton 
@@ -2856,8 +2866,17 @@ export default function App() {
       {isResetConfirmOpen && (
         <div className="fixed inset-0 z-[2500] flex items-center justify-center p-6 bg-black/50 backdrop-blur-md">
            <div className="bg-white/90 dark:bg-slate-900/80 backdrop-blur-2xl border border-white/50 dark:border-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.2)] dark:shadow-[0_32px_64px_rgba(0,0,0,0.6)] w-full max-w-sm rounded-[32px] p-8 space-y-6 shadow-2xl relative">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-red-50 dark:bg-red-500/10 text-red-500 rounded-2xl flex items-center justify-center"><Trash2 size={24} /></div>
+              <button
+                type="button"
+                onClick={() => setIsResetConfirmOpen(false)}
+                className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-xl bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.08] dark:hover:bg-white/[0.12] border border-black/[0.06] dark:border-white/[0.08] text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all shrink-0 cursor-pointer shadow-xs active:scale-95"
+                title="Close"
+                aria-label="Close modal"
+              >
+                <X size={15} />
+              </button>
+              <div className="flex items-center gap-4 pr-6">
+                <div className="w-12 h-12 bg-red-50 dark:bg-red-500/10 text-red-500 rounded-2xl flex items-center justify-center shrink-0"><Trash2 size={24} /></div>
                 <div>
                   <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Reset Workspace</h3>
                 </div>
@@ -2899,11 +2918,20 @@ export default function App() {
           className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200"
         >
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-2xl rounded-3xl p-6 sm:p-7 max-w-md w-full relative overflow-hidden space-y-5 animate-in zoom-in-95 duration-200">
-            <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsClearApiConfirmOpen(false)}
+              className="absolute top-4.5 right-4.5 sm:top-5 sm:right-5 w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.08] dark:hover:bg-white/[0.12] border border-black/[0.06] dark:border-white/[0.08] text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all shrink-0 cursor-pointer shadow-xs active:scale-95"
+              title="Close"
+              aria-label="Close modal"
+            >
+              <X size={16} />
+            </button>
+            <div className="flex items-center gap-3 pr-8">
               <div className="w-12 h-12 rounded-2xl bg-red-500/10 text-red-500 flex items-center justify-center shrink-0 border border-red-500/20">
                 <Trash2 size={24} />
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white">Clear Stored API Keys</h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">Permanently remove API keys from this device</p>
               </div>
@@ -2999,11 +3027,13 @@ export default function App() {
                 </div>
               </div>
               <button 
+                type="button"
                 onClick={() => setIsModalOpen(false)} 
-                className="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors rounded-xl hover:bg-black/5 dark:hover:bg-white/5 shrink-0 cursor-pointer"
+                className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl sm:rounded-2xl bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.08] dark:hover:bg-white/[0.12] border border-black/[0.06] dark:border-white/[0.08] text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-all shrink-0 cursor-pointer shadow-xs active:scale-95"
                 title="Close (Esc)"
+                aria-label="Close configuration"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
@@ -3797,8 +3827,11 @@ export default function App() {
                 {toast.message}
               </div>
               <button 
+                type="button"
                 onClick={() => removeToast(toast.id)} 
-                className="opacity-50 hover:opacity-100 shrink-0 self-center text-slate-400 hover:text-slate-200 transition-colors"
+                className="p-1 rounded-lg opacity-60 hover:opacity-100 shrink-0 self-center text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                title="Dismiss notification"
+                aria-label="Dismiss notification"
               >
                 <X size={14} />
               </button>

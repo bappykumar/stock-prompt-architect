@@ -334,6 +334,11 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
     setCandidates(prev => prev.map(c => c.id === id ? { ...c, selected: !c.selected } : c));
   };
 
+  // Remove individual candidate
+  const removeCandidate = (id: string) => {
+    setCandidates(prev => prev.filter(c => c.id !== id));
+  };
+
   // Change provider for a candidate
   const updateCandidateProvider = (id: string, newProvider: 'gemini' | 'groq' | 'mistral' | 'openrouter') => {
     setCandidates(prev => prev.map(c => c.id === id ? { ...c, provider: newProvider } : c));
@@ -439,7 +444,10 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+    <div 
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      className="fixed inset-0 z-[3500] flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-md animate-in fade-in duration-200"
+    >
       <div 
         className="relative w-full max-w-4xl max-h-[92vh] flex flex-col rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/10 shadow-2xl overflow-hidden text-slate-900 dark:text-slate-100"
         role="dialog"
@@ -447,31 +455,33 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
         aria-labelledby="api-vault-title"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-white/[0.08] bg-slate-50/50 dark:bg-white/[0.02]">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/25">
+        <div className="flex items-center justify-between p-4 sm:px-6 sm:py-4.5 border-b border-slate-100 dark:border-white/[0.08] bg-slate-50/50 dark:bg-white/[0.02] shrink-0">
+          <div className="flex items-center gap-3 min-w-0 flex-1 mr-3">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/25 shrink-0">
               <Database size={20} className="animate-pulse" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 id="api-vault-title" className="text-base sm:text-lg font-black tracking-wide uppercase">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 id="api-vault-title" className="text-base sm:text-lg font-black tracking-wide uppercase truncate">
                   API Key Vault Manager
                 </h2>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 uppercase tracking-wider">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 uppercase tracking-wider shrink-0">
                   Sync & Backup
                 </span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
                 Seamlessly transfer keys between PC & laptop, detect duplicates, and manage storage
               </p>
             </div>
           </div>
           <button 
+            type="button"
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-            title="Close"
+            className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl sm:rounded-2xl bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.08] dark:hover:bg-white/[0.12] border border-black/[0.06] dark:border-white/[0.08] text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-all shrink-0 cursor-pointer shadow-xs active:scale-95"
+            title="Close (Esc)"
+            aria-label="Close modal"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
@@ -718,7 +728,7 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
                               </div>
                             </div>
 
-                            {/* Provider picker for each item */}
+                            {/* Provider picker for each item & remove button */}
                             <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
                               <div className="flex items-center gap-1 text-xs">
                                 <ProviderIcon size={13} className="text-slate-400" />
@@ -734,6 +744,15 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
                                   <option value="openrouter">OpenRouter</option>
                                 </select>
                               </div>
+                              <button
+                                type="button"
+                                onClick={() => removeCandidate(cand.id)}
+                                className="w-6 h-6 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
+                                title="Discard this key from import"
+                                aria-label="Discard key"
+                              >
+                                <X size={13} />
+                              </button>
                             </div>
                           </div>
                         );
