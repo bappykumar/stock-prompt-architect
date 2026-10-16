@@ -1,115 +1,114 @@
-# Quantum Orbital Run Button Animation Architecture
+# Product Preservation & Brand Color Harmonization
 
-Upgrading the primary "Run Architect" action button with a unified quantum orbital motion system—featuring synchronized energy particle streams, quantum shimmer border reflections, and a high-impact completion flash that seamlessly harmonizes with the diagnostic card and overall developer studio aesthetic.
+Seamlessly generate commercial studio and lifestyle product prompts where referenced real-world products retain authentic packaging, label typography, and original colors, while the brand's referenced color palette is dynamically extracted and harmonized across the scene backdrop, props, wardrobe, and ambient lighting.
+
+---
 
 ### User Review & Critical Decisions
 
 > [!IMPORTANT]
-> The following specifications were confirmed through the interactive design review and form the foundation of this upgrade:
+> The following product behaviors have been aligned based on your feedback:
 
-- **Confirmed Decision 1 (Active Generating State)**: Quantum orbital ring with synchronized particle energy stream replacing legacy wave paths.
-- **Confirmed Decision 2 (Idle & Hover State)**: Subtle quantum shimmer border with glowing hover lift and specular rim dynamics.
-- **Confirmed Decision 3 (Completion & Synthesis State)**: Quantum flash expansion with glowing checkmark and status label feedback.
+- **Confirmed: Reference-Driven Brand Color Palette (Zero Manual Data Entry)**:
+  - Users do not need to enter hex codes or configure color swatches in the tool.
+  - When *Product Preservation Mode* is toggled ON, the AI image generation prompt instructs Midjourney / Flux / SD to automatically extract and sample the brand color palette directly from the attached reference images (product packaging, logo, and brand color guide/swatches).
+- **Confirmed: Strategic Color Application Scope**:
+  - The brand color palette is applied to the **scene backdrop**, **studio props**, **model wardrobe/attire**, and **ambient lighting accents / rim highlights**.
+- **Confirmed: Product Color Integrity & Lighting Adjustment**:
+  - The physical product itself retains its original authentic colors, packaging material, and label typography. It is never recolored or altered into unrelated hues.
+  - The product is adjusted for physically accurate lighting, contact shadows, and ambient reflections to blend naturally into the environment without appearing like an artificial digital cutout.
+- **Confirmed: Commercial Cleanliness**:
+  - Complete elimination of extraneous text, random watermarks, or studio gear in the environment, while authentic typography on the hero product remains pristine.
 
 ---
 
 ### 1. Overview & Core Concept
 
-- **What It Does**: Transforms the prompt generation trigger from an isolated sine-wave button into an interconnected quantum energy mechanism. When clicked, the button's boundary becomes a live particle conduit with an orbiting quantum ring, transitioning upon completion into an emerald-luminescent flash before settling gracefully back into idle.
-- **Target Audience / Persona**: Engineers, prompt designers, and power users executing multi-model prompt transformations who require immediate, tactile, and visually captivating feedback during asynchronous AI generation.
-- **Key Value**: Synchronizes visual language across the entire application—tying the button's micro-interactions directly to the Quantum Orbital Core inside the diagnostic dialog for a cohesive, luxury developer experience.
+- **What It Does**: Enhances the existing **Product Preservation Mode** inside *Advanced Settings* to generate comprehensive multi-layer prompts that:
+  1. Tell the image generator to treat the attached image as an exact product and brand color reference.
+  2. Keep the physical product geometry, materials, labels, and exact colors 100% faithful to the reference.
+  3. Extract the brand's signature colors from the reference assets and organically distribute them across the scene environment (cyclorama/backdrop walls, podium/tabletop surfaces, interior styling, model clothing, and ambient rim light tones).
+  4. Blend hands, skin contact, and realistic lighting so the product looks naturally held or placed in a high-end commercial photoshoot.
+- **Target Audience**: Brand marketers, e-commerce designers, creative directors, and Midjourney/Flux prompt engineers producing real product mockups.
+- **Key Value**: Eliminates color clashing and manual prompt drafting while ensuring the real product remains the hero, perfectly on-brand and physically integrated.
 
 ---
 
 ### 2. User Experience & Visual Design
 
-#### Key User Flows
-1. **Idle State**: Pristine frosted glass pill button with subtle specular rim light (`h-[1.5px]`), crisp typography, and an energetic sparkle icon.
-2. **Hover / Focus**: A subtle quantum shimmer sweeps along the border perimeter (`border-blue-500/40`), paired with a slight elevation lift (`-translate-y-0.5`) and an intensified ambient cyan-indigo glow.
-3. **Execution Trigger & Loading Phase**:
-   - The label gracefully shifts downward and dissolves.
-   - A dual-track quantum orbital ring activates in the center with counter-rotating nodes and a linear energy stream flowing through the pill capsule.
-   - The button border shifts to a high-precision rotating conic beam matching the orbital speed of the diagnostic card.
-4. **Completion Flash Phase**:
-   - Upon synthesis completion, a radial quantum flash expands across the pill surface.
-   - An emerald checkmark badge springs into view accompanied by the label "SYNTHESIZED" in high-contrast legible typography.
-   - Smooth 1.2s dwell before easing back to the ready-to-run idle state.
+#### User Journey
+1. **Open Advanced Settings**: The user clicks "Advanced Settings" in the prompt builder.
+2. **Toggle Product Preservation Mode**: Under *Optics & Technicals*, the user toggles on **Product Preservation Mode**.
+3. **Helper Note & Visual Indication**:
+   - The card clearly highlights: *"Strict packaging & typography lock. Prompts will instruct AI generators to sample the brand color palette from your attached references (product/logo/swatches) and harmonize them across backdrop, props, wardrobe, and ambient light accents without altering the product's authentic colors."*
+4. **Generate / Re-Roll**: The user generates the prompt. The resulting prompt explicitly instructs the image generator to extract the brand color palette from the reference and harmonize the environment, backdrop, wardrobe, and lighting around the preserved hero product.
 
-#### Visual Identity & Theme
-- **Color Palette**:
-  - Deep Space Canvas & Surface: `slate-900 / #0b1329` (Dark), `white/95` (Light)
-  - Quantum Energy Accents: Cyan (`#38bdf8`), Electric Indigo (`#6366f1`), Royal Blue (`#3b82f6`)
-  - Synthesis Success: Emerald (`#10b981`), Mint Glow (`#34d399`)
-- **Typography & Hierarchy**:
-  - Button Action: Strict uppercase geometric sans (`tracking-[0.14em]`, `font-black`, `text-[13px]`)
-  - Optical Compensation: Fine subpixel letter-spacing with tabular numeral support for any timing telemetry.
-- **Interactive Feedback & Motion**:
-  - Micro-interactions settle within $\le 200\text{ms}$ with smooth bezier curves (`cubic-bezier(0.16, 1, 0.3, 1)`).
-  - Compositor-only hardware accelerated transforms (`transform`, `opacity`, `filter`).
+#### Visual Hierarchy & Styling
+- **Card Styling**: Consistent slate dark-mode styling with emerald/cyan accent glows indicating high-fidelity preservation.
+- **Badge Indicators**: Visual tags for *"Reference Lock Active"* and *"Brand Palette Harmonization"*.
 
 ---
 
 ### 3. Key Product Decisions & Trade-Offs
 
-- **Decision 1: Vector SVG Particle Engine vs. Canvas Rendering**
-  - *Chosen Approach*: Inline SVG vector paths with CSS hardware-accelerated keyframe transforms (`will-change: transform`).
-  - *Why*: Guarantees crisp rendering across high-DPI displays without CPU canvas drawing overhead or extra bundle dependencies.
-  - *Alternatives Considered*: Canvas particle simulator (rejected due to excessive battery drain and canvas context switching).
-- **Decision 2: Synchronization with the Diagnostic Card**
-  - *Chosen Approach*: Harmonize orbital rotational periods (2.4s and 4.2s) with `QuantumOrbitalCore.tsx` so both widgets appear driven by the same simulated reactor.
-  - *Why*: Eliminates visual discord between the active button and floating dialog.
+#### Decision 1: Prompt-Driven Color Sampling vs. In-App Color Pickers
+- **Chosen Approach**: Prompt-driven sampling where the prompt explicitly tells the generative model to pull palette tones directly from the reference image(s).
+- **Why**: Image generators like Midjourney v6/v7 and Flux with IP-Adapter / Reference control take user-supplied reference images directly. Asking users to re-enter color codes in the web UI adds friction and fails to capture subtle tonal gradients that exist in actual brand guidelines.
+- **Trade-off**: Requires clear, authoritative language in the system prompt so the image generator knows exactly where to apply those colors (backdrop, props, wardrobe) and where NOT to mutate them (the product itself).
+
+#### Decision 2: Product Lighting Adaptation vs. Color Shift
+- **Chosen Approach**: Allow photometric adaptation (ambient light bounce, specular highlights, contact shadows) while strictly locking pigment and label identity.
+- **Why**: If a product has zero interaction with ambient light, it looks flat and fake. By distinguishing between *lighting adaptation* (allowed) and *product recoloring* (forbidden), the image attains photorealistic commercial quality.
 
 ---
 
-### 4. Technical Architecture & Motion Strategy *(Technical Reference)*
-
-#### System Component & Motion Architecture
+### 4. Technical Architecture & Prompt Engineering Strategy
 
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│                        App.tsx Generation Flow                         │
-│                                                                        │
-│  [ isGenerating: true / false ] ───► [ apiTrackerState: status ]       │
-└──────────────────────────────────┬─────────────────────────────────────┘
-                                   │
-               ┌───────────────────┴───────────────────┐
-               ▼                                       ▼
-┌───────────────────────────────┐       ┌───────────────────────────────┐
-│     RunArchitectButton.tsx    │       │     QuantumOrbitalCore.tsx    │
-│                               │       │                               │
-│  ┌─ Idle & Shimmer Border ──┐ │       │  ┌─ Concentric Rings ───────┐ │
-│  │ Specular rim + hover lift│ │       │  │ Slow CCW & rapid CW      │ │
-│  └──────────────────────────┘ │       │  └──────────────────────────┘ │
-│  ┌─ Active Generating State ┐ │       │  ┌─ Pulsing Neural Center ──┐ │
-│  │ Dual orbital ring core   │ │       │  │ Concentric energy core   │ │
-│  │ Stream particles [CSS]   │ │       │  └──────────────────────────┘ │
-│  └──────────────────────────┘ │       │  ┌─ Diagnostic Card Scanner ┐ │
-│  ┌─ Success Flash State ────┐ │       │  │ Sweeping laser beam      │ │
-│  │ Emerald radial bloom     │ │       │  └──────────────────────────┘ │
-│  └──────────────────────────┘ │       └───────────────────────────────┘
-└───────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                    User Interface (App.tsx)                 │
+│  - Advanced Settings: Product Preservation Mode (Toggle)    │
+│  - Clear description of Reference Lock & Brand Color Sync   │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│               State Layer (options: PromptOptions)          │
+│  - productPreservation: boolean                             │
+│  - Synced to localStorage & preset states                   │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│          Gemini Prompt Engine (services/geminiService.ts)   │
+│                                                             │
+│  1. NEGATIVE & SAFETY BLOCK:                                │
+│     - Preserve authentic packaging, logos & brand typography│
+│     - Banish extraneous text, fake UI, and watermark artifacts│
+│                                                             │
+│  2. PRODUCT PRESERVATION & BRAND PALETTE HARMONIZATION:      │
+│     - [Section A]: Exact Packaging & Label Typography Lock  │
+│     - [Section B]: Reference Brand Color Extraction         │
+│     - [Section C]: Scene Application (Backdrop/Props/Attire)│
+│     - [Section D]: Model & Hand Interaction Realism         │
+│     - [Section E]: Environmental Photometric Blending       │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│           Final Commercial AI Image Generation Prompt       │
+│  (Ready for Midjourney, Flux, SD with image references)     │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-#### Motion Transitions & State Lifecycles
-
-| Phase | Duration | Visual Mechanism | Key CSS Classes / Keyframes |
-| :--- | :--- | :--- | :--- |
-| **Idle** | Continuous | Specular top edge + subtle border sheen | `transition-all duration-300`, `hover:-translate-y-0.5` |
-| **Hover** | 200ms | Quantum shimmer beam along perimeter | `hover:shadow-[0_12px_32px_rgba(59,130,246,0.22)]` |
-| **Generating** | Infinite | Synchronized micro-orbital core & stream particles | `@keyframes quantum-button-orbit`, `@keyframes quantum-stream` |
-| **Success** | 1200ms | Radial scale flash expansion + emerald badge | `@keyframes quantum-success-flash`, `scale-100 opacity-100` |
-| **Reset** | 60ms | Seamless translation back into idle position | `translateY(-24px) -> translateY(0)` |
-
----
-
-### 5. Implementation Roadmap
-
-1. **Step 1: CSS Keyframes for Quantum Stream & Button Orbit**
-   - Add `@keyframes quantum-button-orbit-cw`, `@keyframes quantum-button-orbit-ccw`, and `@keyframes quantum-stream-flow` in `index.html`.
-2. **Step 2: Update `RunArchitectButton.tsx`**
-   - Replace the horizontal sine-wave SVG inside the button capsule with the synchronized quantum orbital ring and high-velocity energy stream particles.
-   - Add the quantum border shimmer effect on hover and active states.
-   - Upgrade the success phase with the emerald quantum flash expansion.
-3. **Step 3: Verification & Compilation**
-   - Test idle, hover, loading, and synthesis completion states.
-   - Run `compile_applet` to confirm error-free TypeScript execution.
+#### Detailed Prompt Rules to Implement:
+1. **Brand Color Palette Extraction Directive**:
+   - Instruct the AI generator to analyze the attached reference image(s) (product, packaging, logo, or color swatches) and extract the primary and secondary brand color palette.
+2. **Environmental & Wardrobe Color Mapping**:
+   - Explicitly guide the distribution of these extracted brand colors:
+     - **Backdrop**: Studio cyclorama, interior wall accents, or environmental tones aligned with brand colors.
+     - **Props & Staging**: Pedestals, surfaces, textured fabrics, and supporting items tinted in complementary brand palette shades.
+     - **Model Wardrobe**: If human models or hands are present, dress the model in clothing that complements the brand color scheme.
+     - **Ambient Lighting Accents**: Subtle edge lighting, rim highlights, and ambient reflections tinted with harmonious brand accents.
+3. **Hero Product Invariance**:
+   - Strict rule that the hero product's original physical colors, typography, and packaging must remain authentic and un-mutated, receiving only realistic physical illumination from the scene.

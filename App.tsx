@@ -11,10 +11,10 @@ import {
   Layout, Fingerprint, Focus, Settings2, Download, MessageSquareCode, Send, AlertCircle, X, Cpu, Paintbrush,
   ChevronUp, Key, Lock, Unlock, Info, Settings, ToggleLeft, ToggleRight, Activity, Power, Video, Target, Lightbulb, Search, Shuffle, Image, Type, RefreshCw, ListX, PanelLeftClose, PanelLeftOpen, Upload,
   LayoutList, Columns2, UnfoldVertical, FoldVertical, SlidersHorizontal, LayoutGrid, Rows3,
-  CircleDot, Grid3X3, RotateCcw, FileUp, FileDown, Database, AlertTriangle
+  CircleDot, Grid3X3, RotateCcw, FileUp, FileDown, Database, AlertTriangle, PackageCheck, ScanFace, UserCheck
 } from 'lucide-react';
 import { PromptOptions, GeneratedPrompt, PromptBatch, HistoricalPrompt, ApiKeyRecord } from './types';
-import { generateStockPrompts, testApiKey, analyzeReferenceAndSuggestSettings } from './services/geminiService';
+import { generateStockPrompts, testApiKey, analyzeReferenceAndSuggestSettings, stripColorDescriptors, stripBiometricDescriptors } from './services/geminiService';
 import { QUICK_START_PRESETS } from './presets';
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -135,7 +135,9 @@ const getFreshDefaultOptions = (): PromptOptions => ({
     smartRefinement: false
   },
   lockedFields: {},
-  lockedPools: {}
+  lockedPools: {},
+  productPreservation: false,
+  preservationType: 'product'
 });
 
 const DEFAULT_OPTIONS = getFreshDefaultOptions();
@@ -858,6 +860,12 @@ export default function App() {
     if (!parsed.lockedPools) {
       parsed.lockedPools = {};
     }
+    if (parsed.productPreservation === undefined) {
+      parsed.productPreservation = false;
+    }
+    if (!parsed.preservationType) {
+      parsed.preservationType = 'product';
+    }
 
     return parsed;
   });
@@ -1201,6 +1209,7 @@ export default function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [configActiveTab, setConfigActiveTab] = useState<'api' | 'preferences'>('api');
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [isClearPromptsConfirmOpen, setIsClearPromptsConfirmOpen] = useState(false);
   const [testAllSummary, setTestAllSummary] = useState<{valid: number, invalid: number, total: number} | null>(null);
   const [isTestingAll, setIsTestingAll] = useState(false);
 
@@ -1246,6 +1255,20 @@ export default function App() {
     const savedMode = safeLocalStorage.getItem('prompt_mode');
     return savedMode === 'advanced';
   });
+
+  const [isPreservationDropdownOpen, setIsPreservationDropdownOpen] = useState<boolean>(false);
+  const preservationDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isPreservationDropdownOpen) return;
+    const handleClickOutsidePreservation = (e: MouseEvent | TouchEvent) => {
+      if (preservationDropdownRef.current && !preservationDropdownRef.current.contains(e.target as Node)) {
+        setIsPreservationDropdownOpen(false);
+      }
+    };
+    document.addEventListener('click', handleClickOutsidePreservation);
+    return () => document.removeEventListener('click', handleClickOutsidePreservation);
+  }, [isPreservationDropdownOpen]);
 
   const mainScrollRef = useRef<HTMLElement>(null);
   const loadingIntervalRef = useRef<number | null>(null);
@@ -1716,9 +1739,11 @@ export default function App() {
 
       // Image analysis forces Gemini, but executeWithKeyRotation might rotate to Groq if Gemini fails.
       // We pass the keyRecord.provider down. If it's an image and rotates to non-gemini, we rely on the service to handle/fail.
+      const passedPreservation = isAdvanced ? !!options.productPreservation : false;
+      const preservationType = options.preservationType || 'product';
       const result = await executeWithKeyRotation((keyRecord, fallbackModel) => {
         const passedOptions = fallbackModel ? { ...visualOptions, model: fallbackModel } : visualOptions;
-        return analyzeReferenceAndSuggestSettings(input, passedOptions, keyRecord.key, keyRecord.provider);
+        return analyzeReferenceAndSuggestSettings(input, passedOptions, keyRecord.key, keyRecord.provider, passedPreservation, preservationType);
       }, providerToUse);
       
       const rawSettings = { ...result.settings };
@@ -1782,10 +1807,23 @@ export default function App() {
         }
       });
       
+      let cleanSrText = input.type === 'text' ? options.smartRefinementText : (result.smartRefinement || options.smartRefinementText);
+      const isProdActive = isAdvanced && options.productPreservation && (options.preservationType || 'product') === 'product';
+      const isHumanActive = isAdvanced && options.productPreservation && options.preservationType === 'human';
+      if (isProdActive && cleanSrText) {
+        cleanSrText = stripColorDescriptors(cleanSrText);
+      } else if (isHumanActive && cleanSrText) {
+        cleanSrText = stripBiometricDescriptors(cleanSrText);
+      }
+
+      if (isProdActive && !options.lockedFields?.colorMood) {
+        newSettings.colorMood = 'Default / Auto';
+      }
+
       const newOptions = {
         ...options,
         ...newSettings,
-        smartRefinementText: input.type === 'text' ? options.smartRefinementText : (result.smartRefinement || options.smartRefinementText),
+        smartRefinementText: cleanSrText,
         isFromImageReference: input.type === 'image',
         activeFields: nextActiveFields
       };
@@ -1835,8 +1873,14 @@ export default function App() {
       const activeModelObj = OPTIONS.model.find(m => m.value === options.model);
       const activeProvider = activeModelObj ? activeModelObj.provider as 'gemini'|'groq'|'mistral'|'openrouter' : 'gemini';
 
+      const effectiveOptions = {
+        ...options,
+        productPreservation: isAdvanced ? !!options.productPreservation : false,
+        preservationType: options.preservationType || 'product'
+      };
+
       const results = await executeWithKeyRotation((keyRecord, fallbackModel) => {
-        const passedOptions = fallbackModel ? { ...options, model: fallbackModel } : options;
+        const passedOptions = fallbackModel ? { ...effectiveOptions, model: fallbackModel } : effectiveOptions;
         return generateStockPrompts(passedOptions, keyRecord.key, history, keyRecord.provider);
       });
 
@@ -1869,6 +1913,7 @@ export default function App() {
       }
       return b;
     }));
+    addToast('Prompt copied to clipboard!', 'success', 2000);
   };
 
   const copyAllWorkspacePrompts = () => {
@@ -2075,20 +2120,17 @@ export default function App() {
                 </button>
                 <div className="my-1 border-t border-slate-200/60 dark:border-white/[0.08]" />
                 <button 
+                  type="button"
                   onClick={() => {
                     if (batches.length === 0) {
                       addToast('No generated prompts to clear.', 'info', 3000);
                       return;
                     }
-                    if (window.confirm('Clear all generated prompt batches from the workspace?')) {
-                      setBatches([]);
-                      safeLocalStorage.removeItem('prompt_session_history');
-                      addToast('Cleared all prompts from workspace.', 'success', 3000);
-                      setIsExportMenuOpen(false);
-                    }
+                    setIsExportMenuOpen(false);
+                    setIsClearPromptsConfirmOpen(true);
                   }} 
                   disabled={batches.length === 0} 
-                  className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[12px] font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[12px] font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer w-full text-left"
                 >
                   <Trash2 size={14} className="shrink-0" />
                   <span>Clear All Prompts</span>
@@ -2126,10 +2168,9 @@ export default function App() {
       {/* Responsive Sidebar Controls Panel */}
       <aside className={`
         fixed inset-y-0 left-0 z-[150] lg:static lg:z-40
-        w-[92vw] max-w-[360px] sm:max-w-[380px] lg:w-[340px] xl:w-[370px]
         ${isSidebarOpen 
-          ? 'translate-x-0 lg:w-[340px] xl:w-[370px] border-r' 
-          : '-translate-x-full lg:w-0 lg:border-r-0 pointer-events-none lg:pointer-events-auto'}
+          ? 'w-[92vw] max-w-[360px] sm:max-w-[380px] lg:w-[340px] xl:w-[370px] translate-x-0 border-r opacity-100' 
+          : 'w-0 min-w-0 max-w-0 lg:w-0 xl:w-0 -translate-x-full border-r-0 opacity-0 pointer-events-none'}
         transition-all duration-300 ease-in-out
         border-slate-200/80 dark:border-white/[0.08]
         bg-white/95 dark:bg-slate-950/95 lg:bg-white/80 lg:dark:bg-slate-950/70
@@ -2137,7 +2178,7 @@ export default function App() {
         flex flex-col shrink-0 h-full overflow-hidden
         shadow-[8px_0_36px_rgba(0,0,0,0.14)] lg:shadow-[4px_0_24px_-12px_rgba(0,0,0,0.06)]
       `}>
-        <div className="w-full flex flex-col h-full shrink-0">
+        <div className="w-[92vw] max-w-[360px] sm:max-w-[380px] lg:w-[340px] xl:w-[370px] flex flex-col h-full shrink-0">
           {/* Mobile Drawer Header with Close Button */}
           <div className="lg:hidden flex items-center justify-between px-5 pt-4 pb-2 border-b border-slate-200/60 dark:border-white/[0.06] shrink-0">
             <div className="flex items-center gap-2">
@@ -2229,6 +2270,8 @@ export default function App() {
                           model: options.model,
                           lockedFields: options.lockedFields,
                           lockedPools: options.lockedPools,
+                          productPreservation: false,
+                          preservationType: options.preservationType || 'product',
                           ...preset.settings, // Apply the preset over the defaults
                           ...lockedOverrides // Keep locked fields intact
                         });
@@ -2244,6 +2287,181 @@ export default function App() {
 
             {/* Feature Cards */}
             <div className="space-y-5">
+              {/* Preservation Mode Card (Advanced Mode Only) */}
+              {isAdvanced && (
+                <div className={`p-4 sm:p-5 rounded-[24px] relative transition-all duration-300 border group
+                  ${options.productPreservation 
+                    ? 'bg-blue-500/[0.07] dark:bg-blue-500/[0.12] border-blue-500/30 dark:border-blue-400/25 shadow-[0_8px_30px_rgba(59,130,246,0.1),inset_0_1px_1px_rgba(255,255,255,0.8)] backdrop-blur-xl' 
+                    : 'bg-white/60 dark:bg-white/[0.03] border-white/70 dark:border-white/[0.08] shadow-[0_8px_24px_rgba(0,0,0,0.03),inset_0_1px_1px_rgba(255,255,255,0.8)] backdrop-blur-xl hover:bg-white/75 dark:hover:bg-white/[0.05]'
+                  }`}>
+                  {/* Specular top rim */}
+                  <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/15 to-transparent pointer-events-none rounded-t-[24px]" />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-9 h-9 rounded-2xl flex items-center justify-center transition-colors duration-300
+                        ${options.productPreservation ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white/80 dark:bg-slate-800 text-slate-400 shadow-sm border border-white/60 dark:border-white/10'}`}>
+                        {options.productPreservation ? (
+                          (options.preservationType === 'human') ? <ScanFace size={16} /> : <PackageCheck size={16} />
+                        ) : (
+                          <ShieldCheck size={16} />
+                        )}
+                      </div>
+                      <div>
+                        <h4 className={`text-[12px] font-bold transition-colors ${options.productPreservation ? 'text-blue-700 dark:text-blue-300' : 'text-slate-900 dark:text-slate-200'}`}>
+                          Preservation Mode
+                        </h4>
+                        <p className="text-[10px] text-slate-500 font-medium">
+                          Preserve reference product or person
+                        </p>
+                      </div>
+                    </div>
+                    <button 
+                      type="button"
+                      role="switch"
+                      aria-checked={!!options.productPreservation}
+                      onClick={() => setOptions(prev => {
+                        const nextVal = !prev.productPreservation;
+                        let nextText = prev.smartRefinementText;
+                        const currentType = prev.preservationType || 'product';
+                        if (nextVal && nextText) {
+                          if (currentType === 'product') {
+                            nextText = stripColorDescriptors(nextText);
+                          } else if (currentType === 'human') {
+                            nextText = stripBiometricDescriptors(nextText);
+                          }
+                        }
+                        return {
+                          ...prev,
+                          productPreservation: nextVal,
+                          preservationType: currentType,
+                          smartRefinementText: nextText
+                        };
+                      })} 
+                      className={`w-11 h-6 rounded-full relative p-0.5 apple-switch-track focus:outline-none cursor-pointer active:scale-95 shrink-0 ${
+                        options.productPreservation 
+                          ? 'bg-blue-600 dark:bg-blue-500 shadow-[0_2px_10px_rgba(37,99,235,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)] border border-blue-400/40' 
+                          : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)] border border-black/10 dark:border-white/10'
+                      }`}
+                    >
+                      <div className={`w-5 h-5 rounded-full bg-white shadow-[0_2px_6px_rgba(0,0,0,0.25),inset_0_1px_1px_rgba(255,255,255,0.95)] apple-switch-thumb transform ${
+                        options.productPreservation ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
+
+                  {/* Dropdown Selector (Revealed when Toggle is ON) */}
+                  {options.productPreservation && (
+                    <div className="mt-3.5 pt-3 border-t border-blue-500/15 dark:border-blue-400/15" ref={preservationDropdownRef}>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                        Preservation Type
+                      </label>
+
+                      {/* Dropdown Trigger */}
+                      <button
+                        type="button"
+                        onClick={() => setIsPreservationDropdownOpen(prev => !prev)}
+                        className="w-full flex items-center justify-between px-3 py-2.5 bg-white/90 dark:bg-white/[0.06] hover:bg-white dark:hover:bg-white/[0.1] border border-blue-500/30 dark:border-blue-400/25 rounded-xl text-left transition-all shadow-xs cursor-pointer group"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-5 h-5 rounded-md bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                            {(options.preservationType || 'product') === 'human' ? (
+                              <ScanFace size={13} />
+                            ) : (
+                              <PackageCheck size={13} />
+                            )}
+                          </div>
+                          <span className="text-[11px] font-semibold text-slate-800 dark:text-slate-100 truncate">
+                            {(options.preservationType || 'product') === 'human'
+                              ? 'Human: Identity & Pose Lock'
+                              : 'Product Preservation'}
+                          </span>
+                        </div>
+                        <ChevronDown 
+                          size={14} 
+                          className={`text-slate-400 transition-transform duration-200 shrink-0 ml-1.5 ${isPreservationDropdownOpen ? 'rotate-180 text-blue-500' : ''}`} 
+                        />
+                      </button>
+
+                      {/* Dropdown Menu Options */}
+                      {isPreservationDropdownOpen && (
+                        <div className="mt-1.5 p-1 bg-white/95 dark:bg-slate-900/95 border border-blue-500/25 dark:border-blue-400/25 rounded-xl shadow-md space-y-0.5 animate-in fade-in duration-150">
+                          {/* Option 1: Product Preservation */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOptions(prev => {
+                                let nextText = prev.smartRefinementText;
+                                if (nextText) {
+                                  nextText = stripColorDescriptors(nextText);
+                                }
+                                return {
+                                  ...prev,
+                                  preservationType: 'product',
+                                  smartRefinementText: nextText
+                                };
+                              });
+                              setIsPreservationDropdownOpen(false);
+                            }}
+                            className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-left transition-colors cursor-pointer ${
+                              (options.preservationType || 'product') === 'product'
+                                ? 'bg-blue-500/15 text-blue-700 dark:text-blue-300 font-semibold'
+                                : 'hover:bg-black/[0.04] dark:hover:bg-white/[0.06] text-slate-700 dark:text-slate-300 font-medium'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <PackageCheck size={14} className={(options.preservationType || 'product') === 'product' ? 'text-blue-600 dark:text-blue-400 shrink-0' : 'text-slate-400 shrink-0'} />
+                              <div className="min-w-0">
+                                <span className="text-[11px] block font-semibold truncate">Product Preservation</span>
+                                <span className="text-[9px] block text-slate-400 dark:text-slate-500 font-normal truncate">Authentic packaging, labels & brand finish</span>
+                              </div>
+                            </div>
+                            {(options.preservationType || 'product') === 'product' && (
+                              <Check size={13} className="text-blue-600 dark:text-blue-400 shrink-0 ml-1.5" />
+                            )}
+                          </button>
+
+                          {/* Option 2: Human: Identity & Pose Lock */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOptions(prev => {
+                                let nextText = prev.smartRefinementText;
+                                if (nextText) {
+                                  nextText = stripBiometricDescriptors(nextText);
+                                }
+                                return {
+                                  ...prev,
+                                  preservationType: 'human',
+                                  smartRefinementText: nextText
+                                };
+                              });
+                              setIsPreservationDropdownOpen(false);
+                            }}
+                            className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-left transition-colors cursor-pointer ${
+                              options.preservationType === 'human'
+                                ? 'bg-blue-500/15 text-blue-700 dark:text-blue-300 font-semibold'
+                                : 'hover:bg-black/[0.04] dark:hover:bg-white/[0.06] text-slate-700 dark:text-slate-300 font-medium'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <ScanFace size={14} className={options.preservationType === 'human' ? 'text-blue-600 dark:text-blue-400 shrink-0' : 'text-slate-400 shrink-0'} />
+                              <div className="min-w-0">
+                                <span className="text-[11px] block font-semibold truncate">Human: Identity & Pose Lock</span>
+                                <span className="text-[9px] block text-slate-400 dark:text-slate-500 font-normal truncate">Face ID lock + face-neutral pose/style transfer</span>
+                              </div>
+                            </div>
+                            {options.preservationType === 'human' && (
+                              <Check size={13} className="text-blue-600 dark:text-blue-400 shrink-0 ml-1.5" />
+                            )}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Smart Refinement Card */}
               <div className={`p-5 rounded-[24px] relative transition-all duration-300 border group overflow-hidden
                 ${options.activeFields?.smartRefinement 
                   ? 'bg-blue-500/[0.07] dark:bg-blue-500/[0.12] border-blue-500/30 dark:border-blue-400/25 shadow-[0_8px_30px_rgba(59,130,246,0.1),inset_0_1px_1px_rgba(255,255,255,0.8)] backdrop-blur-xl' 
@@ -2380,12 +2598,12 @@ export default function App() {
                       const isSrUsed = hasSrContent && lastUsedReference.mode === autoFillMode && lastUsedReference.value === currentSrValue;
                       
                       return (
-                        <div className="mt-3.5 space-y-2">
+                        <div className="mt-3 space-y-1.5">
                           <button 
                             type="button"
                             onClick={handleAutoFill}
                             disabled={isAnalyzing || !hasSrContent}
-                            className={`w-full min-h-[42px] sm:min-h-[44px] py-2.5 px-4 rounded-2xl font-bold uppercase tracking-wider text-[11px] sm:text-[11.5px] flex items-center justify-center gap-2 backdrop-blur-md transition-all active:scale-[0.98] border shadow-xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${
+                            className={`w-full min-h-[40px] sm:min-h-[42px] py-2 px-3 sm:px-4 rounded-xl font-bold uppercase tracking-wide text-[11px] sm:text-[11.5px] flex items-center justify-center gap-2 backdrop-blur-md transition-all active:scale-[0.98] border shadow-xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap select-none ${
                               !hasSrContent
                                 ? 'bg-slate-200/70 dark:bg-white/[0.06] text-slate-400 dark:text-slate-500 border-transparent' 
                                 : isSrUsed 
@@ -2394,18 +2612,18 @@ export default function App() {
                             }`}
                           >
                             {isAnalyzing ? (
-                              <Loader2 size={15} className="animate-spin text-white" />
+                              <Loader2 size={14} className="animate-spin text-white shrink-0" />
                             ) : isSrUsed ? (
-                              <Check size={15} className="text-white" strokeWidth={2.5} />
+                              <Check size={14} className="text-white shrink-0" strokeWidth={2.5} />
                             ) : (
-                              <Sparkles size={15} className="text-white" />
+                              <Sparkles size={14} className="text-white shrink-0" />
                             )}
                             <span className="truncate">
                               {isAnalyzing 
-                                ? 'Analyzing Settings...' 
+                                ? 'Analyzing...' 
                                 : isSrUsed 
-                                  ? (autoFillMode === 'image' ? 'Image Applied • Re-analyze' : 'Text Applied • Re-analyze') 
-                                  : (autoFillMode === 'image' ? 'Analyze Image & Auto-Fill' : 'Auto-Fill Settings from Text')}
+                                  ? (autoFillMode === 'image' ? 'Applied • Re-analyze' : 'Applied • Re-analyze') 
+                                  : (autoFillMode === 'image' ? 'Auto-Fill from Image' : 'Auto-Fill Settings')}
                             </span>
                           </button>
                           
@@ -2424,7 +2642,7 @@ export default function App() {
                                 className="text-[10px] text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors flex items-center gap-1 cursor-pointer"
                               >
                                 <RotateCcw size={10} />
-                                <span>Reset Applied Refinement</span>
+                                <span>Reset Refinement</span>
                               </button>
                             </div>
                           )}
@@ -2435,56 +2653,6 @@ export default function App() {
                   </>
                 )}
               </div>
-
-              {isAdvanced && (
-                <div className={`p-5 rounded-[24px] relative transition-all duration-300 border group overflow-hidden
-                  ${options.useCalendar 
-                    ? 'bg-blue-500/[0.07] dark:bg-blue-500/[0.12] border-blue-500/30 dark:border-blue-400/25 shadow-[0_8px_30px_rgba(59,130,246,0.1),inset_0_1px_1px_rgba(255,255,255,0.8)] backdrop-blur-xl' 
-                    : 'bg-white/60 dark:bg-white/[0.03] border-white/70 dark:border-white/[0.08] shadow-[0_8px_24px_rgba(0,0,0,0.03),inset_0_1px_1px_rgba(255,255,255,0.8)] backdrop-blur-xl hover:bg-white/75 dark:hover:bg-white/[0.05]'
-                  }`}>
-                  {/* Specular top rim */}
-                  <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/15 to-transparent pointer-events-none" />
-                  <div className="flex items-center justify-between mb-3">
-                    <div className={`w-9 h-9 rounded-2xl flex items-center justify-center transition-colors duration-300
-                      ${options.useCalendar ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white/80 dark:bg-slate-800 text-slate-400 shadow-sm border border-white/60 dark:border-white/10'}`}>
-                      <Calendar size={16} />
-                    </div>
-                    <button 
-                      type="button"
-                      role="switch"
-                      aria-checked={options.useCalendar}
-                      onClick={() => setOptions({...options, useCalendar: !options.useCalendar})} 
-                      className={`w-11 h-6 rounded-full relative p-0.5 apple-switch-track focus:outline-none cursor-pointer active:scale-95 ${
-                        options.useCalendar 
-                          ? 'bg-blue-600 dark:bg-blue-500 shadow-[0_2px_10px_rgba(37,99,235,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)] border border-blue-400/40' 
-                          : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)] border border-black/10 dark:border-white/10'
-                      }`}
-                    >
-                      <div className={`w-5 h-5 rounded-full bg-white shadow-[0_2px_6px_rgba(0,0,0,0.25),inset_0_1px_1px_rgba(255,255,255,0.95)] apple-switch-thumb transform ${
-                        options.useCalendar ? 'translate-x-5' : 'translate-x-0'
-                      }`} />
-                    </button>
-                  </div>
-                  <h4 className={`text-[12px] font-bold transition-colors ${options.useCalendar ? 'text-blue-700 dark:text-blue-300' : 'text-slate-900 dark:text-slate-200'}`}>Dynamic Seasonality</h4>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-500 mt-1 leading-relaxed font-medium">Add month and holiday specific context.</p>
-                  {options.useCalendar && (
-                    <div className="mt-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                      <div className="relative">
-                        <select value={options.calendarMonth} onChange={e => setOptions({...options, calendarMonth: e.target.value, calendarEvent: EVENTS_BY_MONTH[e.target.value][0]})} className="w-full appearance-none bg-white/70 dark:bg-white/[0.04] backdrop-blur-md border border-white/80 dark:border-white/[0.08] shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] px-4 py-2.5 rounded-2xl text-[12px] font-medium outline-none focus:ring-2 focus:ring-blue-500/20 transition-all">
-                          {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
-                        </select>
-                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                      </div>
-                      <div className="relative">
-                        <select value={options.calendarEvent} onChange={e => setOptions({...options, calendarEvent: e.target.value})} className="w-full appearance-none bg-white/70 dark:bg-white/[0.04] backdrop-blur-md border border-white/80 dark:border-white/[0.08] shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] px-4 py-2.5 rounded-2xl text-[12px] font-medium outline-none focus:ring-2 focus:ring-blue-500/20 transition-all">
-                          {EVENTS_BY_MONTH[options.calendarMonth].map(e => <option key={e} value={e}>{e}</option>)}
-                        </select>
-                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
 
             {/* Config Sections */}
@@ -2608,6 +2776,18 @@ export default function App() {
 
       {/* MAIN AREA */}
       <main ref={mainScrollRef} className="flex-1 overflow-y-auto custom-scrollbar relative bg-transparent pt-16 z-10 transition-colors duration-500" style={mainCanvasBackgroundStyle}>
+        {/* Quick Open Parameters Button when Sidebar is Collapsed on Desktop */}
+        {!isSidebarOpen && (
+          <button
+            type="button"
+            onClick={() => setIsSidebarOpen(true)}
+            className="hidden lg:flex items-center gap-2 fixed left-5 top-20 z-30 px-3 py-1.5 rounded-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200/80 dark:border-white/[0.08] shadow-[0_4px_16px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)] text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-500/30 transition-all cursor-pointer group active:scale-95 animate-in fade-in slide-in-from-left-2 duration-200"
+            title="Open Architect Parameters (Sidebar)"
+          >
+            <PanelLeftOpen size={14} className="text-blue-500 group-hover:scale-110 transition-transform" />
+            <span className="uppercase tracking-wider text-[10px]">Open Parameters</span>
+          </button>
+        )}
         {(isGenerating || apiTrackerState.visible) && (
           <div className={`fixed inset-0 ${isSidebarOpen ? 'lg:left-[340px] xl:left-[370px]' : 'left-0'} z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/45 dark:bg-black/65 pointer-events-none transition-all duration-300 animate-in fade-in`}>
             <div className="relative w-full max-w-sm pointer-events-auto">
@@ -2687,28 +2867,12 @@ export default function App() {
           {batches.length > 0 ? (
             <div className="flex flex-col gap-5 sm:gap-6 flex-1">
               
-              {/* Quick Responsive View Controls Toolbar */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-3.5 rounded-2xl bg-white/75 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/80 dark:border-white/[0.08] shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
-                {/* Batch Stats & Summary */}
-                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-800 dark:text-slate-200">WORKSPACE</span>
-                  <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
-                  <span className="font-mono font-semibold text-slate-900 dark:text-white">{stats.total} Prompts</span>
-                  <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
-                  <span className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold">{stats.copied} Copied</span>
-                  {stats.pending > 0 && (
-                    <>
-                      <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
-                      <span className="font-mono text-amber-500 font-semibold">{stats.pending} Pending</span>
-                    </>
-                  )}
-                </div>
-
-                {/* View Adjusters */}
-                <div className="flex flex-wrap items-center gap-2">
+              {/* Responsive View Controls Toolbar */}
+              <div className="w-full flex items-center justify-end">
+                <div className="w-full sm:w-auto flex items-center justify-between sm:justify-end gap-1.5 sm:gap-2 p-1.5 sm:p-2 px-2.5 sm:px-3 rounded-2xl bg-white/75 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/80 dark:border-white/[0.08] shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
                   {/* View Size Scale */}
-                  <div className="flex items-center p-0.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.05] border border-black/[0.04] dark:border-white/[0.06]">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-1.5 select-none hidden md:inline">Scale</span>
+                  <div className="flex items-center p-0.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.05] border border-black/[0.04] dark:border-white/[0.06] shrink-0">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-1.5 select-none hidden sm:inline">Scale</span>
                     <button
                       type="button"
                       onClick={() => setViewScale('compact')}
@@ -2736,7 +2900,7 @@ export default function App() {
                   </div>
 
                   {/* Grid Layout Switcher */}
-                  <div className="flex items-center p-0.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.05] border border-black/[0.04] dark:border-white/[0.06]">
+                  <div className="flex items-center p-0.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.05] border border-black/[0.04] dark:border-white/[0.06] shrink-0">
                     <button
                       type="button"
                       onClick={() => setPromptLayout('auto')}
@@ -2773,7 +2937,7 @@ export default function App() {
                       setIsCompactMode(!isCompactMode);
                       setExpandedCardIds(new Set());
                     }}
-                    className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold rounded-xl bg-black/[0.04] dark:bg-white/[0.05] border border-black/[0.04] dark:border-white/[0.06] text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
+                    className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold rounded-xl bg-black/[0.04] dark:bg-white/[0.05] border border-black/[0.04] dark:border-white/[0.06] text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer shrink-0"
                     title={isCompactMode ? "Show Full Prompts" : "Show 2-Line Preview"}
                   >
                     {isCompactMode ? <FoldVertical size={13} className="text-blue-500" /> : <UnfoldVertical size={13} className="text-blue-500" />}
@@ -2840,13 +3004,13 @@ export default function App() {
                              </div>
                              <button 
                                onClick={() => copyIndividual(batch.id, p.id, p.text)} 
-                               className={`w-full sm:w-auto min-h-[40px] sm:min-h-[38px] ${cardScaleConfig.buttonPadding} rounded-xl sm:rounded-2xl font-bold uppercase tracking-wider transition-all duration-200 shrink-0 active:scale-[0.96] flex items-center justify-center text-center cursor-pointer ${
+                               className={`w-full sm:w-auto min-h-[36px] sm:min-h-[34px] ${cardScaleConfig.buttonPadding} rounded-xl font-bold uppercase tracking-wider transition-all duration-200 shrink-0 active:scale-[0.96] flex items-center justify-center text-center cursor-pointer ${
                                  p.copied 
                                    ? 'bg-emerald-500/90 text-white backdrop-blur-md shadow-lg shadow-emerald-500/20 border border-emerald-400/30' 
                                    : 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:opacity-90 backdrop-blur-xl border border-white/20 dark:border-white/50 shadow-[0_4px_14px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.3)] dark:shadow-[0_4px_14px_rgba(255,255,255,0.15),inset_0_1px_0_rgba(255,255,255,0.9)]'
                                }`}
                              >
-                               {p.copied ? <><Check size={14} className="inline mr-1.5" />Copied</> : 'Copy Prompt'}
+                               {p.copied ? <><Check size={14} className="inline mr-1.5" />Copied</> : 'Copy'}
                              </button>
                           </div>
                         </div>
@@ -2956,6 +3120,67 @@ export default function App() {
                 </button>
               </div>
            </div>
+        </div>
+      )}
+
+      {/* Clear All Prompts Confirmation Modal */}
+      {isClearPromptsConfirmOpen && (
+        <div 
+          onClick={(e) => { if (e.target === e.currentTarget) setIsClearPromptsConfirmOpen(false); }}
+          className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200"
+        >
+          <div className="bg-white/95 dark:bg-slate-900/90 backdrop-blur-2xl border border-slate-200/90 dark:border-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.25)] dark:shadow-[0_32px_64px_rgba(0,0,0,0.7)] w-full max-w-sm rounded-[32px] p-7 space-y-6 relative overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Top Specular Rim */}
+            <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/90 dark:via-white/20 to-transparent pointer-events-none" />
+
+            <button
+              type="button"
+              onClick={() => setIsClearPromptsConfirmOpen(false)}
+              className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-xl bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.08] dark:hover:bg-white/[0.12] border border-black/[0.06] dark:border-white/[0.08] text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all shrink-0 cursor-pointer shadow-xs active:scale-95"
+              title="Close"
+              aria-label="Close modal"
+            >
+              <X size={15} />
+            </button>
+
+            <div className="flex items-center gap-4 pr-6">
+              <div className="w-12 h-12 bg-red-50 dark:bg-red-500/10 text-red-500 rounded-2xl flex items-center justify-center shrink-0 border border-red-500/20 shadow-sm">
+                <Trash2 size={24} />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Clear All Prompts?</h3>
+                <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest mt-0.5">Permanent Deletion</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-slate-600 dark:text-slate-400 font-medium leading-relaxed">
+              Are you sure you want to clear all {batches.reduce((acc, b) => acc + (b.prompts?.length || 0), 0)} generated prompts from this workspace? This action cannot be undone.
+            </p>
+
+            <div className="flex gap-3 pt-1">
+              <button 
+                type="button"
+                onClick={() => setIsClearPromptsConfirmOpen(false)}
+                className="flex-1 py-3 px-4 rounded-xl text-[12px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] dark:hover:bg-white/[0.1] border border-slate-200 dark:border-white/[0.08] transition-colors cursor-pointer active:scale-95 text-center"
+              >
+                No, Keep
+              </button>
+              <button 
+                type="button"
+                onClick={() => {
+                  const totalPrompts = batches.reduce((acc, b) => acc + (b.prompts?.length || 0), 0);
+                  setBatches([]);
+                  safeLocalStorage.setItem('prompt_session_history', '[]');
+                  safeLocalStorage.removeItem('prompt_session_history');
+                  setIsClearPromptsConfirmOpen(false);
+                  addToast(`Cleared all ${totalPrompts} prompt${totalPrompts > 1 ? 's' : ''} from workspace.`, 'success', 3000);
+                }}
+                className="flex-1 py-3 px-4 rounded-xl text-[12px] font-bold uppercase tracking-wider text-white bg-red-500 hover:bg-red-600 transition-colors shadow-lg shadow-red-500/25 cursor-pointer active:scale-95 text-center"
+              >
+                Yes, Clear All
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

@@ -33,6 +33,8 @@ export interface PromptOptions {
   activeFields: Record<string, boolean>;
   lockedFields: Record<string, boolean>;
   lockedPools?: Record<string, string[]>;
+  productPreservation?: boolean;
+  preservationType?: 'product' | 'human';
 }
 
 export interface GeneratedPrompt {

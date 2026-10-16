@@ -552,65 +552,62 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
       className="fixed inset-0 z-[3500] flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-md animate-in fade-in duration-200"
     >
       <div 
-        className="relative w-full max-w-4xl max-h-[92vh] flex flex-col rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/10 shadow-2xl overflow-hidden text-slate-900 dark:text-slate-100"
+        className="relative w-full max-w-4xl max-h-[92vh] flex flex-col rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden text-slate-900 dark:text-slate-100"
         role="dialog"
         aria-modal="true"
         aria-labelledby="api-vault-title"
       >
-        {/* Apple Specular Top Rim Highlight */}
-        <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-blue-500/50 dark:via-blue-400/30 to-transparent pointer-events-none z-30" />
-
         {/* Drag Overlay Feedback */}
         {isDraggingFile && (
-          <div className="absolute inset-0 z-50 bg-blue-600/90 backdrop-blur-sm flex flex-col items-center justify-center text-white pointer-events-none animate-in fade-in duration-150">
-            <Upload size={48} className="animate-bounce mb-3" />
-            <h3 className="text-lg font-bold">Drop File to Import Keys</h3>
+          <div className="absolute inset-0 z-50 bg-blue-600/95 backdrop-blur-sm flex flex-col items-center justify-center text-white pointer-events-none animate-in fade-in duration-150">
+            <Upload size={40} className="animate-bounce mb-3" />
+            <h3 className="text-base font-bold">Drop File to Import Keys</h3>
             <p className="text-xs text-blue-100 mt-1">Accepts JSON, TXT, ENV, CSV files</p>
           </div>
         )}
 
         {/* Header */}
-        <div className="flex items-center justify-between p-4 sm:px-6 sm:py-4.5 border-b border-slate-100 dark:border-white/[0.08] bg-slate-50/50 dark:bg-white/[0.02] shrink-0">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900 shrink-0">
           <div className="flex items-center gap-3 min-w-0 flex-1 mr-3">
-            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/25 shrink-0">
-              <Database size={20} className="animate-pulse" />
+            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200/80 dark:border-blue-800/60 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
+              <Database size={18} />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 id="api-vault-title" className="text-base sm:text-lg font-black tracking-wide uppercase truncate">
+                <h2 id="api-vault-title" className="text-sm sm:text-base font-bold tracking-tight text-slate-900 dark:text-white truncate">
                   API Key Vault Manager
                 </h2>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 uppercase tracking-wider shrink-0">
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 uppercase tracking-wider shrink-0">
                   Sync & Backup
                 </span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
-                Seamlessly transfer keys between PC & laptop, detect duplicates, and manage storage
+              <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                Transfer keys between devices, detect duplicates, and manage storage
               </p>
             </div>
           </div>
           <button 
             type="button"
             onClick={onClose}
-            className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl sm:rounded-2xl bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.08] dark:hover:bg-white/[0.12] border border-black/[0.06] dark:border-white/[0.08] text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-all shrink-0 cursor-pointer shadow-xs active:scale-95"
+            className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors shrink-0 cursor-pointer"
             title="Close (Esc)"
             aria-label="Close modal"
           >
-            <X size={18} />
+            <X size={16} />
           </button>
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex items-center gap-1.5 px-4 sm:px-6 pt-3 pb-2 border-b border-slate-100 dark:border-white/[0.06] bg-slate-50/20 dark:bg-slate-950/20 overflow-x-auto">
+        <div className="flex items-center gap-1.5 px-5 py-2.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/60 overflow-x-auto">
           <button
             onClick={() => setActiveTab('import')}
-            className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0 cursor-pointer ${
               activeTab === 'import'
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25 ring-1 ring-blue-500'
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
-            <FileUp size={15} />
+            <FileUp size={14} />
             <span>Import & Sync</span>
             {selectedCandidates.length > 0 && (
               <span className="text-[10px] px-1.5 py-0.2 bg-white/20 rounded-md font-mono">
@@ -621,13 +618,13 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
 
           <button
             onClick={() => setActiveTab('export')}
-            className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0 cursor-pointer ${
               activeTab === 'export'
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25 ring-1 ring-blue-500'
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
-            <FileDown size={15} />
+            <FileDown size={14} />
             <span>Export & Backup</span>
             <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-black/10 dark:bg-white/10 font-mono">
               {apiKeys.length}
@@ -636,13 +633,13 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
 
           <button
             onClick={() => setActiveTab('clean')}
-            className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all ml-auto shrink-0 cursor-pointer ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ml-auto shrink-0 cursor-pointer ${
               activeTab === 'clean'
-                ? 'bg-red-600 text-white shadow-md shadow-red-600/25 ring-1 ring-red-500'
-                : 'text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30'
+                ? 'bg-red-600 text-white shadow-xs'
+                : 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30'
             }`}
           >
-            <Trash2 size={15} />
+            <Trash2 size={14} />
             <span>Clean & Reset</span>
           </button>
         </div>
