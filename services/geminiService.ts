@@ -37,9 +37,15 @@ export function formatApiErrorMessage(error: any, provider: 'gemini' | 'groq' | 
     return `API Not Enabled: Generative Language API is not enabled for this Google Cloud project. Enable it in Google Cloud Console.`;
   }
 
-  // 5. Model not found
+  // 5. Project deleted / Key entity not found vs Model not found
+  if (lower.includes('project') && (lower.includes('not found') || lower.includes('deleted') || lower.includes('inactive'))) {
+    return `Project Deleted / Inactive: The Google Cloud project linked to this key was deleted or disabled. Create a new key in an active project.`;
+  }
+  if (lower.includes('requested entity was not found') || lower.includes('api key not found')) {
+    return `Key / Project Not Found: This API key or its Google Cloud project is no longer active or lacks access to this endpoint.`;
+  }
   if (lower.includes('not found') || lower.includes('404')) {
-    return `Model Not Found: The selected model is not available for this key. Try switching the model in settings.`;
+    return `Model / Endpoint Not Found: The selected model or endpoint is not enabled for this key.`;
   }
 
   // 6. Generic 403 Forbidden (distinguish Gemini from others)
@@ -69,13 +75,26 @@ export const testApiKey = async (apiKey: string, provider: 'gemini' | 'groq' | '
         const directRes = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(cleanKey)}`
         );
-        if (!directRes.ok) {
-          const errText = await directRes.text();
-          let parsedMsg = errText;
-          try { parsedMsg = JSON.parse(errText).error?.message || errText; } catch (e) {}
-          throw new Error(`Gemini API test failed: ${directRes.status} - ${parsedMsg}`);
+        if (directRes.ok) {
+          return true;
         }
-        return true;
+        const errText = await directRes.text();
+        // Fallback: Check Vertex AI Express Mode endpoint for AQ.Ab8RN... keys
+        const vertexModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+        for (const vm of vertexModels) {
+          const vertexRes = await fetch(
+            `https://aiplatform.googleapis.com/v1beta1/publishers/google/models/${vm}:countTokens?key=${encodeURIComponent(cleanKey)}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'ping' }] }] })
+            }
+          );
+          if (vertexRes.ok) return true;
+        }
+        let parsedMsg = errText;
+        try { parsedMsg = JSON.parse(errText).error?.message || errText; } catch (e) {}
+        throw new Error(`Gemini API test failed: ${directRes.status} - ${parsedMsg}`);
       }
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
@@ -433,34 +452,45 @@ Return ONLY this JSON structure, no markdown:
           }
           return { text: item.text };
         });
-        const candidateModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest'];
+        const candidateModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest', 'gemini-1.5-flash'];
+        const endpoints = [
+          (m: string) => `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(finalKey)}`,
+          (m: string) => `https://aiplatform.googleapis.com/v1beta1/publishers/google/models/${m}:generateContent?key=${encodeURIComponent(finalKey)}`
+        ];
         let directSuccess = false;
         let lastDirectErr: any = null;
-        for (const m of candidateModels) {
-          const directRes = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(finalKey)}`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{ parts: restParts }],
-                generationConfig: { responseMimeType: 'application/json' }
-              })
+        for (const buildUrl of endpoints) {
+          for (const m of candidateModels) {
+            const genConfig: Record<string, any> = { responseMimeType: 'application/json' };
+            if (m.startsWith('gemini-2.5-flash') || m === 'gemini-flash-latest') {
+              genConfig.thinkingConfig = { thinkingBudget: 0 };
             }
-          );
-          if (directRes.ok) {
-            const directData = await directRes.json();
-            rawText = directData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-            directSuccess = true;
-            break;
-          } else {
-            const errText = await directRes.text();
-            let parsedMsg = errText;
-            try { parsedMsg = JSON.parse(errText).error?.message || errText; } catch (e) {}
-            lastDirectErr = new Error(parsedMsg || `Gemini analysis failed (${directRes.status})`);
-            if (directRes.status === 404 || directRes.status === 503) continue;
-            throw lastDirectErr;
+            const directRes = await fetch(
+              buildUrl(m),
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{ role: 'user', parts: restParts }],
+                  generationConfig: genConfig
+                })
+              }
+            );
+            if (directRes.ok) {
+              const directData = await directRes.json();
+              rawText = directData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+              directSuccess = true;
+              break;
+            } else {
+              const errText = await directRes.text();
+              let parsedMsg = errText;
+              try { parsedMsg = JSON.parse(errText).error?.message || errText; } catch (e) {}
+              lastDirectErr = new Error(parsedMsg || `Gemini analysis failed (${directRes.status})`);
+              if (directRes.status === 404 || directRes.status === 400 || directRes.status === 401 || directRes.status === 403 || directRes.status === 503) continue;
+              throw lastDirectErr;
+            }
           }
+          if (directSuccess) break;
         }
         if (!directSuccess && lastDirectErr) throw lastDirectErr;
       } else if (!response.ok) {
@@ -471,50 +501,141 @@ Return ONLY this JSON structure, no markdown:
         rawText = data.text || "";
       }
     } else if (provider === 'groq') {
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${finalKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [{ role: 'user', content: `${analysisPrompt}\n\nDescription: ${(input as any).description}` }],
-        })
-      });
-      if (!response.ok) { let errText = await response.text(); try { const parsed = JSON.parse(errText); errText = parsed.error?.message || errText; } catch(e) {} throw new Error(`Groq API Error: ${response.status} - ${errText}`); }
-      const data = await response.json();
-      rawText = data.choices[0]?.message?.content || "";
+      const isImageInput = input.type === 'image';
+      const groqModels = isImageInput
+        ? ['meta-llama/llama-4-scout-17b-16e-instruct']
+        : ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+      const groqMessages = isImageInput
+        ? [{
+            role: 'user',
+            content: [
+              { type: 'text', text: analysisPrompt },
+              { type: 'image_url', image_url: { url: `data:${input.mimeType};base64,${input.data.replace(/^data:(.*,)?/, '')}` } }
+            ]
+          }]
+        : [{ role: 'user', content: `${analysisPrompt}\n\nDescription: ${input.description}` }];
+
+      let groqSuccess = false;
+      let lastGroqErr: any = null;
+      for (const m of groqModels) {
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${finalKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: m,
+            messages: groqMessages,
+            temperature: 0.2,
+            response_format: { type: 'json_object' }
+          })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          rawText = data.choices?.[0]?.message?.content || "";
+          groqSuccess = true;
+          break;
+        } else {
+          let errText = await response.text();
+          try { const parsed = JSON.parse(errText); errText = parsed.error?.message || errText; } catch(e) {}
+          lastGroqErr = new Error(`Groq API Error: ${response.status} - ${errText}`);
+          if (response.status === 404 || response.status === 400 || response.status === 429 || response.status === 503) continue;
+          throw lastGroqErr;
+        }
+      }
+      if (!groqSuccess && lastGroqErr) throw lastGroqErr;
     } else if (provider === 'mistral') {
-      const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${finalKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: 'mistral-large-latest',
-          messages: [{ role: 'user', content: `${analysisPrompt}\n\nDescription: ${(input as any).description}` }],
-        })
-      });
-      if (!response.ok) { let errText = await response.text(); try { const parsed = JSON.parse(errText); errText = parsed.error?.message || errText; } catch(e) {} throw new Error(`Mistral API Error: ${response.status} - ${errText}`); }
-      const data = await response.json();
-      rawText = data.choices[0]?.message?.content || "";
+      const isImageInput = input.type === 'image';
+      const mistralModels = isImageInput
+        ? ['pixtral-12b-2409', 'mistral-small-latest']
+        : ['mistral-small-latest', 'mistral-large-latest'];
+      const mistralMessages = isImageInput
+        ? [{
+            role: 'user',
+            content: [
+              { type: 'text', text: analysisPrompt },
+              { type: 'image_url', image_url: `data:${input.mimeType};base64,${input.data.replace(/^data:(.*,)?/, '')}` }
+            ]
+          }]
+        : [{ role: 'user', content: `${analysisPrompt}\n\nDescription: ${input.description}` }];
+
+      let mistralSuccess = false;
+      let lastMistralErr: any = null;
+      for (const m of mistralModels) {
+        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${finalKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: m,
+            messages: mistralMessages,
+            temperature: 0.2,
+            response_format: { type: 'json_object' }
+          })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          rawText = data.choices?.[0]?.message?.content || "";
+          mistralSuccess = true;
+          break;
+        } else {
+          let errText = await response.text();
+          try { const parsed = JSON.parse(errText); errText = parsed.error?.message || parsed.message || errText; } catch(e) {}
+          lastMistralErr = new Error(`Mistral API Error: ${response.status} - ${errText}`);
+          if (response.status === 404 || response.status === 400 || response.status === 429 || response.status === 503) continue;
+          throw lastMistralErr;
+        }
+      }
+      if (!mistralSuccess && lastMistralErr) throw lastMistralErr;
     } else if (provider === 'openrouter') {
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${finalKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: 'meta-llama/llama-3-8b-instruct:free',
-          messages: [{ role: 'user', content: `${analysisPrompt}\n\nDescription: ${(input as any).description}` }]
-        })
-      });
-      if (!response.ok) { let errText = await response.text(); try { const parsed = JSON.parse(errText); errText = parsed.error?.message || errText; } catch(e) {} throw new Error(`OpenRouter API Error: ${response.status} - ${errText}`); }
-      const data = await response.json();
-      rawText = data.choices[0]?.message?.content || "";
+      const isImageInput = input.type === 'image';
+      const orModels = isImageInput
+        ? ['google/gemma-3-27b-it:free', 'openrouter/free']
+        : ['meta-llama/llama-3.3-70b-instruct:free', 'google/gemma-3-27b-it:free', 'openrouter/free'];
+      const orMessages = isImageInput
+        ? [{
+            role: 'user',
+            content: [
+              { type: 'text', text: analysisPrompt },
+              { type: 'image_url', image_url: { url: `data:${input.mimeType};base64,${input.data.replace(/^data:(.*,)?/, '')}` } }
+            ]
+          }]
+        : [{ role: 'user', content: `${analysisPrompt}\n\nDescription: ${input.description}` }];
+
+      let orSuccess = false;
+      let lastOrErr: any = null;
+      for (const m of orModels) {
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${finalKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: m,
+            messages: orMessages,
+            temperature: 0.2
+          })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          rawText = data.choices?.[0]?.message?.content || "";
+          if (rawText) {
+            orSuccess = true;
+            break;
+          }
+        } else {
+          let errText = await response.text();
+          try { const parsed = JSON.parse(errText); errText = parsed.error?.message || errText; } catch(e) {}
+          lastOrErr = new Error(`OpenRouter API Error: ${response.status} - ${errText}`);
+          if (response.status === 404 || response.status === 400 || response.status === 429 || response.status === 503) continue;
+          throw lastOrErr;
+        }
+      }
+      if (!orSuccess && lastOrErr) throw lastOrErr;
     }
 
     let jsonString = rawText;
@@ -1316,39 +1437,50 @@ export const generateStockPrompts = async (
         }
         const normalizedModel = options.model === 'gemini-3.8-flash' ? 'gemini-2.5-flash' : options.model;
         const candidateModels = Array.from(
-          new Set([normalizedModel, 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest'].filter(Boolean))
+          new Set([normalizedModel, 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest', 'gemini-1.5-flash'].filter(Boolean))
         );
+        const endpoints = [
+          (m: string) => `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(finalKey)}`,
+          (m: string) => `https://aiplatform.googleapis.com/v1beta1/publishers/google/models/${m}:generateContent?key=${encodeURIComponent(finalKey)}`
+        ];
         let directSuccess = false;
         let lastDirectErr: any = null;
-        for (const m of candidateModels) {
-          const directRes = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(finalKey)}`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{ parts: [{ text: systemPrompt }] }],
-                generationConfig: {
-                  responseMimeType: 'application/json',
-                  temperature: 0.95,
-                  topP: 0.95
-                }
-              })
+        for (const buildUrl of endpoints) {
+          for (const m of candidateModels) {
+            const genConfig: Record<string, any> = {
+              responseMimeType: 'application/json',
+              temperature: 0.95,
+              topP: 0.95
+            };
+            if (m.startsWith('gemini-2.5-flash') || m === 'gemini-flash-latest') {
+              genConfig.thinkingConfig = { thinkingBudget: 0 };
             }
-          );
-          if (directRes.ok) {
-            const directData = await directRes.json();
-            rawText = directData?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '{"prompts":[]}';
-            directSuccess = true;
-            break;
-          } else {
-            const errText = await directRes.text();
-            let parsedMsg = errText;
-            try { parsedMsg = JSON.parse(errText).error?.message || errText; } catch (e) {}
-            lastDirectErr = new Error(parsedMsg || `Gemini generation failed (${directRes.status})`);
-            if (directRes.status === 404 || directRes.status === 503) continue;
-            throw lastDirectErr;
+            const directRes = await fetch(
+              buildUrl(m),
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{ role: 'user', parts: [{ text: systemPrompt }] }],
+                  generationConfig: genConfig
+                })
+              }
+            );
+            if (directRes.ok) {
+              const directData = await directRes.json();
+              rawText = directData?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '{"prompts":[]}';
+              directSuccess = true;
+              break;
+            } else {
+              const errText = await directRes.text();
+              let parsedMsg = errText;
+              try { parsedMsg = JSON.parse(errText).error?.message || errText; } catch (e) {}
+              lastDirectErr = new Error(parsedMsg || `Gemini generation failed (${directRes.status})`);
+              if (directRes.status === 404 || directRes.status === 400 || directRes.status === 401 || directRes.status === 403 || directRes.status === 503) continue;
+              throw lastDirectErr;
+            }
           }
+          if (directSuccess) break;
         }
         if (!directSuccess && lastDirectErr) throw lastDirectErr;
       } else if (!response.ok) {
@@ -1359,59 +1491,112 @@ export const generateStockPrompts = async (
         rawText = data.text?.trim() || '{"prompts":[]}';
       }
     } else if (provider === 'groq') {
-      // Groq
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: options.model,
-          messages: [{ role: 'user', content: systemPrompt }],
-          temperature: 0.95,
-          top_p: 0.95
-        })
-      });
-      if (!response.ok) { let errText = await response.text(); try { const parsed = JSON.parse(errText); errText = parsed.error?.message || errText; } catch(e) {} throw new Error(`Groq API Error: ${response.status} - ${errText}`); }
-      const data = await response.json();
-      rawText = data.choices[0]?.message?.content || '{"prompts":[]}';
+      // Groq with automatic fallback for deprecated models (e.g. mixtral-8x7b-32768)
+      const requestedGroq = options.model === 'mixtral-8x7b-32768' ? 'llama-3.3-70b-versatile' : options.model;
+      const groqCandidates = Array.from(new Set([requestedGroq, 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant'].filter(Boolean)));
+      let groqSuccess = false;
+      let lastGroqErr: any = null;
+      for (const m of groqCandidates) {
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${finalKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: m,
+            messages: [{ role: 'user', content: systemPrompt }],
+            temperature: 0.9,
+            top_p: 0.95,
+            response_format: { type: 'json_object' }
+          })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          rawText = data.choices?.[0]?.message?.content || '{"prompts":[]}';
+          groqSuccess = true;
+          break;
+        } else {
+          let errText = await response.text();
+          try { const parsed = JSON.parse(errText); errText = parsed.error?.message || errText; } catch(e) {}
+          lastGroqErr = new Error(`Groq API Error: ${response.status} - ${errText}`);
+          if (response.status === 404 || response.status === 400 || response.status === 503) continue;
+          throw lastGroqErr;
+        }
+      }
+      if (!groqSuccess && lastGroqErr) throw lastGroqErr;
     } else if (provider === 'mistral') {
-      // Mistral
-      const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: options.model,
-          messages: [{ role: 'user', content: systemPrompt }],
-          temperature: 0.95,
-          top_p: 0.95
-        })
-      });
-      if (!response.ok) { let errText = await response.text(); try { const parsed = JSON.parse(errText); errText = parsed.error?.message || errText; } catch(e) {} throw new Error(`Mistral API Error: ${response.status} - ${errText}`); }
-      const data = await response.json();
-      rawText = data.choices[0]?.message?.content || '{"prompts":[]}';
+      // Mistral with fast JSON mode and fallback
+      const mistralCandidates = Array.from(new Set([options.model, 'mistral-small-latest', 'mistral-large-latest'].filter(Boolean)));
+      let mistralSuccess = false;
+      let lastMistralErr: any = null;
+      for (const m of mistralCandidates) {
+        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${finalKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: m,
+            messages: [{ role: 'user', content: systemPrompt }],
+            temperature: 0.9,
+            top_p: 0.95,
+            response_format: { type: 'json_object' }
+          })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          rawText = data.choices?.[0]?.message?.content || '{"prompts":[]}';
+          mistralSuccess = true;
+          break;
+        } else {
+          let errText = await response.text();
+          try { const parsed = JSON.parse(errText); errText = parsed.error?.message || parsed.message || errText; } catch(e) {}
+          lastMistralErr = new Error(`Mistral API Error: ${response.status} - ${errText}`);
+          if (response.status === 404 || response.status === 400 || response.status === 503) continue;
+          throw lastMistralErr;
+        }
+      }
+      if (!mistralSuccess && lastMistralErr) throw lastMistralErr;
     } else if (provider === 'openrouter') {
-      // OpenRouter
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: options.model,
-          messages: [{ role: 'user', content: systemPrompt }],
-          temperature: 0.95,
-          top_p: 0.95
-        })
-      });
-      if (!response.ok) { let errText = await response.text(); try { const parsed = JSON.parse(errText); errText = parsed.error?.message || errText; } catch(e) {} throw new Error(`OpenRouter API Error: ${response.status} - ${errText}`); }
-      const data = await response.json();
-      rawText = data.choices[0]?.message?.content || '{"prompts":[]}';
+      // OpenRouter with automatic fallback across free/fast models
+      const requestedOR = options.model === 'google/gemma-4-31b-it:free' ? 'google/gemma-3-27b-it:free' : options.model;
+      const orCandidates = Array.from(
+        new Set([requestedOR, 'meta-llama/llama-3.3-70b-instruct:free', 'google/gemma-3-27b-it:free', 'openrouter/free'].filter(Boolean))
+      );
+      let orSuccess = false;
+      let lastOrErr: any = null;
+      for (const m of orCandidates) {
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${finalKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: m,
+            messages: [{ role: 'user', content: systemPrompt }],
+            temperature: 0.9,
+            top_p: 0.95
+          })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          rawText = data.choices?.[0]?.message?.content || '{"prompts":[]}';
+          if (rawText && rawText !== '{"prompts":[]}') {
+            orSuccess = true;
+            break;
+          }
+        } else {
+          let errText = await response.text();
+          try { const parsed = JSON.parse(errText); errText = parsed.error?.message || errText; } catch(e) {}
+          lastOrErr = new Error(`OpenRouter API Error: ${response.status} - ${errText}`);
+          if (response.status === 404 || response.status === 400 || response.status === 429 || response.status === 503) continue;
+          throw lastOrErr;
+        }
+      }
+      if (!orSuccess && lastOrErr) throw lastOrErr;
     }
 
     let jsonString = rawText;

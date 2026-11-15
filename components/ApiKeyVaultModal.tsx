@@ -145,7 +145,7 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
     if (upper.includes('OPENROUTER') || upper.includes('OR_KEY')) return 'openrouter';
 
     // Key prefix heuristics
-    if (trimmed.startsWith('AIzaSy')) return 'gemini';
+    if (trimmed.startsWith('AIzaSy') || trimmed.startsWith('AQ.')) return 'gemini';
     if (trimmed.startsWith('gsk_')) return 'groq';
     if (trimmed.startsWith('sk-or-')) return 'openrouter';
 
@@ -232,7 +232,7 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
 
     const refined = sanitizeKey(rawKey);
     // Explicit prefix re-check
-    if (refined.startsWith('AIzaSy')) detectedProvider = 'gemini';
+    if (refined.startsWith('AIzaSy') || refined.startsWith('AQ.')) detectedProvider = 'gemini';
     else if (refined.startsWith('gsk_')) detectedProvider = 'groq';
     else if (refined.startsWith('sk-or-')) detectedProvider = 'openrouter';
 

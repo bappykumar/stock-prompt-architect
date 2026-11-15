@@ -26,8 +26,8 @@ const fileToBase64 = (file: File): Promise<{data: string, mimeType: string}> => 
     reader.onload = (e) => {
       const img = new window.Image();
       img.onload = () => {
-        const MAX_WIDTH = 1024;
-        const MAX_HEIGHT = 1024;
+        const MAX_WIDTH = 768;
+        const MAX_HEIGHT = 768;
         let width = img.width;
         let height = img.height;
 
@@ -52,8 +52,11 @@ const fileToBase64 = (file: File): Promise<{data: string, mimeType: string}> => 
           return resolve({data: base64.split(',')[1], mimeType: file.type});
         }
         
+        // Fill pure white before drawing so transparent PNG cutouts don't turn black in JPEG
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, width, height);
         ctx.drawImage(img, 0, 0, width, height);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
         resolve({data: dataUrl.split(',')[1], mimeType: 'image/jpeg'});
       };
       img.onerror = () => {
@@ -403,17 +406,18 @@ const OPTIONS = {
     { value: 'Minimal Base Shadow', label: 'Minimal Base' }
   ],
   model: [
-    { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', desc: 'Fast & efficient. Best for Free Tier limits.', provider: 'gemini' },
+    { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Turbo)', desc: 'Ultra-fast zero-thinking mode. Best for Free Tier limits.', provider: 'gemini' },
+    { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (Instant)', desc: 'Instant low-latency generation.', provider: 'gemini' },
     { value: 'gemini-flash-latest', label: 'Gemini Flash (Latest)', desc: 'Auto-adapts to latest stable Gemini Flash.', provider: 'gemini' },
-    { value: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash', desc: 'High intelligence & reasoning.', provider: 'gemini' },
-    { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', desc: 'Complex reasoning. Recommended for Pro/Paid limits.', provider: 'gemini' },
-    { value: 'llama-3.3-70b-versatile', label: 'Llama 3 70B', desc: 'Lightning fast generation via Groq.', provider: 'groq' },
-    { value: 'llama-3.1-8b-instant', label: 'Llama 3 8B', desc: 'Faster and free tier optimized.', provider: 'groq' },
-    { value: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B', desc: 'Excellent open-source model.', provider: 'groq' },
+    { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', desc: 'Deep complex reasoning. Recommended for Paid tier.', provider: 'gemini' },
+    { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B (Groq)', desc: 'Lightning-fast 300+ tok/s generation via Groq.', provider: 'groq' },
+    { value: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B Instant (Groq)', desc: 'Sub-second instant speed & free tier optimized.', provider: 'groq' },
+    { value: 'meta-llama/llama-4-scout-17b-16e-instruct', label: 'Llama 4 Scout 17B (Groq)', desc: 'Ultra-fast multimodal & text generation.', provider: 'groq' },
+    { value: 'mistral-small-latest', label: 'Mistral Small (Fast)', desc: 'High-speed commercial prompt generation.', provider: 'mistral' },
     { value: 'mistral-large-latest', label: 'Mistral Large', desc: 'Top-tier reasoning by Mistral AI.', provider: 'mistral' },
-    { value: 'google/gemma-4-31b-it:free', label: 'Gemma 4 31B (Free)', desc: 'Free via OpenRouter', provider: 'openrouter' },
-    { value: 'meta-llama/llama-3.3-70b-instruct:free', label: 'Llama 3.3 70B (Free)', desc: 'Free via OpenRouter', provider: 'openrouter' },
-    { value: 'openrouter/free', label: 'Auto OpenRouter (Free)', desc: 'Automatically selects best free model', provider: 'openrouter' }
+    { value: 'google/gemma-3-27b-it:free', label: 'Gemma 3 27B (Free)', desc: 'Fast free model via OpenRouter.', provider: 'openrouter' },
+    { value: 'meta-llama/llama-3.3-70b-instruct:free', label: 'Llama 3.3 70B (Free)', desc: 'Free high-intelligence via OpenRouter.', provider: 'openrouter' },
+    { value: 'openrouter/free', label: 'Auto OpenRouter (Free)', desc: 'Automatically selects fastest available free model.', provider: 'openrouter' }
   ]
 };
 
@@ -1356,15 +1360,24 @@ export default function App() {
   }, [activeKeyId]);
 
   const handleAddKey = () => {
-    if (!newKeyInput.trim()) return;
+    const cleanInput = newKeyInput.trim();
+    if (!cleanInput) return;
+    let detectedProvider: 'gemini' | 'groq' | 'mistral' | 'openrouter' = activeProviderTab;
+    if (cleanInput.startsWith('AIzaSy') || cleanInput.startsWith('AQ.')) detectedProvider = 'gemini';
+    else if (cleanInput.startsWith('gsk_')) detectedProvider = 'groq';
+    else if (cleanInput.startsWith('sk-or-')) detectedProvider = 'openrouter';
+
     const newKey: ApiKeyRecord = {
       id: crypto.randomUUID(),
-      provider: activeProviderTab,
-      key: newKeyInput.trim(),
+      provider: detectedProvider,
+      key: cleanInput,
       status: 'untested',
       addedAt: Date.now()
     };
     setApiKeys(prev => [...prev, newKey]);
+    if (detectedProvider !== activeProviderTab) {
+      setActiveProviderTab(detectedProvider);
+    }
     if (!activeKeyId) setActiveKeyId(newKey.id);
     setNewKeyInput("");
     
@@ -1408,7 +1421,10 @@ export default function App() {
     let invalidCount = 0;
 
     const resultsMap = new Map<string, { status: 'valid' | 'invalid'; errorMessage?: string }>();
-    await Promise.all(providerKeys.map(async (k) => {
+    await Promise.all(providerKeys.map(async (k, idx) => {
+      if (idx > 0) {
+        await new Promise(r => setTimeout(r, idx * 60));
+      }
       try {
         await testApiKey(k.key, k.provider);
         validCount++;
@@ -1420,10 +1436,20 @@ export default function App() {
       }
     }));
 
-    setApiKeys(prev => prev.map(k => {
-      const res = resultsMap.get(k.id);
-      return res ? { ...k, status: res.status, errorMessage: res.errorMessage } : k;
-    }));
+    setApiKeys(prev => {
+      const updated = prev.map(k => {
+        const res = resultsMap.get(k.id);
+        return res ? { ...k, status: res.status, errorMessage: res.errorMessage } : k;
+      });
+      const currentActive = updated.find(k => k.id === activeKeyId);
+      if (!currentActive || currentActive.status === 'invalid') {
+        const firstValid = updated.find(k => k.provider === activeProviderTab && k.status === 'valid');
+        if (firstValid) {
+          setActiveKeyId(firstValid.id);
+        }
+      }
+      return updated;
+    });
     setTestAllSummary({ valid: validCount, invalid: invalidCount, total: providerKeys.length });
     setIsTestingAll(false);
     
@@ -1454,23 +1480,29 @@ export default function App() {
 
     if (autoTest) {
       setTimeout(async () => {
+        const newKeyIds = new Set(newKeys.map(k => k.id));
+        setApiKeys(prev => prev.map(item => newKeyIds.has(item.id) ? { ...item, status: 'testing', errorMessage: undefined } : item));
         let validCount = 0;
         let invalidCount = 0;
-        for (const k of newKeys) {
-          setApiKeys(prev => prev.map(item => item.id === k.id ? { ...item, status: 'testing' } : item));
+        const resultsMap = new Map<string, { status: 'valid' | 'invalid'; errorMessage?: string }>();
+        await Promise.all(newKeys.map(async (k) => {
           try {
             await testApiKey(k.key, k.provider);
             validCount++;
-            setApiKeys(prev => prev.map(item => item.id === k.id ? { ...item, status: 'valid' } : item));
-          } catch (e) {
+            resultsMap.set(k.id, { status: 'valid', errorMessage: undefined });
+          } catch (e: any) {
             invalidCount++;
-            setApiKeys(prev => prev.map(item => item.id === k.id ? { ...item, status: 'invalid' } : item));
+            resultsMap.set(k.id, { status: 'invalid', errorMessage: e?.message || 'Verification failed' });
           }
-        }
+        }));
+        setApiKeys(prev => prev.map(item => {
+          const res = resultsMap.get(item.id);
+          return res ? { ...item, status: res.status, errorMessage: res.errorMessage } : item;
+        }));
         if (newKeys.length > 1) {
           addToast(`Auto-test complete: ${validCount} valid, ${invalidCount} invalid.`, validCount > 0 ? 'success' : 'warning', 4000);
         }
-      }, 200);
+      }, 100);
     }
   };
 
@@ -1615,7 +1647,7 @@ export default function App() {
     const preferredKeys = allKeys.filter(k => k.provider === requiredProvider);
     const otherKeys = strictProvider ? [] : allKeys.filter(k => k.provider !== requiredProvider);
 
-    // Rotate preferred keys so activeKeyId (if it's preferred) is first
+    // Rotate preferred keys so activeKeyId (if it's preferred) is first, and always prioritize valid/untested keys ahead of invalid keys
     let prioritizedPreferred = [];
     const currentIdx = preferredKeys.findIndex(k => k.id === activeKeyId);
     if (currentIdx !== -1) {
@@ -1623,6 +1655,10 @@ export default function App() {
     } else {
       prioritizedPreferred = [...preferredKeys];
     }
+
+    const statusWeight = (status?: string) => (status === 'valid' ? 0 : status === 'untested' || status === 'testing' ? 1 : 2);
+    prioritizedPreferred.sort((a, b) => statusWeight(a.status) - statusWeight(b.status));
+    otherKeys.sort((a, b) => statusWeight(a.status) - statusWeight(b.status));
 
     const serverGeminiFallback = { id: 'system', key: '', provider: 'gemini' as const };
     let keysToTry = [...prioritizedPreferred, ...otherKeys];
@@ -1637,7 +1673,7 @@ export default function App() {
       throw new Error(`No API key configured for ${requiredProvider.toUpperCase()}. Please add one.`);
     }
 
-    const maxRetriesPerKey = 3;
+    const maxRetriesPerKey = 2;
     let lastError: any = null;
     
     setApiTrackerState(prev => ({
@@ -1675,8 +1711,11 @@ export default function App() {
             currentProvider: keyRecord.provider.toUpperCase()
           }));
           const result = await operation(keyRecord, fallbackModel);
-          if (keyRecord.id !== 'system' && keyRecord.id !== activeKeyId) {
-            setActiveKeyId(keyRecord.id);
+          if (keyRecord.id !== 'system') {
+            if (keyRecord.id !== activeKeyId) {
+              setActiveKeyId(keyRecord.id);
+            }
+            setApiKeys(prev => prev.map(k => k.id === keyRecord.id ? { ...k, status: 'valid', errorMessage: undefined } : k));
           }
           setApiTrackerState(prev => ({ ...prev, statusMessage: 'TRANSMISSION COMPLETE.', visible: false }));
           return result;
@@ -1686,7 +1725,20 @@ export default function App() {
           }
           console.warn(`Attempt ${attempt} failed with key ${maskedKey} (${keyRecord.provider}):`, err);
           
-          const isLastAttempt = attempt === retriesForThisKey;
+          const errLower = String(err?.message || '').toLowerCase();
+          const isImmediateRotateError =
+            errLower.includes('401') ||
+            errLower.includes('403') ||
+            errLower.includes('404') ||
+            errLower.includes('429') ||
+            errLower.includes('quota') ||
+            errLower.includes('rate limit') ||
+            errLower.includes('invalid api key') ||
+            errLower.includes('not found') ||
+            errLower.includes('decommissioned') ||
+            errLower.includes('forbidden');
+
+          const isLastAttempt = isImmediateRotateError || attempt === retriesForThisKey;
           const isLastKey = keyIdx === keysToTry.length - 1;
           
           if (isLastAttempt) {
@@ -1694,14 +1746,13 @@ export default function App() {
           }
 
           if (!isLastAttempt) {
-            const backoffMs = attempt * 1500; // Backoff of 1.5s, 3s
-            setApiTrackerState(prev => ({ ...prev, statusMessage: `ERR: NODE OFFLINE. RETRYING (${attempt}/${retriesForThisKey}) IN ${(backoffMs / 1000).toFixed(1)}S...` }));
-            
+            const backoffMs = 350; // Fast 350ms retry for transient network hiccups
+            setApiTrackerState(prev => ({ ...prev, statusMessage: `RETRYING NODE (${attempt}/${retriesForThisKey})...` }));
             await new Promise(resolve => setTimeout(resolve, backoffMs));
           } else if (!isLastKey) {
-            // Rotate keys
-            setApiTrackerState(prev => ({ ...prev, statusMessage: 'ERR: NODE FAILED. REROUTING TO STANDBY NODE...' }));
-            await new Promise(resolve => setTimeout(resolve, 800));
+            // Instant key rotation (no 800ms artificial sleep)
+            setApiTrackerState(prev => ({ ...prev, statusMessage: 'SWITCHING TO NEXT ACTIVE KEY...' }));
+            break;
           }
         }
       }
@@ -1754,11 +1805,7 @@ export default function App() {
       }
       
       const activeModelObj = OPTIONS.model.find(m => m.value === options.model);
-      let providerToUse = activeModelObj ? activeModelObj.provider as 'gemini'|'groq'|'mistral'|'openrouter' : 'gemini';
-      
-      if (input.type === 'image' && providerToUse !== 'gemini') {
-        providerToUse = 'gemini'; // Force Gemini for image processing
-      }
+      const providerToUse = activeModelObj ? activeModelObj.provider as 'gemini'|'groq'|'mistral'|'openrouter' : 'gemini';
 
       // Prepare visual options, stripping non-selectable headers and model
       const visualOptions: any = {};
@@ -1786,14 +1833,12 @@ export default function App() {
         }
       });
 
-      // Image analysis forces Gemini, but executeWithKeyRotation might rotate to Groq if Gemini fails.
-      // We pass the keyRecord.provider down. If it's an image and rotates to non-gemini, we rely on the service to handle/fail.
       const passedPreservation = !!options.productPreservation;
       const preservationType = options.preservationType || 'product';
       const result = await executeWithKeyRotation((keyRecord, fallbackModel) => {
         const passedOptions = fallbackModel ? { ...visualOptions, model: fallbackModel } : visualOptions;
         return analyzeReferenceAndSuggestSettings(input, passedOptions, keyRecord.key, keyRecord.provider, passedPreservation, preservationType);
-      }, providerToUse, input.type === 'image');
+      }, providerToUse, false);
       
       const rawSettings = { ...result.settings };
       delete rawSettings.model;
@@ -3645,14 +3690,14 @@ export default function App() {
                         <div className="space-y-3 overflow-y-auto max-h-[250px] custom-scrollbar pr-2">
                           {apiKeys.filter(k => k.provider === activeProviderTab).map(k => (
                             <div key={k.id} className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl border transition-colors gap-2.5 sm:gap-3 ${activeKeyId === k.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/10' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'}`}>
-                                 <div className="flex items-center gap-2.5 overflow-hidden min-w-0 w-full sm:w-auto">
+                                 <div className="flex items-center gap-2.5 overflow-hidden min-w-0 flex-1">
                                    <div 
                                      onClick={() => setActiveKeyId(k.id)}
                                      className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 cursor-pointer transition-colors ${activeKeyId === k.id ? 'border-blue-500' : 'border-slate-300 dark:border-slate-600'}`}
                                    >
                                      {activeKeyId === k.id && <div className="w-2 h-2 bg-blue-500 rounded-full" />}
                                    </div>
-                                   <span className="text-xs font-mono text-slate-700 dark:text-slate-300 truncate">
+                                   <span className="text-xs font-mono text-slate-700 dark:text-slate-300 shrink-0">
                                      {k.key.substring(0, 8)}...{k.key.substring(k.key.length - 4)}
                                    </span>
                                    <span className={`text-[9px] font-bold uppercase tracking-wider shrink-0 px-2 py-0.5 rounded-full ${k.status === 'valid' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : k.status === 'invalid' ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' : k.status === 'testing' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>
@@ -3660,7 +3705,7 @@ export default function App() {
                                    </span>
                                    {k.status === 'invalid' && k.errorMessage && (
                                      <span 
-                                       className="text-[10px] text-red-500 dark:text-red-400 font-medium truncate max-w-[130px] sm:max-w-[220px] flex items-center gap-1 cursor-help shrink-0"
+                                       className="text-[10px] text-red-500 dark:text-red-400 font-medium truncate min-w-0 flex-1 flex items-center gap-1 cursor-help"
                                        title={k.errorMessage}
                                      >
                                        <AlertCircle size={10} className="shrink-0 text-red-500" />
@@ -3672,11 +3717,11 @@ export default function App() {
                                    <button 
                                      onClick={() => handleTestKey(k.id)} 
                                      disabled={k.status === 'testing'} 
-                                     className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-300 transition-colors disabled:opacity-50"
+                                     className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-300 transition-colors disabled:opacity-50 cursor-pointer"
                                    >
                                      {k.status === 'testing' ? 'Testing...' : 'Test'}
                                    </button>
-                                   <button onClick={() => handleRemoveKey(k.id)} className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                                   <button onClick={() => handleRemoveKey(k.id)} className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors cursor-pointer">
                                      <Trash2 size={14} />
                                    </button>
                                  </div>
@@ -3687,14 +3732,37 @@ export default function App() {
                         {/* Stored Keys Footer */}
                         <div className="mt-3 pt-2.5 border-t border-slate-200 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500">
                           <span>{apiKeys.filter(k => k.provider === activeProviderTab).length} key(s) in active provider</span>
-                          <button
-                            type="button"
-                            onClick={() => handleOpenClearConfirm('current')}
-                            className="text-red-500 hover:text-red-600 dark:hover:text-red-400 hover:underline flex items-center gap-1 cursor-pointer font-semibold"
-                          >
-                            <Trash2 size={11} />
-                            <span>Clear Provider Keys</span>
-                          </button>
+                          <div className="flex items-center gap-3">
+                            {apiKeys.some(k => k.provider === activeProviderTab && k.status === 'invalid') && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const invalidCount = apiKeys.filter(k => k.provider === activeProviderTab && k.status === 'invalid').length;
+                                  setApiKeys(prev => {
+                                    const next = prev.filter(k => !(k.provider === activeProviderTab && k.status === 'invalid'));
+                                    if (!next.some(k => k.id === activeKeyId)) {
+                                      const firstValid = next.find(k => k.provider === activeProviderTab && k.status === 'valid') || next[0];
+                                      setActiveKeyId(firstValid ? firstValid.id : '');
+                                    }
+                                    return next;
+                                  });
+                                  addToast(`Removed ${invalidCount} invalid key(s).`, 'info', 3000);
+                                }}
+                                className="text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1 cursor-pointer font-semibold"
+                              >
+                                <ListX size={12} />
+                                <span>Remove Invalid ({apiKeys.filter(k => k.provider === activeProviderTab && k.status === 'invalid').length})</span>
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenClearConfirm('current')}
+                              className="text-red-500 hover:text-red-600 dark:hover:text-red-400 hover:underline flex items-center gap-1 cursor-pointer font-semibold"
+                            >
+                              <Trash2 size={11} />
+                              <span>Clear Provider Keys</span>
+                            </button>
+                          </div>
                         </div>
                       </>
                     )}
