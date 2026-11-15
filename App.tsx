@@ -435,7 +435,13 @@ const PERSONAL_QUANTITY_OPTIONS = [
   { value: 35, label: '35 Prompts' },
   { value: 40, label: '40 Prompts' },
   { value: 45, label: '45 Prompts' },
-  { value: 50, label: '50 Prompts' }
+  { value: 50, label: '50 Prompts' },
+  { value: 60, label: '60 Prompts' },
+  { value: 70, label: '70 Prompts' },
+  { value: 75, label: '75 Prompts' },
+  { value: 80, label: '80 Prompts' },
+  { value: 90, label: '90 Prompts' },
+  { value: 100, label: '100 Prompts' }
 ];
 
 const LOADING_STEPS = [
@@ -1224,8 +1230,21 @@ export default function App() {
 
   const [autoFillMode, setAutoFillMode] = useState<'image'|'text'>('text');
   const [referenceImage, setReferenceImage] = useState<File | null>(null);
+  const [referenceImageUrl, setReferenceImageUrl] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [lastUsedReference, setLastUsedReference] = useState<{mode: 'text' | 'image' | null, value: string | null}>({ mode: null, value: null });
+
+  useEffect(() => {
+    if (!referenceImage) {
+      setReferenceImageUrl(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(referenceImage);
+    setReferenceImageUrl(objectUrl);
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [referenceImage]);
 
 
   const [toasts, setToasts] = useState<{ id: string; message: string; type: 'info' | 'success' | 'warning' | 'error' | 'retry' }[]>([]);
@@ -1275,6 +1294,9 @@ export default function App() {
 
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
+      if (isModalOpen || isVaultModalOpen || isResetConfirmOpen || isClearPromptsConfirmOpen || isClearApiConfirmOpen) {
+        return;
+      }
       const items = e.clipboardData?.items;
       if (!items) return;
       
@@ -1284,6 +1306,11 @@ export default function App() {
           if (file) {
             setReferenceImage(file);
             setAutoFillMode('image');
+            setOptions(prev => ({
+              ...prev,
+              activeFields: { ...prev.activeFields, smartRefinement: true }
+            }));
+            addToast('Reference image pasted into Smart Refinement.', 'info', 2500);
             break;
           }
         }
@@ -1292,7 +1319,7 @@ export default function App() {
 
     window.addEventListener('paste', handlePaste as any);
     return () => window.removeEventListener('paste', handlePaste as any);
-  }, []);
+  }, [isModalOpen, isVaultModalOpen, isResetConfirmOpen, isClearPromptsConfirmOpen, isClearApiConfirmOpen, addToast]);
 
   useEffect(() => {
     safeLocalStorage.setItem('prompt_mode', isAdvanced ? 'advanced' : 'basic');
@@ -1369,29 +1396,35 @@ export default function App() {
   };
 
   const handleTestAllKeys = async () => {
-    if (apiKeys.length === 0) return;
+    const providerKeys = apiKeys.filter(k => k.provider === activeProviderTab);
+    if (providerKeys.length === 0) return;
     setIsTestingAll(true);
     setTestAllSummary(null);
     
-    setApiKeys(prev => prev.map(k => ({ ...k, status: 'testing', errorMessage: undefined })));
+    const providerKeyIds = new Set(providerKeys.map(k => k.id));
+    setApiKeys(prev => prev.map(k => providerKeyIds.has(k.id) ? { ...k, status: 'testing', errorMessage: undefined } : k));
 
     let validCount = 0;
     let invalidCount = 0;
 
-    const newKeys = await Promise.all(apiKeys.map(async (k) => {
+    const resultsMap = new Map<string, { status: 'valid' | 'invalid'; errorMessage?: string }>();
+    await Promise.all(providerKeys.map(async (k) => {
       try {
         await testApiKey(k.key, k.provider);
         validCount++;
-        return { ...k, status: 'valid' as const, errorMessage: undefined };
+        resultsMap.set(k.id, { status: 'valid', errorMessage: undefined });
       } catch (e: any) {
         invalidCount++;
         const errorMsg = e?.message || 'Verification failed';
-        return { ...k, status: 'invalid' as const, errorMessage: errorMsg };
+        resultsMap.set(k.id, { status: 'invalid', errorMessage: errorMsg });
       }
     }));
 
-    setApiKeys(newKeys);
-    setTestAllSummary({ valid: validCount, invalid: invalidCount, total: apiKeys.length });
+    setApiKeys(prev => prev.map(k => {
+      const res = resultsMap.get(k.id);
+      return res ? { ...k, status: res.status, errorMessage: res.errorMessage } : k;
+    }));
+    setTestAllSummary({ valid: validCount, invalid: invalidCount, total: providerKeys.length });
     setIsTestingAll(false);
     
     setTimeout(() => setTestAllSummary(null), 5000);
@@ -1570,21 +1603,17 @@ export default function App() {
 
   const executeWithKeyRotation = async <T,>(
     operation: (keyRecord: { id: string, key: string, provider: 'gemini'|'groq'|'mistral'|'openrouter' }, fallbackModel?: string) => Promise<T>,
-    providerOverride?: 'gemini' | 'groq' | 'mistral' | 'openrouter'
+    providerOverride?: 'gemini' | 'groq' | 'mistral' | 'openrouter',
+    strictProvider: boolean = false
   ): Promise<T> => {
     const activeModelObj = OPTIONS.model.find(m => m.value === options.model);
     const requiredProvider = providerOverride || (activeModelObj ? (activeModelObj as any).provider as 'gemini'|'groq'|'mistral'|'openrouter' : 'gemini');
-
-    if (apiKeys.length === 0) {
-      setIsModalOpen(true);
-      throw new Error(`No API key configured. Please add one.`);
-    }
 
     const allKeys = apiKeys.map(k => ({ ...k, provider: (k.provider || 'gemini') as 'gemini'|'groq'|'mistral'|'openrouter' }));
 
     // Prioritize the requested provider's keys
     const preferredKeys = allKeys.filter(k => k.provider === requiredProvider);
-    const otherKeys = allKeys.filter(k => k.provider !== requiredProvider);
+    const otherKeys = strictProvider ? [] : allKeys.filter(k => k.provider !== requiredProvider);
 
     // Rotate preferred keys so activeKeyId (if it's preferred) is first
     let prioritizedPreferred = [];
@@ -1595,7 +1624,18 @@ export default function App() {
       prioritizedPreferred = [...preferredKeys];
     }
 
-    const keysToTry = [...prioritizedPreferred, ...otherKeys];
+    const serverGeminiFallback = { id: 'system', key: '', provider: 'gemini' as const };
+    let keysToTry = [...prioritizedPreferred, ...otherKeys];
+
+    if (requiredProvider === 'gemini' || !strictProvider) {
+      keysToTry.push(serverGeminiFallback);
+    }
+
+    if (keysToTry.length === 0) {
+      setActiveProviderTab(requiredProvider);
+      setIsModalOpen(true);
+      throw new Error(`No API key configured for ${requiredProvider.toUpperCase()}. Please add one.`);
+    }
 
     const maxRetriesPerKey = 3;
     let lastError: any = null;
@@ -1603,9 +1643,9 @@ export default function App() {
     setApiTrackerState(prev => ({
       ...prev,
       visible: true,
-      totalKeys: apiKeys.length,
-      currentKeyId: null,
-      currentProvider: null,
+      totalKeys: keysToTry.length,
+      currentKeyId: keysToTry[0]?.id || null,
+      currentProvider: keysToTry[0]?.provider?.toUpperCase() || null,
       attempt: 1,
       failedKeys: [],
       statusMessage: 'ESTABLISHING CONNECTION...'
@@ -1626,7 +1666,12 @@ export default function App() {
 
       for (let attempt = 1; attempt <= maxRetriesPerKey; attempt++) {
         try {
-          setApiTrackerState(prev => ({ ...prev, attempt }));
+          setApiTrackerState(prev => ({
+            ...prev,
+            attempt,
+            currentKeyId: keyRecord.id,
+            currentProvider: keyRecord.provider.toUpperCase()
+          }));
           const result = await operation(keyRecord, fallbackModel);
           if (keyRecord.id !== 'system' && keyRecord.id !== activeKeyId) {
             setActiveKeyId(keyRecord.id);
@@ -1661,9 +1706,9 @@ export default function App() {
     setApiTrackerState(prev => ({ ...prev, visible: false }));
     setIsModalOpen(true);
     const apiErrorDetail = lastError?.message ? `: ${lastError.message}` : '';
-    throw new Error(apiKeys.length > 1 
-      ? `All available API keys across all providers have failed${apiErrorDetail}. Please add a new API key.`
-      : `Your API key failed${apiErrorDetail}. Please add a new API key.`);
+    throw new Error(keysToTry.length > 1 
+      ? `All available API keys have failed${apiErrorDetail}. Please verify or add a new API key.`
+      : `Your API key failed${apiErrorDetail}. Please verify or add a new API key.`);
   };
 
   // Option Value Normalizer to map Gemini predictions (whether value or label) safely to valid option values
@@ -1744,7 +1789,7 @@ export default function App() {
       const result = await executeWithKeyRotation((keyRecord, fallbackModel) => {
         const passedOptions = fallbackModel ? { ...visualOptions, model: fallbackModel } : visualOptions;
         return analyzeReferenceAndSuggestSettings(input, passedOptions, keyRecord.key, keyRecord.provider, passedPreservation, preservationType);
-      }, providerToUse);
+      }, providerToUse, input.type === 'image');
       
       const rawSettings = { ...result.settings };
       delete rawSettings.model;
@@ -1820,6 +1865,15 @@ export default function App() {
         newSettings.colorMood = 'Default / Auto';
       }
 
+      if (input.type === 'image') {
+        ['conceptFocus', 'targetMarket', 'authenticity', 'qualityCamera'].forEach(metaField => {
+          if (!options.lockedFields?.[metaField]) {
+            newSettings[metaField] = 'Default / Auto';
+            nextActiveFields[metaField] = false;
+          }
+        });
+      }
+
       const newOptions = {
         ...options,
         ...newSettings,
@@ -1845,10 +1899,6 @@ export default function App() {
   };
 
   const handleGenerate = useCallback(async () => {
-    if (apiKeys.length === 0) {
-      setIsModalOpen(true);
-      return;
-    }
     if (typeof window !== 'undefined' && window.innerWidth < 1024) {
       setIsSidebarOpen(false);
     }
@@ -1914,6 +1964,16 @@ export default function App() {
       return b;
     }));
     addToast('Prompt copied to clipboard!', 'success', 2000);
+  };
+
+  const deleteIndividualPrompt = (batchId: string, promptId: string) => {
+    setBatches(prev => prev.map(b => {
+      if (b.id === batchId) {
+        return { ...b, prompts: b.prompts.filter(p => p.id !== promptId) };
+      }
+      return b;
+    }).filter(b => b.prompts.length > 0));
+    addToast('Prompt removed from workspace.', 'info', 2000);
   };
 
   const copyAllWorkspacePrompts = () => {
@@ -2511,10 +2571,10 @@ export default function App() {
                     {autoFillMode === 'image' ? (
                       <div className="relative border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden text-center hover:bg-white/40 dark:hover:bg-white/[0.02] transition-colors flex items-center justify-center min-h-[8.5rem]">
                         <input type="file" accept="image/jpeg, image/png" onChange={(e) => setReferenceImage(e.target.files?.[0] || null)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-30" />
-                        {referenceImage ? (
+                        {referenceImage && referenceImageUrl ? (
                           <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-slate-900/5 dark:bg-slate-900/50">
-                            <img src={URL.createObjectURL(referenceImage)} alt="Preview Background" className="absolute inset-0 w-full h-full object-cover opacity-20 blur-sm pointer-events-none" />
-                            <img src={URL.createObjectURL(referenceImage)} alt="Preview" className="relative z-10 w-full h-full object-contain pointer-events-none" />
+                            <img src={referenceImageUrl} alt="Preview Background" className="absolute inset-0 w-full h-full object-cover opacity-20 blur-sm pointer-events-none" />
+                            <img src={referenceImageUrl} alt="Preview" className="relative z-10 w-full h-full object-contain pointer-events-none" />
                             
                             {/* Scanning Animation */}
                             {isAnalyzing && (
@@ -2868,8 +2928,23 @@ export default function App() {
             <div className="flex flex-col gap-5 sm:gap-6 flex-1">
               
               {/* Responsive View Controls Toolbar */}
-              <div className="w-full flex items-center justify-end">
-                <div className="w-full sm:w-auto flex items-center justify-between sm:justify-end gap-1.5 sm:gap-2 p-1.5 sm:p-2 px-2.5 sm:px-3 rounded-2xl bg-white/75 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/80 dark:border-white/[0.08] shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
+              <div className="w-full flex flex-wrap items-center justify-between gap-2">
+                {/* Mobile / Tablet Compact Stats Counter */}
+                <div className="flex lg:hidden items-center h-9 px-3 rounded-2xl border border-slate-200/80 dark:border-white/[0.08] bg-white/75 dark:bg-slate-900/60 backdrop-blur-xl shadow-[0_2px_12px_rgba(0,0,0,0.02)] gap-2.5">
+                  <div className="flex items-center gap-1.5">
+                    <Layers size={12} className="text-slate-400" />
+                    <span className="text-[12px] font-black text-slate-900 dark:text-white font-mono">{stats.total}</span>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Total</span>
+                  </div>
+                  <div className="w-px h-3 bg-slate-200/80 dark:bg-white/[0.1]" />
+                  <div className="flex items-center gap-1.5">
+                    <div className={`w-1.5 h-1.5 rounded-full ${stats.pending > 0 ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
+                    <span className={`text-[12px] font-black font-mono ${stats.pending > 0 ? 'text-slate-900 dark:text-white' : 'text-emerald-500'}`}>{stats.pending}</span>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Pending</span>
+                  </div>
+                </div>
+
+                <div className="w-full sm:w-auto ml-auto flex items-center justify-between sm:justify-end gap-1.5 sm:gap-2 p-1.5 sm:p-2 px-2.5 sm:px-3 rounded-2xl bg-white/75 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/80 dark:border-white/[0.08] shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
                   {/* View Size Scale */}
                   <div className="flex items-center p-0.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.05] border border-black/[0.04] dark:border-white/[0.06] shrink-0">
                     <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-1.5 select-none hidden sm:inline">Scale</span>
@@ -2968,6 +3043,15 @@ export default function App() {
                                 #{globalPromptNum.toString().padStart(2, '0')}
                               </span>
                             </div>
+                            <button
+                              type="button"
+                              onClick={() => deleteIndividualPrompt(batch.id, p.id)}
+                              className="w-7 h-7 rounded-xl flex items-center justify-center text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 hover:bg-red-500/10 dark:hover:bg-red-500/15 transition-all opacity-60 sm:opacity-0 group-hover:opacity-100 cursor-pointer active:scale-90"
+                              title="Remove this prompt"
+                              aria-label="Remove this prompt"
+                            >
+                              <Trash2 size={13} />
+                            </button>
                           </div>
 
                           <div className="flex-1 flex flex-col justify-start">
@@ -3342,9 +3426,18 @@ export default function App() {
             </div>
             
             {errorMessage && (
-              <div className="mx-8 mt-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-xl text-red-600 dark:text-red-400 text-xs flex items-start gap-3 shadow-sm">
+              <div className="mx-4 sm:mx-8 mt-4 sm:mt-6 p-3.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-xl text-red-600 dark:text-red-400 text-xs flex items-start gap-3 shadow-sm">
                  <div className="mt-0.5"><AlertCircle size={16} className="shrink-0" /></div>
                  <div className="flex-1 font-medium leading-relaxed">{errorMessage}</div>
+                 <button
+                   type="button"
+                   onClick={() => setErrorMessage(null)}
+                   className="p-1 rounded-lg hover:bg-red-500/10 text-red-500 hover:text-red-700 dark:hover:text-red-300 transition-colors shrink-0 cursor-pointer"
+                   title="Dismiss error"
+                   aria-label="Dismiss error"
+                 >
+                   <X size={14} />
+                 </button>
               </div>
             )}
 
