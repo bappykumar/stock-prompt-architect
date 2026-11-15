@@ -1,5 +1,3 @@
-import { GoogleGenAI } from "@google/genai";
-
 export default async function handler(req: any, res: any) {
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
@@ -16,10 +14,21 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    const clients = [
-      new GoogleGenAI({ apiKey: keyToUse }),
-      new GoogleGenAI({ vertexai: true, apiKey: keyToUse }),
-    ];
+    const restParts = (Array.isArray(contents) ? contents : []).map((item: any) => {
+      if (item.inlineData) {
+        return {
+          inline_data: {
+            mime_type: item.inlineData.mimeType,
+            data: item.inlineData.data,
+          },
+        };
+      }
+      if (item.inline_data) {
+        return { inline_data: item.inline_data };
+      }
+      return { text: item.text || "" };
+    });
+
     const candidateModels = [
       "gemini-2.5-flash",
       "gemini-2.0-flash",
@@ -27,47 +36,66 @@ export default async function handler(req: any, res: any) {
       "gemini-1.5-flash",
     ];
 
-    let response: any = null;
-    let lastErr: any = null;
+    const endpoints = [
+      (m: string) =>
+        `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(keyToUse)}`,
+      (m: string) =>
+        `https://aiplatform.googleapis.com/v1beta1/publishers/google/models/${m}:generateContent?key=${encodeURIComponent(keyToUse)}`,
+    ];
 
-    for (const client of clients) {
+    let rawText = "";
+    let success = false;
+    let lastErrMsg = "Gemini analysis failed";
+    let lastStatus = 500;
+
+    for (const buildUrl of endpoints) {
       for (const m of candidateModels) {
-        try {
-          const config: Record<string, any> = {
-            responseMimeType: "application/json",
-          };
-          if (m.startsWith("gemini-2.5-flash") || m === "gemini-flash-latest") {
-            config.thinkingConfig = { thinkingBudget: 0 };
+        const response = await fetch(buildUrl(m), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: restParts }],
+            generationConfig: {
+              responseMimeType: "application/json",
+            },
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+          success = true;
+          break;
+        } else {
+          lastStatus = response.status;
+          const errText = await response.text();
+          try {
+            const parsed = JSON.parse(errText);
+            lastErrMsg = parsed.error?.message || errText;
+          } catch {
+            lastErrMsg = errText;
           }
-          response = await client.models.generateContent({
-            model: m,
-            contents: client.vertexai ? [{ role: "user", parts: contents }] : contents,
-            config,
-          });
-          if (response) break;
-        } catch (innerErr: any) {
-          lastErr = innerErr;
-          const msg = String(innerErr?.message || "").toLowerCase();
           if (
-            msg.includes("not found") ||
-            msg.includes("404") ||
-            msg.includes("unavailable") ||
-            msg.includes("503") ||
-            msg.includes("unauthenticated") ||
-            msg.includes("401") ||
-            msg.includes("403") ||
-            msg.includes("api key not valid")
+            response.status === 404 ||
+            response.status === 400 ||
+            response.status === 401 ||
+            response.status === 403 ||
+            response.status === 503
           ) {
             continue;
           }
-          throw innerErr;
+          break;
         }
       }
-      if (response) break;
+      if (success) break;
     }
 
-    if (!response && lastErr) throw lastErr;
-    res.status(200).json({ text: response?.text || "" });
+    if (!success) {
+      res.status(lastStatus).json({ error: lastErrMsg });
+      return;
+    }
+
+    res.status(200).json({ text: rawText });
   } catch (error: any) {
     res.status(500).json({ error: error?.message || "Gemini analysis failed" });
   }

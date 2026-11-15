@@ -1720,7 +1720,7 @@ export default function App() {
           setApiTrackerState(prev => ({ ...prev, statusMessage: 'TRANSMISSION COMPLETE.', visible: false }));
           return result;
         } catch (err: any) {
-          if (keyRecord.id !== 'system' || !lastError) {
+          if ((keyRecord.id !== 'system' && keyRecord.provider === requiredProvider) || !lastError) {
             lastError = err;
           }
           console.warn(`Attempt ${attempt} failed with key ${maskedKey} (${keyRecord.provider}):`, err);

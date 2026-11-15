@@ -63,44 +63,50 @@ export const testApiKey = async (apiKey: string, provider: 'gemini' | 'groq' | '
   try {
     const cleanKey = apiKey.trim();
     if (provider === 'gemini') {
-      const response = await fetch('/api/gemini/test-key', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: cleanKey })
-      });
-      if (response.status === 404 || response.status === 405) {
-        if (!cleanKey) {
-          throw new Error('No Gemini API key provided.');
-        }
-        const directRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(cleanKey)}`
-        );
-        if (directRes.ok) {
+      let serverOk = false;
+      let serverErrMsg = '';
+      try {
+        const response = await fetch('/api/gemini/test-key', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ apiKey: cleanKey })
+        });
+        if (response.ok) {
           return true;
         }
-        const errText = await directRes.text();
-        // Fallback: Check Vertex AI Express Mode endpoint for AQ.Ab8RN... keys
-        const vertexModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
-        for (const vm of vertexModels) {
-          const vertexRes = await fetch(
-            `https://aiplatform.googleapis.com/v1beta1/publishers/google/models/${vm}:countTokens?key=${encodeURIComponent(cleanKey)}`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'ping' }] }] })
-            }
-          );
-          if (vertexRes.ok) return true;
-        }
-        let parsedMsg = errText;
-        try { parsedMsg = JSON.parse(errText).error?.message || errText; } catch (e) {}
-        throw new Error(`Gemini API test failed: ${directRes.status} - ${parsedMsg}`);
-      }
-      if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.error || `Gemini API test failed (${response.status})`);
+        serverErrMsg = errData.error || `Gemini API test failed (${response.status})`;
+      } catch (e: any) {
+        serverErrMsg = e?.message || 'Server test route unreachable';
       }
-      return true;
+
+      if (!cleanKey) {
+        throw new Error(serverErrMsg || 'No Gemini API key provided.');
+      }
+
+      const directRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(cleanKey)}`
+      );
+      if (directRes.ok) {
+        return true;
+      }
+      const errText = await directRes.text();
+      // Fallback: Check Vertex AI Express Mode endpoint for AQ.Ab8RN... keys
+      const vertexModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+      for (const vm of vertexModels) {
+        const vertexRes = await fetch(
+          `https://aiplatform.googleapis.com/v1beta1/publishers/google/models/${vm}:countTokens?key=${encodeURIComponent(cleanKey)}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'ping' }] }] })
+          }
+        );
+        if (vertexRes.ok) return true;
+      }
+      let parsedMsg = errText;
+      try { parsedMsg = JSON.parse(errText).error?.message || errText; } catch (e) {}
+      throw new Error(`Gemini API test failed: ${directRes.status} - ${parsedMsg}`);
     } else if (provider === 'groq') {
       const response = await fetch('https://api.groq.com/openai/v1/models', {
         headers: {
@@ -248,9 +254,6 @@ export async function analyzeReferenceAndSuggestSettings(
   let analysisPrompt = '';
 
   if (input.type === 'image') {
-    if (provider !== 'gemini') {
-      throw new Error("Image analysis requires a Gemini API key.");
-    }
     analysisPrompt = `Analyze this image's VISUAL 
 CONTENT ONLY — completely ignore and ignore any text, 
 watermarks, logos, captions, or written words that 
@@ -437,14 +440,29 @@ Return ONLY this JSON structure, no markdown:
     let rawText = "";
     
     if (provider === 'gemini') {
-      const response = await fetch('/api/gemini/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents, apiKey: finalKey })
-      });
-      if (response.status === 404 || response.status === 405) {
+      let serverSucceeded = false;
+      let serverErrMsg = '';
+      try {
+        const response = await fetch('/api/gemini/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents, apiKey: finalKey })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          rawText = data.text || "";
+          if (rawText) serverSucceeded = true;
+        } else {
+          const errData = await response.json().catch(() => ({}));
+          serverErrMsg = errData.error || `Gemini analysis failed (${response.status})`;
+        }
+      } catch (e: any) {
+        serverErrMsg = e?.message || 'Gemini analysis route unreachable';
+      }
+
+      if (!serverSucceeded) {
         if (!finalKey) {
-          throw new Error('No Gemini API key found. Please add your Gemini API key in Config.');
+          throw new Error(serverErrMsg || 'No Gemini API key found. Please add your Gemini API key in Config.');
         }
         const restParts = contents.map((item: any) => {
           if (item.inlineData) {
@@ -461,10 +479,6 @@ Return ONLY this JSON structure, no markdown:
         let lastDirectErr: any = null;
         for (const buildUrl of endpoints) {
           for (const m of candidateModels) {
-            const genConfig: Record<string, any> = { responseMimeType: 'application/json' };
-            if (m.startsWith('gemini-2.5-flash') || m === 'gemini-flash-latest') {
-              genConfig.thinkingConfig = { thinkingBudget: 0 };
-            }
             const directRes = await fetch(
               buildUrl(m),
               {
@@ -472,15 +486,17 @@ Return ONLY this JSON structure, no markdown:
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   contents: [{ role: 'user', parts: restParts }],
-                  generationConfig: genConfig
+                  generationConfig: { responseMimeType: 'application/json' }
                 })
               }
             );
             if (directRes.ok) {
               const directData = await directRes.json();
               rawText = directData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-              directSuccess = true;
-              break;
+              if (rawText) {
+                directSuccess = true;
+                break;
+              }
             } else {
               const errText = await directRes.text();
               let parsedMsg = errText;
@@ -492,13 +508,9 @@ Return ONLY this JSON structure, no markdown:
           }
           if (directSuccess) break;
         }
-        if (!directSuccess && lastDirectErr) throw lastDirectErr;
-      } else if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.error || `Gemini analysis failed (${response.status})`);
-      } else {
-        const data = await response.json();
-        rawText = data.text || "";
+        if (!directSuccess) {
+          throw lastDirectErr || new Error(serverErrMsg || 'Gemini analysis failed');
+        }
       }
     } else if (provider === 'groq') {
       const isImageInput = input.type === 'image';
@@ -1422,18 +1434,35 @@ export const generateStockPrompts = async (
     let rawText = "";
 
     if (provider === 'gemini') {
-      const response = await fetch('/api/gemini/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: options.model,
-          systemPrompt,
-          apiKey: finalKey
-        })
-      });
-      if (response.status === 404 || response.status === 405) {
+      let serverSucceeded = false;
+      let serverErrMsg = '';
+      try {
+        const response = await fetch('/api/gemini/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: options.model,
+            systemPrompt,
+            apiKey: finalKey
+          })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          rawText = data.text?.trim() || '{"prompts":[]}';
+          if (rawText && rawText !== '{"prompts":[]}') {
+            serverSucceeded = true;
+          }
+        } else {
+          const errData = await response.json().catch(() => ({}));
+          serverErrMsg = errData.error || `Gemini generation failed (${response.status})`;
+        }
+      } catch (e: any) {
+        serverErrMsg = e?.message || 'Gemini generation route unreachable';
+      }
+
+      if (!serverSucceeded) {
         if (!finalKey) {
-          throw new Error('No Gemini API key found. Please add your Gemini API key in Config.');
+          throw new Error(serverErrMsg || 'No Gemini API key found. Please add your Gemini API key in Config.');
         }
         const normalizedModel = options.model === 'gemini-3.8-flash' ? 'gemini-2.5-flash' : options.model;
         const candidateModels = Array.from(
@@ -1447,14 +1476,6 @@ export const generateStockPrompts = async (
         let lastDirectErr: any = null;
         for (const buildUrl of endpoints) {
           for (const m of candidateModels) {
-            const genConfig: Record<string, any> = {
-              responseMimeType: 'application/json',
-              temperature: 0.95,
-              topP: 0.95
-            };
-            if (m.startsWith('gemini-2.5-flash') || m === 'gemini-flash-latest') {
-              genConfig.thinkingConfig = { thinkingBudget: 0 };
-            }
             const directRes = await fetch(
               buildUrl(m),
               {
@@ -1462,15 +1483,21 @@ export const generateStockPrompts = async (
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   contents: [{ role: 'user', parts: [{ text: systemPrompt }] }],
-                  generationConfig: genConfig
+                  generationConfig: {
+                    responseMimeType: 'application/json',
+                    temperature: 0.95,
+                    topP: 0.95
+                  }
                 })
               }
             );
             if (directRes.ok) {
               const directData = await directRes.json();
               rawText = directData?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '{"prompts":[]}';
-              directSuccess = true;
-              break;
+              if (rawText && rawText !== '{"prompts":[]}') {
+                directSuccess = true;
+                break;
+              }
             } else {
               const errText = await directRes.text();
               let parsedMsg = errText;
@@ -1482,13 +1509,9 @@ export const generateStockPrompts = async (
           }
           if (directSuccess) break;
         }
-        if (!directSuccess && lastDirectErr) throw lastDirectErr;
-      } else if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.error || `Gemini generation failed (${response.status})`);
-      } else {
-        const data = await response.json();
-        rawText = data.text?.trim() || '{"prompts":[]}';
+        if (!directSuccess) {
+          throw lastDirectErr || new Error(serverErrMsg || 'Gemini generation failed');
+        }
       }
     } else if (provider === 'groq') {
       // Groq with automatic fallback for deprecated models (e.g. mixtral-8x7b-32768)

@@ -10,6 +10,7 @@ const __dirname = path.dirname(__filename);
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
   httpOptions: {
+    apiVersion: "v1beta",
     headers: {
       "User-Agent": "aistudio-build",
     },
@@ -21,17 +22,20 @@ function getGeminiClients(customApiKey?: string): GoogleGenAI[] {
   if (trimmed && trimmed !== process.env.GEMINI_API_KEY) {
     const standardClient = new GoogleGenAI({
       apiKey: trimmed,
-      httpOptions: { headers: { "User-Agent": "aistudio-build" } },
+      httpOptions: {
+        apiVersion: "v1beta",
+        headers: { "User-Agent": "aistudio-build" },
+      },
     });
     const vertexExpressClient = new GoogleGenAI({
       vertexai: true,
       apiKey: trimmed,
-      httpOptions: { headers: { "User-Agent": "aistudio-build" } },
+      httpOptions: {
+        apiVersion: "v1beta1",
+        headers: { "User-Agent": "aistudio-build" },
+      },
     });
-    // If key starts with AQ., try both standard AI Studio and Vertex AI Express endpoints
-    return trimmed.startsWith("AQ.")
-      ? [standardClient, vertexExpressClient]
-      : [standardClient, vertexExpressClient];
+    return [standardClient, vertexExpressClient];
   }
   return [ai];
 }

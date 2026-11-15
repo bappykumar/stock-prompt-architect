@@ -1,5 +1,3 @@
-import { GoogleGenAI, Type } from "@google/genai";
-
 export default async function handler(req: any, res: any) {
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
@@ -16,31 +14,6 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    const clients = [
-      new GoogleGenAI({ apiKey: keyToUse }),
-      new GoogleGenAI({ vertexai: true, apiKey: keyToUse }),
-    ];
-
-    const schema = {
-      type: Type.OBJECT,
-      properties: {
-        prompts: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              text: {
-                type: Type.STRING,
-                description: "The full descriptive prompt text.",
-              },
-            },
-            required: ["text"],
-          },
-        },
-      },
-      required: ["prompts"],
-    };
-
     const normalizedModel = model === "gemini-3.8-flash" ? "gemini-2.5-flash" : model;
     const candidateModels = Array.from(
       new Set(
@@ -54,52 +27,68 @@ export default async function handler(req: any, res: any) {
       )
     );
 
-    let response: any = null;
-    let lastErr: any = null;
+    const endpoints = [
+      (m: string) =>
+        `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(keyToUse)}`,
+      (m: string) =>
+        `https://aiplatform.googleapis.com/v1beta1/publishers/google/models/${m}:generateContent?key=${encodeURIComponent(keyToUse)}`,
+    ];
 
-    for (const client of clients) {
+    let rawText = "";
+    let success = false;
+    let lastErrMsg = "Gemini generation failed";
+    let lastStatus = 500;
+
+    for (const buildUrl of endpoints) {
       for (const m of candidateModels) {
-        try {
-          const config: Record<string, any> = {
-            responseMimeType: "application/json",
-            responseSchema: schema,
-            temperature: 0.95,
-            topP: 0.95,
-          };
-          if (m.startsWith("gemini-2.5-flash") || m === "gemini-flash-latest") {
-            config.thinkingConfig = { thinkingBudget: 0 };
+        const response = await fetch(buildUrl(m), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: systemPrompt }] }],
+            generationConfig: {
+              responseMimeType: "application/json",
+              temperature: 0.95,
+              topP: 0.95,
+            },
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '{"prompts":[]}';
+          success = true;
+          break;
+        } else {
+          lastStatus = response.status;
+          const errText = await response.text();
+          try {
+            const parsed = JSON.parse(errText);
+            lastErrMsg = parsed.error?.message || errText;
+          } catch {
+            lastErrMsg = errText;
           }
-          response = await client.models.generateContent({
-            model: m,
-            contents: client.vertexai
-              ? [{ role: "user", parts: [{ text: systemPrompt }] }]
-              : systemPrompt,
-            config,
-          });
-          if (response) break;
-        } catch (innerErr: any) {
-          lastErr = innerErr;
-          const msg = String(innerErr?.message || "").toLowerCase();
           if (
-            msg.includes("not found") ||
-            msg.includes("404") ||
-            msg.includes("unavailable") ||
-            msg.includes("503") ||
-            msg.includes("unauthenticated") ||
-            msg.includes("401") ||
-            msg.includes("403") ||
-            msg.includes("api key not valid")
+            response.status === 404 ||
+            response.status === 400 ||
+            response.status === 401 ||
+            response.status === 403 ||
+            response.status === 503
           ) {
             continue;
           }
-          throw innerErr;
+          break;
         }
       }
-      if (response) break;
+      if (success) break;
     }
 
-    if (!response && lastErr) throw lastErr;
-    res.status(200).json({ text: response?.text?.trim() || '{"prompts":[]}' });
+    if (!success) {
+      res.status(lastStatus).json({ error: lastErrMsg });
+      return;
+    }
+
+    res.status(200).json({ text: rawText });
   } catch (error: any) {
     res.status(500).json({ error: error?.message || "Gemini generation failed" });
   }
