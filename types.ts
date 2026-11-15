@@ -41,6 +41,7 @@ export interface GeneratedPrompt {
   id: string;
   text: string;
   copied: boolean;
+  isMasterClone?: boolean;
 }
 
 export interface PromptBatch {

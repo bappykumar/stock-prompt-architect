@@ -11,7 +11,7 @@ import {
   Layout, Fingerprint, Focus, Settings2, Download, MessageSquareCode, Send, AlertCircle, X, Cpu, Paintbrush,
   ChevronUp, Key, Lock, Unlock, Info, Settings, ToggleLeft, ToggleRight, Activity, Power, Video, Target, Lightbulb, Search, Shuffle, Image, Type, RefreshCw, ListX, PanelLeftClose, PanelLeftOpen, Upload,
   LayoutList, Columns2, UnfoldVertical, FoldVertical, SlidersHorizontal, LayoutGrid, Rows3,
-  CircleDot, Grid3X3, RotateCcw, FileUp, FileDown, Database, AlertTriangle, PackageCheck, ScanFace, UserCheck
+  CircleDot, Grid3X3, RotateCcw, FileUp, FileDown, Database, AlertTriangle, PackageCheck, ScanFace, UserCheck, Star
 } from 'lucide-react';
 import { PromptOptions, GeneratedPrompt, PromptBatch, HistoricalPrompt, ApiKeyRecord } from './types';
 import { generateStockPrompts, testApiKey, analyzeReferenceAndSuggestSettings, stripColorDescriptors, stripBiometricDescriptors } from './services/geminiService';
@@ -574,23 +574,29 @@ const CustomDropdown = ({
             {!isOpen && !isDefault && getVisualStyleBadge(value)}
           </div>
           <div className="flex items-center gap-2">
-            {onToggleLock && isActive && (
+            {onToggleLock && (isActive || isLocked) && (
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   const nextLock = !isLocked;
                   onToggleLock(nextLock);
-                  if (nextLock) {
+                  if (nextLock && isActive) {
                     setIsOpen(true);
                   }
                 }}
                 className={`focus:outline-none transition-all active:scale-95 flex items-center gap-1.5 px-2 py-0.5 rounded-md ${
                   isLocked 
-                    ? 'opacity-100 text-amber-600 dark:text-amber-400 bg-amber-500/15 border border-amber-500/30 shadow-xs' 
+                    ? (isActive
+                        ? 'opacity-100 text-amber-600 dark:text-amber-400 bg-amber-500/15 border border-amber-500/30 shadow-xs'
+                        : 'opacity-80 text-amber-600/80 dark:text-amber-400/80 bg-amber-500/10 border border-dashed border-amber-500/30')
                     : 'opacity-60 hover:opacity-100 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
-                title={isLocked ? "Unlock setting (single-select)" : "Lock setting (enable multiple select pool)"}
+                title={
+                  isLocked
+                    ? (isActive ? "Locked setting (click to unlock)" : "Locked but auto-turned OFF (not needed for current subject/mode — click to unlock)")
+                    : "Lock setting (enable multiple select pool)"
+                }
               >
                 {isLocked ? (
                   <>
@@ -912,6 +918,93 @@ export default function App() {
     return OPTIONS.visualType;
   };
 
+  // Context-Aware Auto-Off & Restore for Active Fields (including Locked Fields)
+  const applyContextRelevanceToActiveFields = (
+    baseActiveFields: Record<string, boolean>,
+    lockedFields: Record<string, boolean> | undefined,
+    context: {
+      subject?: string;
+      imageMedium?: string;
+      productPreservation?: boolean;
+      preservationType?: 'product' | 'human';
+      environment?: string;
+      shadowStyle?: string;
+    },
+    reEnableValidLocks: boolean = true
+  ): Record<string, boolean> => {
+    const next = { ...baseActiveFields };
+    const locks = lockedFields || {};
+    const subj = String(context.subject || '');
+    const med = String(context.imageMedium || '');
+    const isProdLock = !!context.productPreservation && (context.preservationType || 'product') === 'product';
+    const isHumanLock = !!context.productPreservation && context.preservationType === 'human';
+
+    const nonHumanKeywords = [
+      'Domestic Pet', 'Wild Animal', 'Bird', 'Marine', 'Macro',
+      'Still life', 'No person', 'Isolated Object', 'Background',
+      'Abstract Shape', 'Icon / Logo'
+    ];
+    const isNonHuman = nonHumanKeywords.some(k => subj.includes(k));
+    const isBackgroundOnly = subj.includes('Background');
+    const isIsolatedPng = subj.includes('Isolated Object');
+    const isNonPhotoMedium = med === '3D & CGI' || med === 'Art & Illustration';
+
+    // Optionally re-enable locked fields that ARE relevant in the new context
+    if (reEnableValidLocks) {
+      Object.keys(locks).forEach(k => {
+        if (locks[k]) {
+          next[k] = true;
+        }
+      });
+    }
+
+    // 1. Non-human subjects: automatically turn OFF human-only fields even if locked
+    if (isNonHuman) {
+      next.characterBackground = false;
+      next.ageRange = false;
+      next.interaction = false;
+      next.authenticity = false;
+    }
+
+    // 2. Background / Landscape only: turn OFF subject framing/position/shadow/interaction even if locked
+    if (isBackgroundOnly) {
+      next.framing = false;
+      next.subjectPosition = false;
+      next.shadowStyle = false;
+      next.interaction = false;
+    }
+
+    // 3. Isolated Object (PNG Ready): turn OFF incompatible environment/shadow/interaction even if locked
+    if (isIsolatedPng) {
+      next.interaction = false;
+      if (context.environment && context.environment !== 'White Background') {
+        next.environment = false;
+      }
+      if (context.shadowStyle && context.shadowStyle !== 'No Shadow / Flat') {
+        next.shadowStyle = false;
+      }
+    }
+
+    // 4. 3D & CGI or Art & Illustration: turn OFF optical camera gear & authenticity even if locked
+    if (isNonPhotoMedium) {
+      next.qualityCamera = false;
+      next.authenticity = false;
+    }
+
+    // 5. Product Preservation Mode: turn OFF colorMood even if locked (prevents color bleeding onto locked product)
+    if (isProdLock) {
+      next.colorMood = false;
+    }
+
+    // 6. Person / Face Lock Mode: turn OFF characterBackground & ageRange even if locked (biometrics come from reference person)
+    if (isHumanLock) {
+      next.characterBackground = false;
+      next.ageRange = false;
+    }
+
+    return next;
+  };
+
   // Handle Image Medium Change
   const handleImageMediumChange = (val: string) => {
     setOptions(prev => {
@@ -930,10 +1023,24 @@ export default function App() {
           isCompatible = ['Anime Style', 'Oil Painting', 'Minimalist Vector', 'Flat Illustration', 'Flat Line Icon', 'Paper Cut Art', 'Line Art'].includes(currentVisual);
         }
 
-        if (!isCompatible) {
+        if (!isCompatible && !prev.lockedFields?.visualType) {
           newOptions.visualType = 'Default / Auto';
         }
       }
+
+      newOptions.activeFields = applyContextRelevanceToActiveFields(
+        prev.activeFields,
+        prev.lockedFields,
+        {
+          subject: newOptions.subject,
+          imageMedium: val,
+          productPreservation: newOptions.productPreservation,
+          preservationType: newOptions.preservationType,
+          environment: newOptions.environment,
+          shadowStyle: newOptions.shadowStyle
+        },
+        true
+      );
       
       return newOptions;
     });
@@ -1876,11 +1983,11 @@ export default function App() {
         smartRefinement: true
       };
 
-      // Restore locked fields
+      // Restore locked fields values while turning OFF any locked fields not needed for the detected context
       lockedKeys.forEach(k => {
         const pool = lockedPools[k] || (options[k as keyof PromptOptions] ? [String(options[k as keyof PromptOptions])] : []);
         if (pool.length > 1) {
-          // If multiple options were allowed in the pool, keep Gemini's selection if it falls within the pool; otherwise default to pool[0]
+          // If multiple options were allowed in the pool, keep AI's selection if it falls within the pool; otherwise default to pool[0]
           if (newSettings[k] && pool.includes(String(newSettings[k]))) {
             // Keep AI selection within allowed pool
           } else if (pool.length > 0) {
@@ -1892,12 +1999,11 @@ export default function App() {
           (newSettings as any)[k] = options[k as keyof PromptOptions];
         }
         
-        // Force locked fields to be active ONLY IF the Gemini analysis didn't explicitly set it to false
-        // (e.g. if 'ageRange' is locked but Gemini says "no person", it should stay false/invisible)
+        // Turn locked field ON only if AI analysis did NOT mark it false
         if (result.activeFields && result.activeFields[k] === false) {
-           nextActiveFields[k] = false;
+          nextActiveFields[k] = false;
         } else {
-           nextActiveFields[k] = true;
+          nextActiveFields[k] = true;
         }
       });
       
@@ -1910,12 +2016,21 @@ export default function App() {
         cleanSrText = stripBiometricDescriptors(cleanSrText);
       }
 
-      if (isProdActive && !options.lockedFields?.colorMood) {
-        newSettings.colorMood = 'Default / Auto';
+      if (isProdActive) {
+        if (!options.lockedFields?.colorMood) {
+          newSettings.colorMood = 'Default / Auto';
+        }
+        nextActiveFields.colorMood = false;
       }
-      if (isHumanActive && !options.lockedFields?.characterBackground) {
-        newSettings.characterBackground = 'Default / Auto';
+      if (isHumanActive) {
+        if (!options.lockedFields?.characterBackground) {
+          newSettings.characterBackground = 'Default / Auto';
+        }
+        if (!options.lockedFields?.ageRange) {
+          newSettings.ageRange = 'Default / Auto';
+        }
         nextActiveFields.characterBackground = false;
+        nextActiveFields.ageRange = false;
       }
 
       if (input.type === 'image') {
@@ -1927,12 +2042,30 @@ export default function App() {
         });
       }
 
-      const newOptions = {
+      // Deterministic Context-Aware Auto-Off: even if a section is LOCKED, turn its active toggle OFF when not needed
+      const resolvedOptions = {
         ...options,
-        ...newSettings,
+        ...newSettings
+      };
+      const finalActiveFields = applyContextRelevanceToActiveFields(
+        nextActiveFields,
+        options.lockedFields,
+        {
+          subject: resolvedOptions.subject,
+          imageMedium: resolvedOptions.imageMedium,
+          productPreservation: resolvedOptions.productPreservation,
+          preservationType: resolvedOptions.preservationType,
+          environment: resolvedOptions.environment,
+          shadowStyle: resolvedOptions.shadowStyle
+        },
+        false
+      );
+
+      const newOptions = {
+        ...resolvedOptions,
         smartRefinementText: cleanSrText,
         isFromImageReference: input.type === 'image',
-        activeFields: nextActiveFields
+        activeFields: finalActiveFields
       };
       
       setOptions(newOptions);
@@ -1987,10 +2120,11 @@ export default function App() {
         return generateStockPrompts(passedOptions, keyRecord.key, history, keyRecord.provider);
       });
 
-      const newPrompts: GeneratedPrompt[] = results.map(r => ({
+      const newPrompts: GeneratedPrompt[] = results.map((r, rIdx) => ({
         id: crypto.randomUUID(),
         text: r.text,
-        copied: false
+        copied: false,
+        isMasterClone: rIdx === 0
       }));
       const newBatch: PromptBatch = { id: crypto.randomUUID(), timestamp: Date.now(), prompts: newPrompts };
       setBatches(prev => [newBatch, ...prev]);
@@ -2104,7 +2238,7 @@ export default function App() {
   };
 
   const isMaterialFinishVisible = true;
-  const isCulturalHeritageVisible = !['Domestic Pet', 'Wild Animal', 'Bird', 'Marine', 'Macro', 'Still life', 'No person', 'Isolated Object', 'Background'].some(key => options.subject?.includes(key));
+  const isCulturalHeritageVisible = Boolean(options.lockedFields?.characterBackground) || !['Domestic Pet', 'Wild Animal', 'Bird', 'Marine', 'Macro', 'Still life', 'No person', 'Isolated Object', 'Background'].some(key => options.subject?.includes(key));
   const currentQuantityOptions = PERSONAL_QUANTITY_OPTIONS;
 
   const stats = useMemo(() => {
@@ -2442,11 +2576,25 @@ export default function App() {
                           nextText = stripBiometricDescriptors(nextText);
                         }
                       }
+                      const nextActive = applyContextRelevanceToActiveFields(
+                        prev.activeFields,
+                        prev.lockedFields,
+                        {
+                          subject: prev.subject,
+                          imageMedium: prev.imageMedium,
+                          productPreservation: nextVal,
+                          preservationType: currentType,
+                          environment: prev.environment,
+                          shadowStyle: prev.shadowStyle
+                        },
+                        true
+                      );
                       return {
                         ...prev,
                         productPreservation: nextVal,
                         preservationType: currentType,
-                        smartRefinementText: nextText
+                        smartRefinementText: nextText,
+                        activeFields: nextActive
                       };
                     })} 
                     className={`w-11 h-6 rounded-full relative p-0.5 apple-switch-track focus:outline-none cursor-pointer active:scale-95 shrink-0 ${
@@ -2473,10 +2621,24 @@ export default function App() {
                             if (nextText) {
                               nextText = stripColorDescriptors(nextText);
                             }
+                            const nextActive = applyContextRelevanceToActiveFields(
+                              prev.activeFields,
+                              prev.lockedFields,
+                              {
+                                subject: prev.subject,
+                                imageMedium: prev.imageMedium,
+                                productPreservation: true,
+                                preservationType: 'product',
+                                environment: prev.environment,
+                                shadowStyle: prev.shadowStyle
+                              },
+                              true
+                            );
                             return {
                               ...prev,
                               preservationType: 'product',
-                              smartRefinementText: nextText
+                              smartRefinementText: nextText,
+                              activeFields: nextActive
                             };
                           });
                         }}
@@ -2498,10 +2660,24 @@ export default function App() {
                             if (nextText) {
                               nextText = stripBiometricDescriptors(nextText);
                             }
+                            const nextActive = applyContextRelevanceToActiveFields(
+                              prev.activeFields,
+                              prev.lockedFields,
+                              {
+                                subject: prev.subject,
+                                imageMedium: prev.imageMedium,
+                                productPreservation: true,
+                                preservationType: 'human',
+                                environment: prev.environment,
+                                shadowStyle: prev.shadowStyle
+                              },
+                              true
+                            );
                             return {
                               ...prev,
                               preservationType: 'human',
-                              smartRefinementText: nextText
+                              smartRefinementText: nextText,
+                              activeFields: nextActive
                             };
                           });
                         }}
@@ -2735,7 +2911,23 @@ export default function App() {
                   <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Identity & Character</h3>
                 </header>
                 <div className="space-y-5">
-                   <CustomDropdown label="Primary Actor" value={options.subject} options={OPTIONS.subject} onChange={(val) => setOptions(prev => ({...prev, subject: val}))} icon={User} canToggle={true} isActive={options.activeFields?.subject} onToggle={(val) => toggleField('subject', val)} isLocked={options.lockedFields?.subject} onToggleLock={(val) => toggleLock('subject', val)} lockedPool={options.lockedPools?.subject} onUpdateLockedPool={(vals, pick) => updateLockedPool('subject', vals, pick)} />
+                   <CustomDropdown label="Primary Actor" value={options.subject} options={OPTIONS.subject} onChange={(val) => setOptions(prev => ({
+                     ...prev,
+                     subject: val,
+                     activeFields: applyContextRelevanceToActiveFields(
+                       prev.activeFields,
+                       prev.lockedFields,
+                       {
+                         subject: val,
+                         imageMedium: prev.imageMedium,
+                         productPreservation: prev.productPreservation,
+                         preservationType: prev.preservationType,
+                         environment: prev.environment,
+                         shadowStyle: prev.shadowStyle
+                       },
+                       true
+                     )
+                   }))} icon={User} canToggle={true} isActive={options.activeFields?.subject} onToggle={(val) => toggleField('subject', val)} isLocked={options.lockedFields?.subject} onToggleLock={(val) => toggleLock('subject', val)} lockedPool={options.lockedPools?.subject} onUpdateLockedPool={(vals, pick) => updateLockedPool('subject', vals, pick)} />
                    {isAdvanced && isCulturalHeritageVisible && (
                       <CustomDropdown label="Cultural Context" value={options.characterBackground} options={OPTIONS.characterBackground} onChange={(val) => setOptions(prev => ({...prev, characterBackground: val}))} icon={Globe} canToggle={true} isActive={options.activeFields?.characterBackground} onToggle={(val) => toggleField('characterBackground', val)} isLocked={options.lockedFields?.characterBackground} onToggleLock={(val) => toggleLock('characterBackground', val)} lockedPool={options.lockedPools?.characterBackground} onUpdateLockedPool={(vals, pick) => updateLockedPool('characterBackground', vals, pick)} />
                    )}
@@ -3040,25 +3232,50 @@ export default function App() {
                     {batch.prompts.map((p, pIdx) => {
                       const globalPromptNum = priorPromptsCount + pIdx + 1;
                       const isExpanded = !isCompactMode || expandedCardIds.has(p.id);
+                      const isMasterClone = p.isMasterClone ?? (pIdx === 0);
                       return (
                         <div 
                           key={p.id} 
-                          className={`bg-gradient-to-b from-white/90 via-white/80 to-white/70 dark:from-slate-900/80 dark:via-slate-900/70 dark:to-slate-950/80 backdrop-blur-2xl backdrop-saturate-[180%] border border-slate-200/80 dark:border-white/10 shadow-[0_16px_40px_-10px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.03),inset_0_1px_1.5px_rgba(255,255,255,0.95)] dark:shadow-[0_24px_60px_-12px_rgba(0,0,0,0.65),0_1px_2px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.12)] rounded-[22px] sm:rounded-[26px] ${cardScaleConfig.cardPadding} flex flex-col justify-between gap-3.5 sm:gap-4 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300 relative group overflow-hidden`}
+                          className={`bg-gradient-to-b from-white/90 via-white/80 to-white/70 dark:from-slate-900/80 dark:via-slate-900/70 dark:to-slate-950/80 backdrop-blur-2xl backdrop-saturate-[180%] border ${
+                            isMasterClone
+                              ? 'border-amber-400/70 dark:border-amber-500/45 ring-1 ring-amber-400/25 dark:ring-amber-500/20'
+                              : 'border-slate-200/80 dark:border-white/10'
+                          } shadow-[0_16px_40px_-10px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.03),inset_0_1px_1.5px_rgba(255,255,255,0.95)] dark:shadow-[0_24px_60px_-12px_rgba(0,0,0,0.65),0_1px_2px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.12)] rounded-[22px] sm:rounded-[26px] ${cardScaleConfig.cardPadding} flex flex-col justify-between gap-3.5 sm:gap-4 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300 relative group overflow-hidden`}
                         >
                           {/* Apple Specular Top Rim Highlight */}
-                          <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/95 dark:via-white/20 to-transparent pointer-events-none" />
+                          <div className={`absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent ${isMasterClone ? 'via-amber-400/90 dark:via-amber-400/50' : 'via-white/95 dark:via-white/20'} to-transparent pointer-events-none`} />
 
-                          <div className="flex items-center justify-between">
-                            <div className={`inline-flex items-center gap-1.5 ${cardScaleConfig.pillPadding} rounded-full bg-black/[0.04] dark:bg-white/[0.05] border border-black/[0.04] dark:border-white/[0.06] shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]`}>
-                              <span className="w-1.5 h-1.5 rounded-full bg-blue-500/80"></span>
-                              <span className="font-mono font-bold tracking-widest text-slate-500 dark:text-slate-400 uppercase">
-                                #{globalPromptNum.toString().padStart(2, '0')}
-                              </span>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <div className={`inline-flex items-center gap-1.5 ${cardScaleConfig.pillPadding} rounded-full ${
+                                isMasterClone
+                                  ? 'bg-amber-500/15 dark:bg-amber-500/20 border border-amber-500/40'
+                                  : 'bg-black/[0.04] dark:bg-white/[0.05] border border-black/[0.04] dark:border-white/[0.06]'
+                              } shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${isMasterClone ? 'bg-amber-500' : 'bg-blue-500/80'}`}></span>
+                                <span className={`font-mono font-bold tracking-widest uppercase ${
+                                  isMasterClone ? 'text-amber-700 dark:text-amber-300' : 'text-slate-500 dark:text-slate-400'
+                                }`}>
+                                  #{globalPromptNum.toString().padStart(2, '0')}
+                                </span>
+                              </div>
+
+                              {isMasterClone && (
+                                <div
+                                  className={`inline-flex items-center gap-1 ${cardScaleConfig.pillPadding} rounded-full bg-gradient-to-r from-amber-500/20 via-yellow-500/15 to-amber-500/20 dark:from-amber-500/25 dark:via-yellow-500/20 dark:to-amber-500/25 border border-amber-500/45 text-amber-700 dark:text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.2)]`}
+                                  title="100% Same-to-Same Reference Master Clone (Prompt #1)"
+                                >
+                                  <Star size={11} className="fill-amber-500 text-amber-500 shrink-0 drop-shadow-[0_0_3px_rgba(245,158,11,0.6)]" />
+                                  <span className="font-bold tracking-wider uppercase text-[9.5px] sm:text-[10px] leading-none">
+                                    Same-to-Same
+                                  </span>
+                                </div>
+                              )}
                             </div>
                             <button
                               type="button"
                               onClick={() => deleteIndividualPrompt(batch.id, p.id)}
-                              className="w-7 h-7 rounded-xl flex items-center justify-center text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 hover:bg-red-500/10 dark:hover:bg-red-500/15 transition-all opacity-60 sm:opacity-0 group-hover:opacity-100 cursor-pointer active:scale-90"
+                              className="w-7 h-7 rounded-xl flex items-center justify-center text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 hover:bg-red-500/10 dark:hover:bg-red-500/15 transition-all opacity-60 sm:opacity-0 group-hover:opacity-100 cursor-pointer active:scale-90 shrink-0"
                               title="Remove this prompt"
                               aria-label="Remove this prompt"
                             >

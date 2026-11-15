@@ -1005,25 +1005,25 @@ export const generateStockPrompts = async (
     
     const inputs = {
       subject: getFieldVal('subject', options.subject),
-      culturalContext: getFieldVal('characterBackground', options.characterBackground),
+      culturalContext: !isHumanSubject || isHumanPreservation ? null : getFieldVal('characterBackground', options.characterBackground),
       environment: isIsolatedPngMode ? 'Pure flat solid color (White or contrasting, NO environment details)' : getFieldVal('environment', options.environment),
       lighting: getFieldVal('lighting', options.lighting),
       // Ignore subject-specific framing/position if Background Mode is active
       framing: isBackgroundMode ? null : (isIsolatedPngMode ? 'Full Object in Frame (Centered, Uncropped)' : getFieldVal('framing', options.framing)),
       angle: getFieldVal('cameraAngle', options.cameraAngle),
       position: isBackgroundMode ? null : (isIsolatedPngMode ? 'Perfectly Centered' : getFieldVal('subjectPosition', options.subjectPosition)),
-      shadows: isIsolatedPngMode ? 'No Shadow / Flat (No cast shadows on ground)' : getFieldVal('shadowStyle', options.shadowStyle),
+      shadows: isBackgroundMode ? null : (isIsolatedPngMode ? 'No Shadow / Flat (No cast shadows on ground)' : getFieldVal('shadowStyle', options.shadowStyle)),
       style: getFieldVal('visualType', options.visualType),
       material: getFieldVal('materialStyle', options.materialStyle),
       concept: getFieldVal('conceptFocus', options.conceptFocus || 'Default / Auto'),
-      authenticity: getFieldVal('authenticity', options.authenticity || 'Default / Auto'),
-      // Ignore interaction if Background Mode is active
-      interaction: (isBackgroundMode || isIsolatedPngMode) ? null : getFieldVal('interaction', options.interaction || 'Default / Auto'),
+      authenticity: !isHumanSubject ? null : getFieldVal('authenticity', options.authenticity || 'Default / Auto'),
+      // Ignore interaction if Background Mode, Isolated PNG Mode, or Non-Human Subject is active
+      interaction: (!isHumanSubject || isBackgroundMode || isIsolatedPngMode) ? null : getFieldVal('interaction', options.interaction || 'Default / Auto'),
       target: getFieldVal('targetMarket', options.targetMarket || 'Default / Auto'),
       season: options.useCalendar ? `${options.calendarMonth} (${options.calendarEvent})` : null,
       smartRefinement: options.activeFields?.smartRefinement ? (isProductPreservation ? stripColorDescriptors(options.smartRefinementText) : options.smartRefinementText) : null,
-      ageRange: getFieldVal('ageRange', options.ageRange || 'Default / Auto'),
-      colorMood: getFieldVal('colorMood', options.colorMood || 'Default / Auto'),
+      ageRange: (!isHumanSubject || isHumanPreservation) ? null : getFieldVal('ageRange', options.ageRange || 'Default / Auto'),
+      colorMood: isProductPreservation ? null : getFieldVal('colorMood', options.colorMood || 'Default / Auto'),
       preservationMode: isProductPreservation 
         ? 'PRODUCT PRESERVATION ENABLED (Prompt #1 = 100% Exact Reference Clone; Prompts #2+ = 100% Locked Reference Product Packaging & Label + Commercial Shoot Variations)' 
         : isHumanPreservation 
@@ -1044,20 +1044,36 @@ export const generateStockPrompts = async (
         subject: 'Subject',
         characterBackground: 'Cultural Context',
         visualType: 'Visual Style',
+        imageMedium: 'Image Medium',
+        materialStyle: 'Material Finish',
         qualityCamera: 'Quality & Camera',
         ageRange: 'Age',
+        interaction: 'Interaction',
+        authenticity: 'Authenticity',
+        targetMarket: 'Target Market',
         conceptFocus: 'Concept Focus'
       };
 
       const lockedPools = (options as any).lockedPools || {};
 
       for (const [key, isLocked] of Object.entries(options.lockedFields || {})) {
-        if (isLocked && map[key]) {
-          const pool: string[] = lockedPools[key] || [];
-          if (pool.length > 1) {
-            lockedRules.push(`${map[key]} is RESTRICTED to ONLY these allowed options: [ ${pool.join(', ')} ] (any dynamic variation across prompts in the batch MUST choose strictly from this pool)`);
-          } else {
-            const singleVal = (options as any)[key] || pool[0];
+        if (!isLocked || !map[key]) continue;
+        // CRITICAL: If a locked section is turned OFF (activeFields[key] === false), skip it!
+        if (options.activeFields && options.activeFields[key] === false) continue;
+        // Also skip human-only locks if the current subject is non-human
+        if (!isHumanSubject && ['characterBackground', 'ageRange', 'interaction', 'authenticity'].includes(key)) continue;
+        if (isBackgroundMode && ['framing', 'subjectPosition', 'shadowStyle', 'interaction'].includes(key)) continue;
+        if (isIsolatedPngMode && ['environment', 'shadowStyle', 'interaction'].includes(key)) continue;
+        if ((is3D || isArt) && key === 'qualityCamera') continue;
+        if (isProductPreservation && key === 'colorMood') continue;
+        if (isHumanPreservation && ['characterBackground', 'ageRange'].includes(key)) continue;
+
+        const pool: string[] = lockedPools[key] || [];
+        if (pool.length > 1) {
+          lockedRules.push(`${map[key]} is RESTRICTED to ONLY these allowed options: [ ${pool.join(', ')} ] (any dynamic variation across prompts in the batch MUST choose strictly from this pool)`);
+        } else {
+          const singleVal = (options as any)[key] || pool[0];
+          if (singleVal && singleVal !== 'Default / Auto') {
             lockedRules.push(`${map[key]} is LOCKED strictly to "${singleVal}" (must not be varied across the batch)`);
           }
         }
