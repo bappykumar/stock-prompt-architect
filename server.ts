@@ -78,11 +78,18 @@ async function startServer() {
       const { contents, apiKey } = req.body || {};
       const client = getGeminiClient(apiKey);
 
-      const candidateModels = [
-        "gemini-4-hydrogen",
-        "gemini-2.5-flash",
-        "gemini-flash-latest",
-      ];
+      const hasCustomKey = Boolean(apiKey?.trim());
+      const candidateModels = hasCustomKey
+        ? [
+            "gemini-2.5-flash",
+            "gemini-flash-latest",
+            "gemini-4-hydrogen",
+          ]
+        : [
+            "gemini-4-hydrogen",
+            "gemini-2.5-flash",
+            "gemini-flash-latest",
+          ];
       let response: any = null;
       let lastErr: any = null;
 
@@ -146,14 +153,25 @@ async function startServer() {
         required: ["prompts"],
       };
 
+      const hasCustomKey = Boolean(apiKey?.trim());
+      const normalizedModel =
+        model === "gemini-3.8-flash" ? "gemini-2.5-flash" : model;
       const candidateModels = Array.from(
         new Set(
-          [
-            model,
-            "gemini-4-hydrogen",
-            "gemini-2.5-flash",
-            "gemini-flash-latest",
-          ].filter(Boolean)
+          (hasCustomKey
+            ? [
+                normalizedModel,
+                "gemini-2.5-flash",
+                "gemini-flash-latest",
+                "gemini-4-hydrogen",
+              ]
+            : [
+                normalizedModel,
+                "gemini-4-hydrogen",
+                "gemini-2.5-flash",
+                "gemini-flash-latest",
+              ]
+          ).filter(Boolean)
         )
       );
 

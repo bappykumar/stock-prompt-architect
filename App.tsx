@@ -1664,7 +1664,9 @@ export default function App() {
         }
       }
 
-      for (let attempt = 1; attempt <= maxRetriesPerKey; attempt++) {
+      const retriesForThisKey = keyRecord.id === 'system' ? 1 : maxRetriesPerKey;
+
+      for (let attempt = 1; attempt <= retriesForThisKey; attempt++) {
         try {
           setApiTrackerState(prev => ({
             ...prev,
@@ -1679,10 +1681,12 @@ export default function App() {
           setApiTrackerState(prev => ({ ...prev, statusMessage: 'TRANSMISSION COMPLETE.', visible: false }));
           return result;
         } catch (err: any) {
-          lastError = err;
+          if (keyRecord.id !== 'system' || !lastError) {
+            lastError = err;
+          }
           console.warn(`Attempt ${attempt} failed with key ${maskedKey} (${keyRecord.provider}):`, err);
           
-          const isLastAttempt = attempt === maxRetriesPerKey;
+          const isLastAttempt = attempt === retriesForThisKey;
           const isLastKey = keyIdx === keysToTry.length - 1;
           
           if (isLastAttempt) {
@@ -1691,7 +1695,7 @@ export default function App() {
 
           if (!isLastAttempt) {
             const backoffMs = attempt * 1500; // Backoff of 1.5s, 3s
-            setApiTrackerState(prev => ({ ...prev, statusMessage: `ERR: NODE OFFLINE. RETRYING (${attempt}/${maxRetriesPerKey}) IN ${(backoffMs / 1000).toFixed(1)}S...` }));
+            setApiTrackerState(prev => ({ ...prev, statusMessage: `ERR: NODE OFFLINE. RETRYING (${attempt}/${retriesForThisKey}) IN ${(backoffMs / 1000).toFixed(1)}S...` }));
             
             await new Promise(resolve => setTimeout(resolve, backoffMs));
           } else if (!isLastKey) {
@@ -1784,7 +1788,7 @@ export default function App() {
 
       // Image analysis forces Gemini, but executeWithKeyRotation might rotate to Groq if Gemini fails.
       // We pass the keyRecord.provider down. If it's an image and rotates to non-gemini, we rely on the service to handle/fail.
-      const passedPreservation = isAdvanced ? !!options.productPreservation : false;
+      const passedPreservation = !!options.productPreservation;
       const preservationType = options.preservationType || 'product';
       const result = await executeWithKeyRotation((keyRecord, fallbackModel) => {
         const passedOptions = fallbackModel ? { ...visualOptions, model: fallbackModel } : visualOptions;
@@ -1853,8 +1857,8 @@ export default function App() {
       });
       
       let cleanSrText = input.type === 'text' ? options.smartRefinementText : (result.smartRefinement || options.smartRefinementText);
-      const isProdActive = isAdvanced && options.productPreservation && (options.preservationType || 'product') === 'product';
-      const isHumanActive = isAdvanced && options.productPreservation && options.preservationType === 'human';
+      const isProdActive = !!options.productPreservation && (options.preservationType || 'product') === 'product';
+      const isHumanActive = !!options.productPreservation && options.preservationType === 'human';
       if (isProdActive && cleanSrText) {
         cleanSrText = stripColorDescriptors(cleanSrText);
       } else if (isHumanActive && cleanSrText) {
@@ -1863,6 +1867,10 @@ export default function App() {
 
       if (isProdActive && !options.lockedFields?.colorMood) {
         newSettings.colorMood = 'Default / Auto';
+      }
+      if (isHumanActive && !options.lockedFields?.characterBackground) {
+        newSettings.characterBackground = 'Default / Auto';
+        nextActiveFields.characterBackground = false;
       }
 
       if (input.type === 'image') {
@@ -1925,7 +1933,7 @@ export default function App() {
 
       const effectiveOptions = {
         ...options,
-        productPreservation: isAdvanced ? !!options.productPreservation : false,
+        productPreservation: !!options.productPreservation,
         preservationType: options.preservationType || 'product'
       };
 
@@ -2347,179 +2355,138 @@ export default function App() {
 
             {/* Feature Cards */}
             <div className="space-y-5">
-              {/* Preservation Mode Card (Advanced Mode Only) */}
-              {isAdvanced && (
-                <div className={`p-4 sm:p-5 rounded-[24px] relative transition-all duration-300 border group
-                  ${options.productPreservation 
-                    ? 'bg-blue-500/[0.07] dark:bg-blue-500/[0.12] border-blue-500/30 dark:border-blue-400/25 shadow-[0_8px_30px_rgba(59,130,246,0.1),inset_0_1px_1px_rgba(255,255,255,0.8)] backdrop-blur-xl' 
-                    : 'bg-white/60 dark:bg-white/[0.03] border-white/70 dark:border-white/[0.08] shadow-[0_8px_24px_rgba(0,0,0,0.03),inset_0_1px_1px_rgba(255,255,255,0.8)] backdrop-blur-xl hover:bg-white/75 dark:hover:bg-white/[0.05]'
-                  }`}>
-                  {/* Specular top rim */}
-                  <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/15 to-transparent pointer-events-none rounded-t-[24px]" />
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-9 h-9 rounded-2xl flex items-center justify-center transition-colors duration-300
-                        ${options.productPreservation ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white/80 dark:bg-slate-800 text-slate-400 shadow-sm border border-white/60 dark:border-white/10'}`}>
-                        {options.productPreservation ? (
-                          (options.preservationType === 'human') ? <ScanFace size={16} /> : <PackageCheck size={16} />
-                        ) : (
-                          <ShieldCheck size={16} />
-                        )}
-                      </div>
-                      <div>
-                        <h4 className={`text-[12px] font-bold transition-colors ${options.productPreservation ? 'text-blue-700 dark:text-blue-300' : 'text-slate-900 dark:text-slate-200'}`}>
-                          Preservation Mode
-                        </h4>
-                        <p className="text-[10px] text-slate-500 font-medium">
-                          Preserve reference product or person
-                        </p>
-                      </div>
-                    </div>
-                    <button 
-                      type="button"
-                      role="switch"
-                      aria-checked={!!options.productPreservation}
-                      onClick={() => setOptions(prev => {
-                        const nextVal = !prev.productPreservation;
-                        let nextText = prev.smartRefinementText;
-                        const currentType = prev.preservationType || 'product';
-                        if (nextVal && nextText) {
-                          if (currentType === 'product') {
-                            nextText = stripColorDescriptors(nextText);
-                          } else if (currentType === 'human') {
-                            nextText = stripBiometricDescriptors(nextText);
-                          }
-                        }
-                        return {
-                          ...prev,
-                          productPreservation: nextVal,
-                          preservationType: currentType,
-                          smartRefinementText: nextText
-                        };
-                      })} 
-                      className={`w-11 h-6 rounded-full relative p-0.5 apple-switch-track focus:outline-none cursor-pointer active:scale-95 shrink-0 ${
-                        options.productPreservation 
-                          ? 'bg-blue-600 dark:bg-blue-500 shadow-[0_2px_10px_rgba(37,99,235,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)] border border-blue-400/40' 
-                          : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)] border border-black/10 dark:border-white/10'
-                      }`}
-                    >
-                      <div className={`w-5 h-5 rounded-full bg-white shadow-[0_2px_6px_rgba(0,0,0,0.25),inset_0_1px_1px_rgba(255,255,255,0.95)] apple-switch-thumb transform ${
-                        options.productPreservation ? 'translate-x-5' : 'translate-x-0'
-                      }`} />
-                    </button>
-                  </div>
-
-                  {/* Dropdown Selector (Revealed when Toggle is ON) */}
-                  {options.productPreservation && (
-                    <div className="mt-3.5 pt-3 border-t border-blue-500/15 dark:border-blue-400/15" ref={preservationDropdownRef}>
-                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
-                        Preservation Type
-                      </label>
-
-                      {/* Dropdown Trigger */}
-                      <button
-                        type="button"
-                        onClick={() => setIsPreservationDropdownOpen(prev => !prev)}
-                        className="w-full flex items-center justify-between px-3 py-2.5 bg-white/90 dark:bg-white/[0.06] hover:bg-white dark:hover:bg-white/[0.1] border border-blue-500/30 dark:border-blue-400/25 rounded-xl text-left transition-all shadow-xs cursor-pointer group"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="w-5 h-5 rounded-md bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-                            {(options.preservationType || 'product') === 'human' ? (
-                              <ScanFace size={13} />
-                            ) : (
-                              <PackageCheck size={13} />
-                            )}
-                          </div>
-                          <span className="text-[11px] font-semibold text-slate-800 dark:text-slate-100 truncate">
-                            {(options.preservationType || 'product') === 'human'
-                              ? 'Human: Identity & Pose Lock'
-                              : 'Product Preservation'}
-                          </span>
-                        </div>
-                        <ChevronDown 
-                          size={14} 
-                          className={`text-slate-400 transition-transform duration-200 shrink-0 ml-1.5 ${isPreservationDropdownOpen ? 'rotate-180 text-blue-500' : ''}`} 
-                        />
-                      </button>
-
-                      {/* Dropdown Menu Options */}
-                      {isPreservationDropdownOpen && (
-                        <div className="mt-1.5 p-1 bg-white/95 dark:bg-slate-900/95 border border-blue-500/25 dark:border-blue-400/25 rounded-xl shadow-md space-y-0.5 animate-in fade-in duration-150">
-                          {/* Option 1: Product Preservation */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOptions(prev => {
-                                let nextText = prev.smartRefinementText;
-                                if (nextText) {
-                                  nextText = stripColorDescriptors(nextText);
-                                }
-                                return {
-                                  ...prev,
-                                  preservationType: 'product',
-                                  smartRefinementText: nextText
-                                };
-                              });
-                              setIsPreservationDropdownOpen(false);
-                            }}
-                            className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-left transition-colors cursor-pointer ${
-                              (options.preservationType || 'product') === 'product'
-                                ? 'bg-blue-500/15 text-blue-700 dark:text-blue-300 font-semibold'
-                                : 'hover:bg-black/[0.04] dark:hover:bg-white/[0.06] text-slate-700 dark:text-slate-300 font-medium'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <PackageCheck size={14} className={(options.preservationType || 'product') === 'product' ? 'text-blue-600 dark:text-blue-400 shrink-0' : 'text-slate-400 shrink-0'} />
-                              <div className="min-w-0">
-                                <span className="text-[11px] block font-semibold truncate">Product Preservation</span>
-                                <span className="text-[9px] block text-slate-400 dark:text-slate-500 font-normal truncate">Authentic packaging, labels & brand finish</span>
-                              </div>
-                            </div>
-                            {(options.preservationType || 'product') === 'product' && (
-                              <Check size={13} className="text-blue-600 dark:text-blue-400 shrink-0 ml-1.5" />
-                            )}
-                          </button>
-
-                          {/* Option 2: Human: Identity & Pose Lock */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOptions(prev => {
-                                let nextText = prev.smartRefinementText;
-                                if (nextText) {
-                                  nextText = stripBiometricDescriptors(nextText);
-                                }
-                                return {
-                                  ...prev,
-                                  preservationType: 'human',
-                                  smartRefinementText: nextText
-                                };
-                              });
-                              setIsPreservationDropdownOpen(false);
-                            }}
-                            className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-left transition-colors cursor-pointer ${
-                              options.preservationType === 'human'
-                                ? 'bg-blue-500/15 text-blue-700 dark:text-blue-300 font-semibold'
-                                : 'hover:bg-black/[0.04] dark:hover:bg-white/[0.06] text-slate-700 dark:text-slate-300 font-medium'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <ScanFace size={14} className={options.preservationType === 'human' ? 'text-blue-600 dark:text-blue-400 shrink-0' : 'text-slate-400 shrink-0'} />
-                              <div className="min-w-0">
-                                <span className="text-[11px] block font-semibold truncate">Human: Identity & Pose Lock</span>
-                                <span className="text-[9px] block text-slate-400 dark:text-slate-500 font-normal truncate">Face ID lock + face-neutral pose/style transfer</span>
-                              </div>
-                            </div>
-                            {options.preservationType === 'human' && (
-                              <Check size={13} className="text-blue-600 dark:text-blue-400 shrink-0 ml-1.5" />
-                            )}
-                          </button>
-                        </div>
+              {/* Preservation Mode Card (Available in Basic & Advanced Modes) */}
+              <div className={`p-4 sm:p-5 rounded-[24px] relative transition-all duration-300 border group
+                ${options.productPreservation 
+                  ? 'bg-blue-500/[0.07] dark:bg-blue-500/[0.12] border-blue-500/30 dark:border-blue-400/25 shadow-[0_8px_30px_rgba(59,130,246,0.1),inset_0_1px_1px_rgba(255,255,255,0.8)] backdrop-blur-xl' 
+                  : 'bg-white/60 dark:bg-white/[0.03] border-white/70 dark:border-white/[0.08] shadow-[0_8px_24px_rgba(0,0,0,0.03),inset_0_1px_1px_rgba(255,255,255,0.8)] backdrop-blur-xl hover:bg-white/75 dark:hover:bg-white/[0.05]'
+                }`}>
+                {/* Specular top rim */}
+                <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/15 to-transparent pointer-events-none rounded-t-[24px]" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-9 h-9 rounded-2xl flex items-center justify-center transition-colors duration-300
+                      ${options.productPreservation ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white/80 dark:bg-slate-800 text-slate-400 shadow-sm border border-white/60 dark:border-white/10'}`}>
+                      {options.productPreservation ? (
+                        (options.preservationType === 'human') ? <ScanFace size={16} /> : <PackageCheck size={16} />
+                      ) : (
+                        <ShieldCheck size={16} />
                       )}
                     </div>
-                  )}
+                    <div>
+                      <h4 className={`text-[12px] font-bold transition-colors ${options.productPreservation ? 'text-blue-700 dark:text-blue-300' : 'text-slate-900 dark:text-slate-200'}`}>
+                        Preservation Mode
+                      </h4>
+                      <p className="text-[10px] text-slate-500 font-medium">
+                        Preserve reference product or person
+                      </p>
+                    </div>
+                  </div>
+                  <button 
+                    type="button"
+                    role="switch"
+                    aria-checked={!!options.productPreservation}
+                    onClick={() => setOptions(prev => {
+                      const nextVal = !prev.productPreservation;
+                      let nextText = prev.smartRefinementText;
+                      const currentType = prev.preservationType || 'product';
+                      if (nextVal && nextText) {
+                        if (currentType === 'product') {
+                          nextText = stripColorDescriptors(nextText);
+                        } else if (currentType === 'human') {
+                          nextText = stripBiometricDescriptors(nextText);
+                        }
+                      }
+                      return {
+                        ...prev,
+                        productPreservation: nextVal,
+                        preservationType: currentType,
+                        smartRefinementText: nextText
+                      };
+                    })} 
+                    className={`w-11 h-6 rounded-full relative p-0.5 apple-switch-track focus:outline-none cursor-pointer active:scale-95 shrink-0 ${
+                      options.productPreservation 
+                        ? 'bg-blue-600 dark:bg-blue-500 shadow-[0_2px_10px_rgba(37,99,235,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)] border border-blue-400/40' 
+                        : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)] border border-black/10 dark:border-white/10'
+                    }`}
+                  >
+                    <div className={`w-5 h-5 rounded-full bg-white shadow-[0_2px_6px_rgba(0,0,0,0.25),inset_0_1px_1px_rgba(255,255,255,0.95)] apple-switch-thumb transform ${
+                      options.productPreservation ? 'translate-x-5' : 'translate-x-0'
+                    }`} />
+                  </button>
                 </div>
-              )}
+
+                {/* Instant 1-Click Segmented Selector + Workflow Summary (Revealed when Toggle is ON) */}
+                {options.productPreservation && (
+                  <div className="mt-3.5 pt-3 border-t border-blue-500/15 dark:border-blue-400/15 space-y-2.5">
+                    <div className="grid grid-cols-2 gap-1.5 p-1 bg-black/[0.04] dark:bg-white/[0.05] rounded-xl border border-black/[0.05] dark:border-white/[0.06]">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOptions(prev => {
+                            let nextText = prev.smartRefinementText;
+                            if (nextText) {
+                              nextText = stripColorDescriptors(nextText);
+                            }
+                            return {
+                              ...prev,
+                              preservationType: 'product',
+                              smartRefinementText: nextText
+                            };
+                          });
+                        }}
+                        className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                          (options.preservationType || 'product') === 'product'
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                        }`}
+                      >
+                        <PackageCheck size={13} className="shrink-0" />
+                        <span className="truncate">Product Lock</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOptions(prev => {
+                            let nextText = prev.smartRefinementText;
+                            if (nextText) {
+                              nextText = stripBiometricDescriptors(nextText);
+                            }
+                            return {
+                              ...prev,
+                              preservationType: 'human',
+                              smartRefinementText: nextText
+                            };
+                          });
+                        }}
+                        className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                          options.preservationType === 'human'
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                        }`}
+                      >
+                        <ScanFace size={13} className="shrink-0" />
+                        <span className="truncate">Person / Face</span>
+                      </button>
+                    </div>
+
+                    <div className="px-2.5 py-2 rounded-xl bg-blue-500/[0.08] dark:bg-blue-500/[0.12] border border-blue-500/20 text-[10px] leading-relaxed text-slate-600 dark:text-slate-300">
+                      {(options.preservationType || 'product') === 'human' ? (
+                        <>
+                          <span className="font-bold text-blue-700 dark:text-blue-300">Prompt #1:</span> 100% Same-to-Same reference clone (exact face, hair, pose & outfit).{' '}
+                          <span className="font-bold text-blue-700 dark:text-blue-300">Prompts #2+:</span> Same locked person in varied commercial poses & angles.
+                        </>
+                      ) : (
+                        <>
+                          <span className="font-bold text-blue-700 dark:text-blue-300">Prompt #1:</span> 100% Same-to-Same reference clone (exact packaging, label & scene).{' '}
+                          <span className="font-bold text-blue-700 dark:text-blue-300">Prompts #2+:</span> Same locked product on varied commercial surfaces & angles.
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Smart Refinement Card */}
               <div className={`p-5 rounded-[24px] relative transition-all duration-300 border group overflow-hidden
