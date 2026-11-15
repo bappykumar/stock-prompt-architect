@@ -1270,8 +1270,8 @@ export default function App() {
           cardPadding: 'p-4 sm:p-5',
           textSize: 'text-[12.5px] sm:text-[13px] leading-relaxed',
           pillPadding: 'px-2 py-0.5 text-[10px]',
-          footerPadding: 'pt-3',
-          buttonPadding: 'px-3.5 py-1.5 text-[10px]',
+          footerPadding: 'pt-2.5',
+          buttonPadding: 'h-7 px-3 text-[10px] rounded-lg',
           metaSize: 'text-[10px]',
         };
       case 'spacious':
@@ -1280,7 +1280,7 @@ export default function App() {
           textSize: 'text-[15px] sm:text-[16px] leading-[1.8]',
           pillPadding: 'px-3 py-1 text-[12px]',
           footerPadding: 'pt-4',
-          buttonPadding: 'px-6 py-2.5 text-[12px]',
+          buttonPadding: 'h-9 px-4.5 text-[11px] rounded-xl',
           metaSize: 'text-[11px] sm:text-[12px]',
         };
       case 'normal':
@@ -1289,8 +1289,8 @@ export default function App() {
           cardPadding: 'p-5 sm:p-6',
           textSize: 'text-[13.5px] sm:text-[14px] leading-relaxed',
           pillPadding: 'px-2.5 py-0.5 text-[11px]',
-          footerPadding: 'pt-3.5',
-          buttonPadding: 'px-5 py-2 text-[11px]',
+          footerPadding: 'pt-3',
+          buttonPadding: 'h-8 px-3.5 text-[10.5px] rounded-lg',
           metaSize: 'text-[10px] sm:text-[11px]',
         };
     }
@@ -2288,27 +2288,27 @@ export default function App() {
 
         <div className="flex items-center gap-1.5 xs:gap-2 sm:gap-2.5 md:gap-3 shrink-0">
           {batches.length > 0 && (
-            <div className="hidden lg:flex items-center mr-1">
-              <div className="flex items-center h-9 sm:h-10 px-1 rounded-2xl border border-slate-200/80 dark:border-white/[0.08] bg-white/70 dark:bg-white/[0.04] backdrop-blur-xl shadow-[0_2px_8px_rgba(0,0,0,0.02),inset_0_1px_1px_rgba(255,255,255,0.8)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)]">
+            <div className="hidden lg:flex items-center mr-0.5">
+              <div className="flex items-center h-8 sm:h-9 px-1 rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-white/60 dark:bg-white/[0.03] backdrop-blur-xl">
                 
                 {/* Total Segment */}
-                <div className="flex items-center gap-2 px-3 h-full">
-                  <Layers size={13} className="text-slate-400" />
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-[13px] font-black text-slate-900 dark:text-white font-mono">{stats.total}</span>
-                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Generated</span>
+                <div className="flex items-center gap-1.5 px-2.5 h-full">
+                  <Layers size={12} className="text-slate-400" />
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-[12px] font-bold text-slate-900 dark:text-white font-mono">{stats.total}</span>
+                    <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Generated</span>
                   </div>
                 </div>
 
                 {/* Divider */}
-                <div className="w-px h-3 bg-slate-200/80 dark:bg-white/[0.1]" />
+                <div className="w-px h-3 bg-slate-200/80 dark:bg-white/[0.08]" />
 
                 {/* Pending Segment */}
-                <div className="flex items-center gap-2 px-3 h-full">
-                  <div className={`w-1.5 h-1.5 rounded-full ${stats.pending > 0 ? 'bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.6)] animate-pulse' : 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]'}`} />
-                  <div className="flex items-baseline gap-1.5">
-                    <span className={`text-[13px] font-black font-mono ${stats.pending > 0 ? 'text-slate-900 dark:text-white' : 'text-emerald-500'}`}>{stats.pending}</span>
-                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Pending</span>
+                <div className="flex items-center gap-1.5 px-2.5 h-full">
+                  <div className={`w-1.5 h-1.5 rounded-full ${stats.pending > 0 ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
+                  <div className="flex items-baseline gap-1">
+                    <span className={`text-[12px] font-bold font-mono ${stats.pending > 0 ? 'text-slate-900 dark:text-white' : 'text-emerald-500'}`}>{stats.pending}</span>
+                    <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Pending</span>
                   </div>
                 </div>
 
@@ -2319,18 +2319,18 @@ export default function App() {
           {/* Action 1: Clear Copied Prompts */}
           <button 
             onClick={clearCopiedPrompts}
-            className={`min-h-[38px] sm:min-h-[40px] h-9 sm:h-10 flex items-center gap-1.5 sm:gap-2 px-2.5 xs:px-3 sm:px-3.5 rounded-xl sm:rounded-2xl text-[10.5px] sm:text-[11.5px] font-bold uppercase tracking-wider sm:tracking-widest border backdrop-blur-xl transition-all duration-200 active:scale-[0.95] cursor-pointer ${
+            className={`h-8 sm:h-9 flex items-center gap-1.5 px-2.5 sm:px-3 rounded-xl text-[10px] sm:text-[10.5px] font-semibold uppercase tracking-wider border backdrop-blur-xl transition-all duration-150 active:scale-[0.97] cursor-pointer ${
               stats.copied > 0 
-                ? 'border-orange-500/40 bg-orange-500/10 text-orange-600 dark:text-orange-400 hover:bg-orange-500 hover:text-white shadow-[0_2px_8px_rgba(249,115,22,0.18)]' 
-                : 'border-slate-200/60 dark:border-white/[0.04] bg-white/40 dark:bg-white/[0.02] text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
+                ? 'border-orange-500/35 bg-orange-500/10 text-orange-600 dark:text-orange-400 hover:bg-orange-500/20' 
+                : 'border-slate-200/70 dark:border-white/[0.06] bg-white/50 dark:bg-white/[0.03] text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
             }`}
             title={stats.copied > 0 ? `Remove ${stats.copied} copied prompts` : "Remove copied prompts from view"}
           >
-            <ListX size={14} className="sm:w-3.5 sm:h-3.5 shrink-0" />
+            <ListX size={13} className="shrink-0" />
             <span className="hidden sm:inline">Clear Copied</span>
-            <span className="inline sm:hidden">Clear Copied</span>
+            <span className="inline sm:hidden">Clear</span>
             {stats.copied > 0 && (
-              <span className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-orange-500/20 text-orange-600 dark:text-orange-300">
+              <span className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-orange-500/15 text-orange-600 dark:text-orange-300 leading-none">
                 {stats.copied}
               </span>
             )}
@@ -2340,13 +2340,11 @@ export default function App() {
           <div className="relative" ref={exportMenuRef}>
             <button 
               onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
-              className="min-h-[38px] sm:min-h-[40px] h-9 sm:h-10 flex items-center gap-1.5 sm:gap-2 px-2.5 xs:px-3 sm:px-3.5 rounded-xl sm:rounded-2xl text-[10.5px] sm:text-[11.5px] font-bold uppercase tracking-wider sm:tracking-widest transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] active:scale-[0.96] bg-gradient-to-b from-white/90 via-white/80 to-white/70 hover:from-white hover:to-white/80 dark:from-white/[0.12] dark:via-white/[0.08] dark:to-white/[0.05] dark:hover:from-white/[0.18] dark:hover:to-white/[0.1] text-slate-800 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 backdrop-blur-2xl backdrop-saturate-[190%] border border-slate-200/90 dark:border-white/[0.15] shadow-[0_4px_16px_rgba(0,0,0,0.04),inset_0_1px_1.5px_rgba(255,255,255,0.95)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.18)] hover:shadow-[0_8px_24px_rgba(59,130,246,0.15)] relative overflow-hidden cursor-pointer"
+              className="h-8 sm:h-9 flex items-center gap-1.5 px-2.5 sm:px-3 rounded-xl text-[10px] sm:text-[10.5px] font-semibold uppercase tracking-wider transition-all duration-150 active:scale-[0.97] bg-white/70 hover:bg-white dark:bg-white/[0.05] dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 backdrop-blur-xl border border-slate-200/80 dark:border-white/[0.1] cursor-pointer"
             >
-              {/* Top Specular Rim */}
-              <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/95 dark:via-white/30 to-transparent pointer-events-none" />
-              <Download size={13} className="sm:w-3.5 sm:h-3.5 text-blue-500 shrink-0" />
+              <Download size={13} className="text-blue-500 shrink-0" />
               <span className="hidden xs:inline sm:inline">Backup</span>
-              <ChevronDown size={12} className={`transition-transform duration-300 sm:w-3.5 sm:h-3.5 ${isExportMenuOpen ? 'rotate-180 text-blue-500' : ''}`} />
+              <ChevronDown size={11} className={`transition-transform duration-200 ${isExportMenuOpen ? 'rotate-180 text-blue-500' : 'opacity-70'}`} />
             </button>
             
             {isExportMenuOpen && (
@@ -2392,12 +2390,10 @@ export default function App() {
           {/* Master Config Button - Anchored at the far right like standard settings */}
           <button 
             onClick={() => setIsModalOpen(true)} 
-            className="min-h-[38px] sm:min-h-[40px] h-9 sm:h-10 flex items-center gap-1.5 sm:gap-2 px-2.5 xs:px-3 sm:px-4 rounded-xl sm:rounded-2xl text-[10.5px] sm:text-[11.5px] font-bold uppercase tracking-wider sm:tracking-widest transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] active:scale-[0.96] bg-gradient-to-b from-white/95 via-white/85 to-white/75 hover:from-white hover:to-white/90 dark:from-white/[0.14] dark:via-white/[0.09] dark:to-white/[0.06] dark:hover:from-white/[0.2] dark:hover:to-white/[0.12] text-slate-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 backdrop-blur-2xl backdrop-saturate-[190%] border border-slate-200/90 dark:border-white/[0.18] shadow-[0_4px_16px_rgba(0,0,0,0.04),inset_0_1px_1.5px_rgba(255,255,255,0.95)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.18)] hover:shadow-[0_8px_24px_rgba(59,130,246,0.18)] relative overflow-hidden cursor-pointer"
+            className="h-8 sm:h-9 flex items-center gap-1.5 px-2.5 sm:px-3.5 rounded-xl text-[10px] sm:text-[10.5px] font-semibold uppercase tracking-wider transition-all duration-150 active:scale-[0.97] bg-white/75 hover:bg-white dark:bg-white/[0.06] dark:hover:bg-white/[0.12] text-slate-800 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 backdrop-blur-xl border border-slate-200/80 dark:border-white/[0.12] cursor-pointer"
             title="System Configuration (API & Display Preferences)"
           >
-            {/* Top Specular Rim */}
-            <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/95 dark:via-white/40 to-transparent pointer-events-none" />
-            <Settings size={14} className="sm:w-3.5 sm:h-3.5 text-blue-500 shrink-0" />
+            <Settings size={13} className="text-blue-500 shrink-0" />
             <span className="hidden xs:inline sm:inline">Config</span>
           </button>
         </div>
@@ -2851,26 +2847,26 @@ export default function App() {
                             type="button"
                             onClick={handleAutoFill}
                             disabled={isAnalyzing || !hasSrContent}
-                            className={`w-full min-h-[40px] sm:min-h-[42px] py-2 px-3 sm:px-4 rounded-xl font-bold uppercase tracking-wide text-[11px] sm:text-[11.5px] flex items-center justify-center gap-2 backdrop-blur-md transition-all active:scale-[0.98] border shadow-xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap select-none ${
+                            className={`w-full h-9 py-1.5 px-3 rounded-xl font-semibold uppercase tracking-wider text-[10.5px] sm:text-[11px] flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] border disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap select-none ${
                               !hasSrContent
-                                ? 'bg-slate-200/70 dark:bg-white/[0.06] text-slate-400 dark:text-slate-500 border-transparent' 
+                                ? 'bg-slate-200/70 dark:bg-white/[0.05] text-slate-400 dark:text-slate-500 border-transparent' 
                                 : isSrUsed 
-                                  ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white shadow-[0_4px_16px_rgba(16,185,129,0.25)] border-emerald-400/40' 
-                                  : 'bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-500 text-white shadow-[0_4px_16px_rgba(37,99,235,0.25)] border-blue-400/40'
+                                  ? 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border-emerald-500/35' 
+                                  : 'bg-blue-600 hover:bg-blue-500 text-white border-blue-500/40 shadow-xs'
                             }`}
                           >
                             {isAnalyzing ? (
-                              <Loader2 size={14} className="animate-spin text-white shrink-0" />
+                              <Loader2 size={13} className="animate-spin shrink-0" />
                             ) : isSrUsed ? (
-                              <Check size={14} className="text-white shrink-0" strokeWidth={2.5} />
+                              <Check size={13} className="shrink-0" strokeWidth={2.5} />
                             ) : (
-                              <Sparkles size={14} className="text-white shrink-0" />
+                              <Sparkles size={13} className="shrink-0" />
                             )}
                             <span className="truncate">
                               {isAnalyzing 
                                 ? 'Analyzing...' 
                                 : isSrUsed 
-                                  ? (autoFillMode === 'image' ? 'Applied • Re-analyze' : 'Applied • Re-analyze') 
+                                  ? 'Applied • Re-analyze' 
                                   : (autoFillMode === 'image' ? 'Auto-Fill from Image' : 'Auto-Fill Settings')}
                             </span>
                           </button>
@@ -3236,40 +3232,28 @@ export default function App() {
                       return (
                         <div 
                           key={p.id} 
-                          className={`bg-gradient-to-b from-white/90 via-white/80 to-white/70 dark:from-slate-900/80 dark:via-slate-900/70 dark:to-slate-950/80 backdrop-blur-2xl backdrop-saturate-[180%] border ${
-                            isMasterClone
-                              ? 'border-amber-400/70 dark:border-amber-500/45 ring-1 ring-amber-400/25 dark:ring-amber-500/20'
-                              : 'border-slate-200/80 dark:border-white/10'
-                          } shadow-[0_16px_40px_-10px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.03),inset_0_1px_1.5px_rgba(255,255,255,0.95)] dark:shadow-[0_24px_60px_-12px_rgba(0,0,0,0.65),0_1px_2px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.12)] rounded-[22px] sm:rounded-[26px] ${cardScaleConfig.cardPadding} flex flex-col justify-between gap-3.5 sm:gap-4 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300 relative group overflow-hidden`}
+                          className={`bg-gradient-to-b from-white/90 via-white/80 to-white/70 dark:from-slate-900/80 dark:via-slate-900/70 dark:to-slate-950/80 backdrop-blur-2xl backdrop-saturate-[180%] border border-slate-200/80 dark:border-white/10 shadow-[0_16px_40px_-10px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.03),inset_0_1px_1.5px_rgba(255,255,255,0.95)] dark:shadow-[0_24px_60px_-12px_rgba(0,0,0,0.65),0_1px_2px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.12)] rounded-[22px] sm:rounded-[26px] ${cardScaleConfig.cardPadding} flex flex-col justify-between gap-3.5 sm:gap-4 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300 relative group overflow-hidden`}
                         >
                           {/* Apple Specular Top Rim Highlight */}
-                          <div className={`absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent ${isMasterClone ? 'via-amber-400/90 dark:via-amber-400/50' : 'via-white/95 dark:via-white/20'} to-transparent pointer-events-none`} />
+                          <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/95 dark:via-white/20 to-transparent pointer-events-none" />
 
                           <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <div className={`inline-flex items-center gap-1.5 ${cardScaleConfig.pillPadding} rounded-full ${
-                                isMasterClone
-                                  ? 'bg-amber-500/15 dark:bg-amber-500/20 border border-amber-500/40'
-                                  : 'bg-black/[0.04] dark:bg-white/[0.05] border border-black/[0.04] dark:border-white/[0.06]'
-                              } shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]`}>
-                                <span className={`w-1.5 h-1.5 rounded-full ${isMasterClone ? 'bg-amber-500' : 'bg-blue-500/80'}`}></span>
-                                <span className={`font-mono font-bold tracking-widest uppercase ${
-                                  isMasterClone ? 'text-amber-700 dark:text-amber-300' : 'text-slate-500 dark:text-slate-400'
-                                }`}>
+                            <div className="flex items-center gap-1.5">
+                              <div className={`inline-flex items-center gap-1.5 ${cardScaleConfig.pillPadding} rounded-full bg-black/[0.04] dark:bg-white/[0.05] border border-black/[0.04] dark:border-white/[0.06] shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]`}>
+                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500/80"></span>
+                                <span className="font-mono font-bold tracking-widest text-slate-500 dark:text-slate-400 uppercase">
                                   #{globalPromptNum.toString().padStart(2, '0')}
                                 </span>
                               </div>
 
                               {isMasterClone && (
-                                <div
-                                  className={`inline-flex items-center gap-1 ${cardScaleConfig.pillPadding} rounded-full bg-gradient-to-r from-amber-500/20 via-yellow-500/15 to-amber-500/20 dark:from-amber-500/25 dark:via-yellow-500/20 dark:to-amber-500/25 border border-amber-500/45 text-amber-700 dark:text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.2)]`}
-                                  title="100% Same-to-Same Reference Master Clone (Prompt #1)"
+                                <span
+                                  className="inline-flex items-center justify-center p-0.5 text-amber-400"
+                                  title="Reference Master Clone"
+                                  aria-label="Reference Master Clone"
                                 >
-                                  <Star size={11} className="fill-amber-500 text-amber-500 shrink-0 drop-shadow-[0_0_3px_rgba(245,158,11,0.6)]" />
-                                  <span className="font-bold tracking-wider uppercase text-[9.5px] sm:text-[10px] leading-none">
-                                    Same-to-Same
-                                  </span>
-                                </div>
+                                  <Star size={13} className="fill-amber-400 text-amber-400" />
+                                </span>
                               )}
                             </div>
                             <button
@@ -3294,19 +3278,19 @@ export default function App() {
                                   e.stopPropagation();
                                   toggleCardExpand(p.id);
                                 }}
-                                className="inline-flex items-center gap-1.5 mt-2.5 self-start text-[11px] font-bold text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors cursor-pointer select-none group/toggle px-2 py-0.5 -ml-2 rounded-lg hover:bg-blue-500/10 dark:hover:bg-blue-400/10"
+                                className="inline-flex items-center gap-1 mt-2 self-start text-[10.5px] font-semibold text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors cursor-pointer select-none group/toggle px-1.5 py-0.5 -ml-1.5 rounded-md hover:bg-blue-500/10 dark:hover:bg-blue-400/10"
                               >
                                 <span>{isExpanded ? 'Show less' : 'Show full prompt'}</span>
                                 {isExpanded ? (
-                                  <ChevronUp size={13} className="transition-transform group-hover/toggle:-translate-y-0.5" />
+                                  <ChevronUp size={12} className="transition-transform group-hover/toggle:-translate-y-0.5" />
                                 ) : (
-                                  <ChevronDown size={13} className="transition-transform group-hover/toggle:translate-y-0.5" />
+                                  <ChevronDown size={12} className="transition-transform group-hover/toggle:translate-y-0.5" />
                                 )}
                               </button>
                             )}
                           </div>
 
-                          <div className={`flex flex-col sm:flex-row sm:items-end justify-between ${cardScaleConfig.footerPadding} border-t border-black/[0.06] dark:border-white/[0.06] gap-2.5 sm:gap-3`}>
+                          <div className={`flex flex-col sm:flex-row sm:items-center justify-between ${cardScaleConfig.footerPadding} border-t border-black/[0.06] dark:border-white/[0.06] gap-2.5 sm:gap-3`}>
                              <div className="flex flex-col gap-0.5">
                                <span className={`${cardScaleConfig.metaSize} font-semibold text-slate-500 dark:text-slate-400 font-mono`}>
                                  {p.text.split(/\s+/).filter(Boolean).length} words
@@ -3317,13 +3301,13 @@ export default function App() {
                              </div>
                              <button 
                                onClick={() => copyIndividual(batch.id, p.id, p.text)} 
-                               className={`w-full sm:w-auto min-h-[36px] sm:min-h-[34px] ${cardScaleConfig.buttonPadding} rounded-xl font-bold uppercase tracking-wider transition-all duration-200 shrink-0 active:scale-[0.96] flex items-center justify-center text-center cursor-pointer ${
+                               className={`w-full sm:w-auto ${cardScaleConfig.buttonPadding} font-semibold uppercase tracking-wider transition-all duration-150 shrink-0 active:scale-[0.97] flex items-center justify-center text-center cursor-pointer ${
                                  p.copied 
-                                   ? 'bg-emerald-500/90 text-white backdrop-blur-md shadow-lg shadow-emerald-500/20 border border-emerald-400/30' 
-                                   : 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:opacity-90 backdrop-blur-xl border border-white/20 dark:border-white/50 shadow-[0_4px_14px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.3)] dark:shadow-[0_4px_14px_rgba(255,255,255,0.15),inset_0_1px_0_rgba(255,255,255,0.9)]'
+                                   ? 'bg-emerald-500/15 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30' 
+                                   : 'bg-slate-900/90 text-white dark:bg-white/90 dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-white border border-black/10 dark:border-white/20 shadow-xs'
                                }`}
                              >
-                               {p.copied ? <><Check size={14} className="inline mr-1.5" />Copied</> : 'Copy'}
+                               {p.copied ? <><Check size={12} className="inline mr-1" />Copied</> : 'Copy'}
                              </button>
                           </div>
                         </div>
