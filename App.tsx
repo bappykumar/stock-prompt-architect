@@ -1914,26 +1914,28 @@ export default function App() {
       const activeModelObj = OPTIONS.model.find(m => m.value === options.model);
       const providerToUse = activeModelObj ? activeModelObj.provider as 'gemini'|'groq'|'mistral'|'openrouter' : 'gemini';
 
-      // Prepare visual options, stripping non-selectable headers and model
+      // Prepare visual options, stripping non-selectable headers and passing compact value strings
       const visualOptions: any = {};
       Object.keys(OPTIONS).forEach(k => {
         if (k === 'model') return;
         const opts = (OPTIONS as any)[k];
         if (Array.isArray(opts)) {
-          visualOptions[k] = opts.filter((opt: any) => !String(opt.value).startsWith('header_'));
+          visualOptions[k] = opts
+            .filter((opt: any) => !String(opt.value).startsWith('header_'))
+            .map((opt: any) => opt.value);
         } else {
           visualOptions[k] = opts;
         }
       });
 
-      // Filter available options for any locked fields with restricted pools so Gemini picks from allowed options
+      // Filter available options for any locked fields with restricted pools so AI picks from allowed options
       const lockedPools = options.lockedPools || {};
       const lockedKeys = Object.keys(options.lockedFields || {}).filter(k => options.lockedFields[k]);
       
       lockedKeys.forEach(k => {
         const pool = lockedPools[k] || (options[k as keyof PromptOptions] ? [String(options[k as keyof PromptOptions])] : []);
         if (pool.length > 0 && (visualOptions as any)[k]) {
-          const filtered = (visualOptions as any)[k].filter((opt: any) => pool.includes(String(opt.value)));
+          const filtered = (visualOptions as any)[k].filter((val: any) => pool.includes(String(val)));
           if (filtered.length > 0) {
             (visualOptions as any)[k] = filtered;
           }

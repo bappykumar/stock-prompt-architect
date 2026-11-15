@@ -14,6 +14,7 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
+    const isVertexKey = keyToUse.startsWith("AQ.");
     const restParts = (Array.isArray(contents) ? contents : []).map((item: any) => {
       if (item.inlineData) {
         return {
@@ -36,12 +37,14 @@ export default async function handler(req: any, res: any) {
       "gemini-1.5-flash",
     ];
 
-    const endpoints = [
-      (m: string) =>
-        `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(keyToUse)}`,
-      (m: string) =>
-        `https://aiplatform.googleapis.com/v1beta1/publishers/google/models/${m}:generateContent?key=${encodeURIComponent(keyToUse)}`,
-    ];
+    const standardEndpoint = (m: string) =>
+      `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(keyToUse)}`;
+    const vertexEndpoint = (m: string) =>
+      `https://aiplatform.googleapis.com/v1beta1/publishers/google/models/${m}:generateContent?key=${encodeURIComponent(keyToUse)}`;
+
+    const endpoints = isVertexKey
+      ? [vertexEndpoint, standardEndpoint]
+      : [standardEndpoint, vertexEndpoint];
 
     let rawText = "";
     let success = false;
@@ -50,14 +53,19 @@ export default async function handler(req: any, res: any) {
 
     for (const buildUrl of endpoints) {
       for (const m of candidateModels) {
+        const generationConfig: Record<string, any> = {
+          responseMimeType: "application/json",
+        };
+        if (m.includes("2.5-flash") || m === "gemini-flash-latest") {
+          generationConfig.thinkingConfig = { thinkingBudget: 0 };
+        }
+
         const response = await fetch(buildUrl(m), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             contents: [{ role: "user", parts: restParts }],
-            generationConfig: {
-              responseMimeType: "application/json",
-            },
+            generationConfig,
           }),
         });
 
@@ -74,6 +82,10 @@ export default async function handler(req: any, res: any) {
             lastErrMsg = parsed.error?.message || errText;
           } catch {
             lastErrMsg = errText;
+          }
+          const errLower = lastErrMsg.toLowerCase();
+          if (errLower.includes("api key not valid") || errLower.includes("api_key_invalid")) {
+            break;
           }
           if (
             response.status === 404 ||

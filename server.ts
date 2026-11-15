@@ -35,7 +35,9 @@ function getGeminiClients(customApiKey?: string): GoogleGenAI[] {
         headers: { "User-Agent": "aistudio-build" },
       },
     });
-    return [standardClient, vertexExpressClient];
+    return trimmed.startsWith("AQ.")
+      ? [vertexExpressClient, standardClient]
+      : [standardClient, vertexExpressClient];
   }
   return [ai];
 }
