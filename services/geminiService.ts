@@ -974,9 +974,9 @@ export const generateStockPrompts = async (
       - STRICT RULE: NO environment storytelling, NO camera model, NO lifestyle tone.
       `;
     } else if (isPhoto) {
-      // Camera Model Logic - ONLY if DSLR Quality is selected
+      // Camera Model Logic - ONLY if DSLR Quality is selected & active
       let cameraModel = "";
-      if (options.qualityCamera === 'Professional DSLR Quality') {
+      if (options.activeFields?.qualityCamera !== false && options.qualityCamera === 'Professional DSLR Quality') {
         cameraModel = "Generic Full-frame Mirrorless";
       }
 
@@ -1472,6 +1472,7 @@ export const generateStockPrompts = async (
       shadows: (isBackgroundMode || isAbstractGraphicBackground) ? null : (isIsolatedPngMode ? 'shadowless flat illumination (zero cast ground shadows)' : getTranslatedFieldVal('shadowStyle')),
       style: effectiveStyleVal,
       material: effectiveMaterialVal,
+      qualityCamera: (is3D || isArt || isAbstractGraphicBackground) ? null : getTranslatedFieldVal('qualityCamera'),
       concept: getTranslatedFieldVal('conceptFocus'),
       authenticity: !isHumanSubject ? null : getTranslatedFieldVal('authenticity'),
       // Ignore interaction if Background Mode, Isolated PNG Mode, or Non-Human Subject is active
@@ -1649,7 +1650,8 @@ export const generateStockPrompts = async (
     ${lockedFieldsRule}
     ${isMasterAnchorMode ? `
     [RULE 1 — PROMPT #1 MUST BE A 100% EXACT SAME-TO-SAME MASTER CLONE OF REFERENCE${medium !== 'Default / Auto' ? ` (STRICTLY IN ${medium.toUpperCase()} MEDIUM)` : ''}]:
-    - Option 1 MUST faithfully clone the exact subject, pose/arrangement, composition, colors, and scene from Smart Refinement and Input Configuration${isPhoto ? ' — translated 100% into a genuine real-world camera photograph (NEVER 3D render, CGI, clay, cartoon, or illustration!)' : is3D ? (isAbstractGraphicBackground && !hasDepthOfFieldAbstractCue ? ' — rendered as a full-bleed straight-on optical/reeded-glass abstract wallpaper filling 100% of the frame with exact reference colors (NEVER a standalone 3D sculpture, glass columns, or room)' : ' — rendered strictly as a clean 3D CGI render') : isArt ? (isAbstractGraphicBackground ? ' — rendered strictly as a completely flat full-bleed 2D digital gradient/graphic wallpaper with exact reference colors (ZERO 3D depth, objects, or shadows)' : ' — rendered strictly as 2D art/illustration') : ''} (${isProductPreservation ? '100% locked product packaging, typography & original colors — refer to "the referenced hero product" without guessing pump/dropper mechanics' : isHumanPreservation ? '100% locked facial identity, bone structure, skin tone & hair — avoid biometric text overrides' : 'plain unbranded blank surfaces on all props/bottles/clothing, zero studio hardware'}).` : ''}
+    - Option 1 MUST faithfully preserve the core subject, pose/arrangement, key props, and visual scene from Smart Refinement AND strictly enforce EVERY active parameter in INPUT CONFIGURATION and [CRITICAL LOCK & RESTRICTION RULE]${isPhoto ? ' — translated 100% into a genuine real-world camera photograph (NEVER 3D render, CGI, clay, cartoon, or illustration!)' : is3D ? (isAbstractGraphicBackground && !hasDepthOfFieldAbstractCue ? ' — rendered as a full-bleed straight-on optical/reeded-glass abstract wallpaper filling 100% of the frame with exact reference colors (NEVER a standalone 3D sculpture, glass columns, or room)' : ' — rendered strictly as a clean 3D CGI render') : isArt ? (isAbstractGraphicBackground ? ' — rendered strictly as a completely flat full-bleed 2D digital gradient/graphic wallpaper with exact reference colors (ZERO 3D depth, objects, or shadows)' : ' — rendered strictly as 2D art/illustration') : ''} (${isProductPreservation ? '100% locked product packaging, typography & original colors — refer to "the referenced hero product" without guessing pump/dropper mechanics' : isHumanPreservation ? '100% locked facial identity, bone structure, skin tone & hair — avoid biometric text overrides' : 'plain unbranded blank surfaces on all props/bottles/clothing, zero studio hardware'}).
+    - USER LOCK OVERRIDE PRIORITY (CRITICAL): Whenever [CRITICAL LOCK & RESTRICTION RULE] specifies a locked or user-configured setting (such as Cultural Context, Age, Environment, Lighting, Color Mood, Shot Framing, Camera Elevation, Image Medium, Visual Style, Material Finish, or Quality & Camera), those explicit user settings ALWAYS TAKE PRIORITY over conflicting details in Smart Refinement across ALL prompts (including Option 1), while keeping the reference's core subject, action, and props intact!` : ''}
     [RULE 2 — PROMPTS #${isMasterAnchorMode ? '2' : '1'} TO #${options.quantity}: COMMERCIAL STOCK VARIATIONS]:
     - Keep every prompt 100% commercially usable and visually distinct from others in the batch:
     ${activeCategoryBlock}

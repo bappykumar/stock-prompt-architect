@@ -908,6 +908,15 @@ export default function App() {
     return parsed;
   });
 
+  const [autoFilledFields, setAutoFilledFields] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = safeLocalStorage.getItem('prompt_auto_filled_fields');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
   const [autoRunMode, setAutoRunMode] = useState<boolean>(() => {
     return safeLocalStorage.getItem('prompt_auto_run_mode') === 'true';
   });
@@ -919,6 +928,18 @@ export default function App() {
       return null;
     }
   });
+  const [autoRunAutoFilled, setAutoRunAutoFilled] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = safeLocalStorage.getItem('prompt_auto_run_auto_filled');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    safeLocalStorage.setItem('prompt_auto_filled_fields', JSON.stringify(autoFilledFields));
+  }, [autoFilledFields]);
 
   useEffect(() => {
     safeLocalStorage.setItem('prompt_auto_run_mode', String(autoRunMode));
@@ -932,6 +953,23 @@ export default function App() {
     }
   }, [autoRunPreset]);
 
+  useEffect(() => {
+    if (autoRunMode) {
+      safeLocalStorage.setItem('prompt_auto_run_auto_filled', JSON.stringify(autoRunAutoFilled));
+    } else {
+      safeLocalStorage.removeItem('prompt_auto_run_auto_filled');
+    }
+  }, [autoRunMode, autoRunAutoFilled]);
+
+  const markFieldManual = useCallback((field: string) => {
+    setAutoFilledFields(prev => (prev[field] ? { ...prev, [field]: false } : prev));
+  }, []);
+
+  const updateManualOption = useCallback((field: keyof PromptOptions, val: any) => {
+    markFieldManual(String(field));
+    setOptions(prev => ({ ...prev, [field]: val }));
+  }, [markFieldManual]);
+
   const handleToggleAutoRun = (nextVal: boolean) => {
     if (nextVal) {
       const snapshot: PromptOptions = {
@@ -941,6 +979,7 @@ export default function App() {
         lockedPools: JSON.parse(JSON.stringify(options.lockedPools || {}))
       };
       setAutoRunPreset(snapshot);
+      setAutoRunAutoFilled({ ...autoFilledFields });
       setOptions(prev => ({
         ...prev,
         activeFields: { ...prev.activeFields, smartRefinement: true }
@@ -961,7 +1000,9 @@ export default function App() {
           }
         }));
       }
+      setAutoFilledFields({ ...autoRunAutoFilled });
       setAutoRunPreset(null);
+      setAutoRunAutoFilled({});
       setAutoRunMode(false);
     }
   };
@@ -1112,6 +1153,7 @@ export default function App() {
 
   // Handle Image Medium Change
   const handleImageMediumChange = (val: string) => {
+    markFieldManual('imageMedium');
     setOptions(prev => {
       const newOptions = { ...prev, imageMedium: val };
       
@@ -1785,6 +1827,9 @@ export default function App() {
   };
 
   const toggleField = (field: string, isActive: boolean) => {
+    if (isActive) {
+      markFieldManual(field);
+    }
     setOptions(prev => ({
       ...prev,
       activeFields: { ...prev.activeFields, [field]: isActive }
@@ -1792,6 +1837,9 @@ export default function App() {
   };
 
   const toggleLock = (field: string, isLocked: boolean) => {
+    if (isLocked) {
+      markFieldManual(field);
+    }
     setOptions(prev => {
       const nextLockedFields = { ...(prev.lockedFields || {}), [field]: isLocked };
       const nextLockedPools = { ...(prev.lockedPools || {}) };
@@ -1814,6 +1862,7 @@ export default function App() {
   };
 
   const updateLockedPool = (field: string, values: string[], activePick?: string) => {
+    markFieldManual(field);
     setOptions(prev => {
       const cleanValues = values.filter(v => v && v !== 'Default / Auto');
       const nextLockedPools = { ...(prev.lockedPools || {}), [field]: cleanValues };
@@ -2104,21 +2153,31 @@ export default function App() {
       const aiDetectedNonHuman = nonHumanSubjectKeywords.some(kw => String(newSettings.subject || '').includes(kw));
       const presetSubjectIsNonHuman = nonHumanSubjectKeywords.some(kw => String(basePreset.subject || '').includes(kw));
 
+      const runLockedFields: Record<string, boolean> = { ...(basePreset.lockedFields || {}) };
+      const runLockedPools: Record<string, string[]> = JSON.parse(JSON.stringify(basePreset.lockedPools || {}));
+      const preservedManualFields = new Set<string>();
+      const presetAutoFilled = autoRunMode ? autoRunAutoFilled : autoFilledFields;
+
       if (autoRunMode) {
-        // In Auto-Run Mode, follow the exact same clean Lock + Toggle contract as Classic Mode:
-        // 1. Manually turned OFF toggles stay OFF across every run.
-        // 2. Explicitly LOCKED / Multi-Locked fields strictly honor their saved lock or pool
-        //    (except when an uploaded non-human image like food/animal/abstract art would conflict with a human subject lock).
-        // 3. UNLOCKED fields dynamically adapt to the newly analyzed image/text (ZERO stale leftovers from prior images!).
+        // In Auto-Run Mode, strictly honor the user's configured workspace rules:
+        // 1. Manually turned OFF toggles ALWAYS stay OFF across every run.
+        // 2. Explicitly LOCKED / Multi-Locked fields strictly enforce their saved value or pool
+        //    (except when an uploaded non-human image would conflict with a human subject lock).
+        // 3. Manually chosen (non-default, non-auto-filled) settings are HONORED across runs!
+        // 4. Fields left on 'Default / Auto' OR stale AI auto-fills from earlier Classic SR runs
+        //    dynamically adapt to the newly analyzed image/text (ZERO stale leftovers!).
         configurableFieldKeys.forEach(k => {
           const wasActiveInPreset = basePreset.activeFields?.[k] !== false;
           const presetVal = (basePreset as any)[k];
           const isFieldLocked = !!basePreset.lockedFields?.[k];
           const pool = (lockedPools[k] || []).filter((v: string) => v && v !== 'Default / Auto');
+          const isManuallyChosen = !isFieldLocked && !!presetVal && presetVal !== 'Default / Auto' && !presetAutoFilled?.[k];
 
           if (!wasActiveInPreset) {
             newSettings[k] = presetVal ?? 'Default / Auto';
             nextActiveFields[k] = false;
+            runLockedFields[k] = false;
+            delete runLockedPools[k];
             return;
           }
 
@@ -2126,6 +2185,8 @@ export default function App() {
             // Protect non-human images (food, bird, product, abstract wallpaper) from being overwritten by a human subject lock
             if (input.type === 'image' && k === 'subject' && aiDetectedNonHuman && !presetSubjectIsNonHuman) {
               nextActiveFields[k] = true;
+              runLockedFields.subject = false;
+              delete runLockedPools.subject;
               return;
             }
             if (pool.length > 1) {
@@ -2137,15 +2198,38 @@ export default function App() {
             } else if (presetVal !== undefined) {
               newSettings[k] = presetVal;
             }
-            nextActiveFields[k] = result.activeFields?.[k] === false ? false : true;
+            // Keep locked fields ACTIVE here; deterministic applyContextRelevanceToActiveFields handles true physical impossibilities
+            nextActiveFields[k] = true;
+            return;
           }
-          // Unlocked & active fields keep AI's fresh analysis (newSettings[k] & nextActiveFields[k])
+
+          if (isManuallyChosen) {
+            // Same non-human image guard so a human subject dropdown never turns a food/bird/abstract photo into a person
+            if (input.type === 'image' && k === 'subject' && aiDetectedNonHuman && !presetSubjectIsNonHuman) {
+              nextActiveFields[k] = true;
+              return;
+            }
+            newSettings[k] = presetVal;
+            nextActiveFields[k] = true;
+            preservedManualFields.add(k);
+            // Enforce manually configured Auto-Run settings at generation time (without mutating saved lock UI state)
+            runLockedFields[k] = true;
+            runLockedPools[k] = [String(presetVal)];
+          }
+          // Default / Auto or stale AI-auto-filled fields keep AI's fresh analysis
         });
       } else {
-        // Classic 2-step mode: Restore locked fields values while turning OFF any locked fields not needed for the detected context
+        // Classic 2-step mode: Restore locked fields values cleanly; deterministic applyContextRelevanceToActiveFields disables truly incompatible ones
         lockedKeys.forEach(k => {
+          if (basePreset.activeFields?.[k] === false) {
+            newSettings[k] = (basePreset as any)[k] ?? 'Default / Auto';
+            nextActiveFields[k] = false;
+            return;
+          }
           if (input.type === 'image' && k === 'subject' && aiDetectedNonHuman && !presetSubjectIsNonHuman) {
             nextActiveFields[k] = true;
+            runLockedFields.subject = false;
+            delete runLockedPools.subject;
             return;
           }
           const pool = (lockedPools[k] || (options[k as keyof PromptOptions] ? [String(options[k as keyof PromptOptions])] : [])).filter((v: string) => v && v !== 'Default / Auto');
@@ -2160,33 +2244,50 @@ export default function App() {
           } else if (options[k as keyof PromptOptions] !== undefined) {
             (newSettings as any)[k] = options[k as keyof PromptOptions];
           }
-          
-          if (result.activeFields && result.activeFields[k] === false) {
-            nextActiveFields[k] = false;
-          } else {
-            nextActiveFields[k] = true;
-          }
+          nextActiveFields[k] = true;
         });
       }
 
-      // Ensure Medium and Visual Type / Material compatibility AFTER restoring locked/preset fields
+      // Ensure Medium and Visual Type / Material compatibility AFTER restoring locked/manual fields
+      const photoVisuals = ['Standard photo', 'Ultra Realistic', 'Cinematic', 'Cinematic Film (Kodak Portra)', 'Minimalist Studio Photo', 'Hyper Detailed', 'Documentary / Editorial'];
+      const threeDVisuals = ['Premium 3D Icon', '3D Render', '3D illustration', 'Isometric 3D', 'Claymorphism', 'Abstract Environmental 3D'];
+      const artVisuals = ['Anime Style', 'Oil Painting', 'Minimalist Vector', 'Flat Illustration', 'Flat Line Icon', 'Paper Cut Art', 'Line Art'];
+
+      const isMediumUserForced = !!runLockedFields.imageMedium || preservedManualFields.has('imageMedium');
+      const isVisualUserForced = !!runLockedFields.visualType || preservedManualFields.has('visualType');
+      const isMaterialUserForced = !!runLockedFields.materialStyle || preservedManualFields.has('materialStyle');
+
+      // If user explicitly chose Visual Style (without forcing Image Medium), align Image Medium to match it
+      if (isVisualUserForced && !isMediumUserForced && newSettings.visualType && newSettings.visualType !== 'Default / Auto') {
+        if (photoVisuals.includes(newSettings.visualType)) {
+          newSettings.imageMedium = 'Photography';
+          nextActiveFields.imageMedium = true;
+        } else if (threeDVisuals.includes(newSettings.visualType)) {
+          newSettings.imageMedium = '3D & CGI';
+          nextActiveFields.imageMedium = true;
+        } else if (artVisuals.includes(newSettings.visualType)) {
+          newSettings.imageMedium = 'Art & Illustration';
+          nextActiveFields.imageMedium = true;
+        }
+      }
+
       const effectiveMedium = newSettings.imageMedium || basePreset.imageMedium;
       if (effectiveMedium && effectiveMedium !== 'Default / Auto') {
         const currentVisual = newSettings.visualType;
-        if (currentVisual && currentVisual !== 'Default / Auto' && !basePreset.lockedFields?.visualType) {
+        if (currentVisual && currentVisual !== 'Default / Auto' && (!isVisualUserForced || isMediumUserForced)) {
           let isCompatible = true;
           if (effectiveMedium === 'Photography') {
-            isCompatible = ['Standard photo', 'Ultra Realistic', 'Cinematic', 'Cinematic Film (Kodak Portra)', 'Minimalist Studio Photo', 'Hyper Detailed', 'Documentary / Editorial'].includes(currentVisual);
+            isCompatible = photoVisuals.includes(currentVisual);
           } else if (effectiveMedium === '3D & CGI') {
-            isCompatible = ['Premium 3D Icon', '3D Render', '3D illustration', 'Isometric 3D', 'Claymorphism', 'Abstract Environmental 3D'].includes(currentVisual);
+            isCompatible = threeDVisuals.includes(currentVisual);
           } else if (effectiveMedium === 'Art & Illustration') {
-            isCompatible = ['Anime Style', 'Oil Painting', 'Minimalist Vector', 'Flat Illustration', 'Flat Line Icon', 'Paper Cut Art', 'Line Art'].includes(currentVisual);
+            isCompatible = artVisuals.includes(currentVisual);
           }
-          if (!isCompatible) {
+          if (!isCompatible && !runLockedFields.visualType) {
             newSettings.visualType = 'Default / Auto';
           }
         }
-        if (effectiveMedium === 'Photography' && !basePreset.lockedFields?.materialStyle) {
+        if (effectiveMedium === 'Photography' && (!isMaterialUserForced || isMediumUserForced) && !runLockedFields.materialStyle) {
           const is3DMaterial = ['Glassmorphism', 'Clay', 'Frosted'].some(m => String(newSettings.materialStyle || '').includes(m));
           if (is3DMaterial) {
             newSettings.materialStyle = 'Default / Auto';
@@ -2204,16 +2305,16 @@ export default function App() {
       }
 
       if (isProdActive) {
-        if (!basePreset.lockedFields?.colorMood) {
+        if (!runLockedFields.colorMood) {
           newSettings.colorMood = 'Default / Auto';
         }
         nextActiveFields.colorMood = false;
       }
       if (isHumanActive) {
-        if (!basePreset.lockedFields?.characterBackground) {
+        if (!runLockedFields.characterBackground) {
           newSettings.characterBackground = 'Default / Auto';
         }
-        if (!basePreset.lockedFields?.ageRange) {
+        if (!runLockedFields.ageRange) {
           newSettings.ageRange = 'Default / Auto';
         }
         nextActiveFields.characterBackground = false;
@@ -2222,26 +2323,26 @@ export default function App() {
 
       if (input.type === 'image') {
         ['conceptFocus', 'targetMarket', 'authenticity', 'qualityCamera'].forEach(metaField => {
-          if (!basePreset.lockedFields?.[metaField]) {
+          if (!runLockedFields[metaField] && !preservedManualFields.has(metaField)) {
             newSettings[metaField] = 'Default / Auto';
             nextActiveFields[metaField] = false;
           }
         });
       }
 
-      // Deterministic Context-Aware Auto-Off: even if a section is LOCKED, turn its active toggle OFF when not needed
+      // Deterministic Context-Aware Auto-Off: turn active toggle OFF ONLY when genuinely incompatible with the detected context
       const resolvedOptions: PromptOptions = {
         ...basePreset,
         ...newSettings,
         model: options.model,
         productPreservation: options.productPreservation,
         preservationType: options.preservationType,
-        lockedFields: { ...(basePreset.lockedFields || {}) },
-        lockedPools: { ...(basePreset.lockedPools || {}) }
+        lockedFields: runLockedFields,
+        lockedPools: runLockedPools
       };
       const finalActiveFields = applyContextRelevanceToActiveFields(
         nextActiveFields,
-        basePreset.lockedFields,
+        runLockedFields,
         {
           subject: resolvedOptions.subject,
           imageMedium: resolvedOptions.imageMedium,
@@ -2275,6 +2376,12 @@ export default function App() {
         generatedInAutoRun = true;
         await handleGenerate(newOptions, { mode: runMode, file: runFile, text: (cleanSrText || '').trim() || runText });
       } else {
+        // Track unlocked AI-populated fields so they never masquerade as deliberate manual rules if Auto-Run is enabled later
+        const nextAutoFilled: Record<string, boolean> = {};
+        configurableFieldKeys.forEach(k => {
+          nextAutoFilled[k] = !basePreset.lockedFields?.[k];
+        });
+        setAutoFilledFields(nextAutoFilled);
         setOptions(newOptions);
         setLastUsedReference({
           mode: runMode === 'image' ? 'both' : 'text',
@@ -2737,7 +2844,7 @@ export default function App() {
                           return acc;
                         }, {});
 
-                        setOptions({
+                        const nextPresetOpts: PromptOptions = {
                           ...defaults, // Reset all visual fields
                           // Randomize some fields to ensure variety if the preset doesn't set them
                           lighting: getRandom('lighting'),
@@ -2759,7 +2866,16 @@ export default function App() {
                           preservationType: options.preservationType || 'product',
                           ...preset.settings, // Apply the preset over the defaults
                           ...lockedOverrides // Keep locked fields intact
-                        });
+                        };
+                        setAutoFilledFields({});
+                        setOptions(nextPresetOpts);
+                        if (autoRunMode) {
+                          setAutoRunPreset({
+                            ...nextPresetOpts,
+                            activeFields: { ...nextPresetOpts.activeFields, smartRefinement: true }
+                          });
+                          setAutoRunAutoFilled({});
+                        }
                       }}
                       className="py-2 px-3 bg-white/60 hover:bg-white/90 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] backdrop-blur-md border border-white/70 dark:border-white/[0.07] rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 shadow-[0_2px_6px_rgba(0,0,0,0.02),inset_0_1px_1px_rgba(255,255,255,0.7)] dark:shadow-[0_2px_6px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.06)] transition-all text-left truncate"
                     >
@@ -3244,86 +3360,89 @@ export default function App() {
                   <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Identity & Character</h3>
                 </header>
                 <div className="space-y-5">
-                   <CustomDropdown label="Primary Actor" value={options.subject} options={OPTIONS.subject} onChange={(val) => setOptions(prev => ({
-                     ...prev,
-                     subject: val,
-                     activeFields: applyContextRelevanceToActiveFields(
-                       prev.activeFields,
-                       prev.lockedFields,
-                       {
-                         subject: val,
-                         imageMedium: prev.imageMedium,
-                         productPreservation: prev.productPreservation,
-                         preservationType: prev.preservationType,
-                         environment: prev.environment,
-                         shadowStyle: prev.shadowStyle
-                       },
-                       true
-                     )
-                   }))} icon={User} canToggle={true} isActive={options.activeFields?.subject} onToggle={(val) => toggleField('subject', val)} isLocked={options.lockedFields?.subject} onToggleLock={(val) => toggleLock('subject', val)} lockedPool={options.lockedPools?.subject} onUpdateLockedPool={(vals, pick) => updateLockedPool('subject', vals, pick)} />
-                   {isAdvanced && isCulturalHeritageVisible && (
-                      <CustomDropdown label="Cultural Context" value={options.characterBackground} options={OPTIONS.characterBackground} onChange={(val) => setOptions(prev => ({...prev, characterBackground: val}))} icon={Globe} canToggle={true} isActive={options.activeFields?.characterBackground} onToggle={(val) => toggleField('characterBackground', val)} isLocked={options.lockedFields?.characterBackground} onToggleLock={(val) => toggleLock('characterBackground', val)} lockedPool={options.lockedPools?.characterBackground} onUpdateLockedPool={(vals, pick) => updateLockedPool('characterBackground', vals, pick)} />
-                   )}
-                   {isAdvanced && <CustomDropdown label="Age Range" value={options.ageRange || 'Default / Auto'} options={OPTIONS.ageRange} onChange={(val) => setOptions(prev => ({...prev, ageRange: val}))} icon={User} canToggle={true} isActive={options.activeFields?.ageRange} onToggle={(val) => toggleField('ageRange', val)} isLocked={options.lockedFields?.ageRange} onToggleLock={(val) => toggleLock('ageRange', val)} lockedPool={options.lockedPools?.ageRange} onUpdateLockedPool={(vals, pick) => updateLockedPool('ageRange', vals, pick)} />}
-                   {isAdvanced && <CustomDropdown label="Interaction" value={options.interaction || 'Default / Auto'} options={OPTIONS.interaction} onChange={(val) => setOptions(prev => ({...prev, interaction: val}))} icon={User} canToggle={true} isActive={options.activeFields?.interaction} onToggle={(val) => toggleField('interaction', val)} isLocked={options.lockedFields?.interaction} onToggleLock={(val) => toggleLock('interaction', val)} lockedPool={options.lockedPools?.interaction} onUpdateLockedPool={(vals, pick) => updateLockedPool('interaction', vals, pick)} />}
-                   {isAdvanced && <CustomDropdown label="Target Market" value={options.targetMarket || 'Default / Auto'} options={OPTIONS.targetMarket} onChange={(val) => setOptions(prev => ({...prev, targetMarket: val}))} icon={Target} canToggle={true} isActive={options.activeFields?.targetMarket} onToggle={(val) => toggleField('targetMarket', val)} isLocked={options.lockedFields?.targetMarket} onToggleLock={(val) => toggleLock('targetMarket', val)} lockedPool={options.lockedPools?.targetMarket} onUpdateLockedPool={(vals, pick) => updateLockedPool('targetMarket', vals, pick)} />}
-                </div>
-              </section>
+                    <CustomDropdown label="Primary Actor" value={options.subject} options={OPTIONS.subject} onChange={(val) => {
+                      markFieldManual('subject');
+                      setOptions(prev => ({
+                        ...prev,
+                        subject: val,
+                        activeFields: applyContextRelevanceToActiveFields(
+                          prev.activeFields,
+                          prev.lockedFields,
+                          {
+                            subject: val,
+                            imageMedium: prev.imageMedium,
+                            productPreservation: prev.productPreservation,
+                            preservationType: prev.preservationType,
+                            environment: prev.environment,
+                            shadowStyle: prev.shadowStyle
+                          },
+                          true
+                        )
+                      }));
+                    }} icon={User} canToggle={true} isActive={options.activeFields?.subject} onToggle={(val) => toggleField('subject', val)} isLocked={options.lockedFields?.subject} onToggleLock={(val) => toggleLock('subject', val)} lockedPool={options.lockedPools?.subject} onUpdateLockedPool={(vals, pick) => updateLockedPool('subject', vals, pick)} />
+                    {isAdvanced && isCulturalHeritageVisible && (
+                       <CustomDropdown label="Cultural Context" value={options.characterBackground} options={OPTIONS.characterBackground} onChange={(val) => updateManualOption('characterBackground', val)} icon={Globe} canToggle={true} isActive={options.activeFields?.characterBackground} onToggle={(val) => toggleField('characterBackground', val)} isLocked={options.lockedFields?.characterBackground} onToggleLock={(val) => toggleLock('characterBackground', val)} lockedPool={options.lockedPools?.characterBackground} onUpdateLockedPool={(vals, pick) => updateLockedPool('characterBackground', vals, pick)} />
+                    )}
+                    {isAdvanced && <CustomDropdown label="Age Range" value={options.ageRange || 'Default / Auto'} options={OPTIONS.ageRange} onChange={(val) => updateManualOption('ageRange', val)} icon={User} canToggle={true} isActive={options.activeFields?.ageRange} onToggle={(val) => toggleField('ageRange', val)} isLocked={options.lockedFields?.ageRange} onToggleLock={(val) => toggleLock('ageRange', val)} lockedPool={options.lockedPools?.ageRange} onUpdateLockedPool={(vals, pick) => updateLockedPool('ageRange', vals, pick)} />}
+                    {isAdvanced && <CustomDropdown label="Interaction" value={options.interaction || 'Default / Auto'} options={OPTIONS.interaction} onChange={(val) => updateManualOption('interaction', val)} icon={User} canToggle={true} isActive={options.activeFields?.interaction} onToggle={(val) => toggleField('interaction', val)} isLocked={options.lockedFields?.interaction} onToggleLock={(val) => toggleLock('interaction', val)} lockedPool={options.lockedPools?.interaction} onUpdateLockedPool={(vals, pick) => updateLockedPool('interaction', vals, pick)} />}
+                    {isAdvanced && <CustomDropdown label="Target Market" value={options.targetMarket || 'Default / Auto'} options={OPTIONS.targetMarket} onChange={(val) => updateManualOption('targetMarket', val)} icon={Target} canToggle={true} isActive={options.activeFields?.targetMarket} onToggle={(val) => toggleField('targetMarket', val)} isLocked={options.lockedFields?.targetMarket} onToggleLock={(val) => toggleLock('targetMarket', val)} lockedPool={options.lockedPools?.targetMarket} onUpdateLockedPool={(vals, pick) => updateLockedPool('targetMarket', vals, pick)} />}
+                 </div>
+               </section>
 
-              <div className="h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-800 to-transparent opacity-60" />
+               <div className="h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-800 to-transparent opacity-60" />
 
-              <section className="space-y-6">
-                <header className="flex items-center gap-3 px-1">
-                  <div className="w-1 h-4 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-                  <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">World & Style</h3>
-                </header>
-                <div className="space-y-5">
-                   <div className="pb-5 border-b border-dashed border-slate-200 dark:border-slate-800/60 mb-2">
-                      <CustomDropdown label="Image Medium" value={options.imageMedium || 'Default / Auto'} options={OPTIONS.imageMedium} onChange={handleImageMediumChange} icon={Layers} canToggle={true} isActive={options.activeFields?.imageMedium} onToggle={(val) => toggleField('imageMedium', val)} isLocked={options.lockedFields?.imageMedium} onToggleLock={(val) => toggleLock('imageMedium', val)} lockedPool={options.lockedPools?.imageMedium} onUpdateLockedPool={(vals, pick) => updateLockedPool('imageMedium', vals, pick)} />
-                   </div>
-                   <CustomDropdown label="Visual Style" value={options.visualType} options={filteredVisualStyles} onChange={(val) => setOptions(prev => ({...prev, visualType: val}))} icon={Layers} canToggle={true} isActive={options.activeFields?.visualType} onToggle={(val) => toggleField('visualType', val)} isLocked={options.lockedFields?.visualType} onToggleLock={(val) => toggleLock('visualType', val)} lockedPool={options.lockedPools?.visualType} onUpdateLockedPool={(vals, pick) => updateLockedPool('visualType', vals, pick)} />
-                   {isAdvanced && isMaterialFinishVisible && (
-                      <CustomDropdown 
-                        label="Material Finish" 
-                        value={options.materialStyle} 
-                        options={OPTIONS.materialStyle} 
-                        onChange={(val) => setOptions(prev => ({...prev, materialStyle: val}))} 
-                        icon={Paintbrush} 
-                        canToggle={true} 
-                        isActive={options.activeFields?.materialStyle} 
-                        onToggle={(val) => toggleField('materialStyle', val)} isLocked={options.lockedFields?.materialStyle} onToggleLock={(val) => toggleLock('materialStyle', val)}
-                        lockedPool={options.lockedPools?.materialStyle}
-                        onUpdateLockedPool={(vals, pick) => updateLockedPool('materialStyle', vals, pick)}
-                        highlight={isMaterialHighlighted}
-                        helperText={materialHelperText}
-                        deemphasize3DMaterials={options.imageMedium === 'Photography' || options.imageMedium === 'Art & Illustration'}
-                      />
-                   )}
-                   {isAdvanced && <CustomDropdown label="Concept Focus" value={options.conceptFocus || 'Default / Auto'} options={OPTIONS.conceptFocus} onChange={(val) => setOptions(prev => ({...prev, conceptFocus: val}))} icon={Lightbulb} canToggle={true} isActive={options.activeFields?.conceptFocus} onToggle={(val) => toggleField('conceptFocus', val)} isLocked={options.lockedFields?.conceptFocus} onToggleLock={(val) => toggleLock('conceptFocus', val)} lockedPool={options.lockedPools?.conceptFocus} onUpdateLockedPool={(vals, pick) => updateLockedPool('conceptFocus', vals, pick)} />}
-                   {isAdvanced && <CustomDropdown label="Authenticity" value={options.authenticity || 'Default / Auto'} options={OPTIONS.authenticity} onChange={(val) => setOptions(prev => ({...prev, authenticity: val}))} icon={Camera} canToggle={true} isActive={options.activeFields?.authenticity} onToggle={(val) => toggleField('authenticity', val)} isLocked={options.lockedFields?.authenticity} onToggleLock={(val) => toggleLock('authenticity', val)} lockedPool={options.lockedPools?.authenticity} onUpdateLockedPool={(vals, pick) => updateLockedPool('authenticity', vals, pick)} />}
-                   <CustomDropdown label="Environment" value={options.environment} options={OPTIONS.environment} onChange={(val) => setOptions(prev => ({...prev, environment: val}))} icon={Box} canToggle={true} isActive={options.activeFields?.environment} onToggle={(val) => toggleField('environment', val)} isLocked={options.lockedFields?.environment} onToggleLock={(val) => toggleLock('environment', val)} lockedPool={options.lockedPools?.environment} onUpdateLockedPool={(vals, pick) => updateLockedPool('environment', vals, pick)} />
-                   <CustomDropdown label="Color Mood" value={options.colorMood || 'Default / Auto'} options={OPTIONS.colorMood} onChange={(val) => setOptions(prev => ({...prev, colorMood: val}))} icon={Paintbrush} canToggle={true} isActive={options.activeFields?.colorMood} onToggle={(val) => toggleField('colorMood', val)} isLocked={options.lockedFields?.colorMood} onToggleLock={(val) => toggleLock('colorMood', val)} lockedPool={options.lockedPools?.colorMood} onUpdateLockedPool={(vals, pick) => updateLockedPool('colorMood', vals, pick)} helperText="Overall color temperature of the image" />
-                </div>
-              </section>
-
-              {isAdvanced && (
-                <>
-                  <div className="h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-800 to-transparent opacity-60" />
-                  <section className="space-y-6">
-                    <header className="flex items-center gap-3 px-1">
-                      <div className="w-1 h-4 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-                      <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Optics & Technicals</h3>
-                    </header>
-                    <div className="space-y-5">
-                       <CustomDropdown label="Quality & Camera" value={options.qualityCamera} options={OPTIONS.qualityCamera} onChange={(val) => setOptions(prev => ({...prev, qualityCamera: val}))} icon={Video} canToggle={true} isActive={options.activeFields?.qualityCamera} onToggle={(val) => toggleField('qualityCamera', val)} isLocked={options.lockedFields?.qualityCamera} onToggleLock={(val) => toggleLock('qualityCamera', val)} lockedPool={options.lockedPools?.qualityCamera} onUpdateLockedPool={(vals, pick) => updateLockedPool('qualityCamera', vals, pick)} />
-                       <CustomDropdown label="Shot Framing" value={options.framing} options={OPTIONS.framing} onChange={(val) => setOptions(prev => ({...prev, framing: val}))} icon={Maximize} canToggle={true} isActive={options.activeFields?.framing} onToggle={(val) => toggleField('framing', val)} isLocked={options.lockedFields?.framing} onToggleLock={(val) => toggleLock('framing', val)} lockedPool={options.lockedPools?.framing} onUpdateLockedPool={(vals, pick) => updateLockedPool('framing', vals, pick)} />
-                       <CustomDropdown label="Camera Elevation" value={options.cameraAngle} options={OPTIONS.cameraAngle} onChange={(val) => setOptions(prev => ({...prev, cameraAngle: val}))} icon={Camera} canToggle={true} isActive={options.activeFields?.cameraAngle} onToggle={(val) => toggleField('cameraAngle', val)} isLocked={options.lockedFields?.cameraAngle} onToggleLock={(val) => toggleLock('cameraAngle', val)} lockedPool={options.lockedPools?.cameraAngle} onUpdateLockedPool={(vals, pick) => updateLockedPool('cameraAngle', vals, pick)} />
-                       <CustomDropdown label="Atmosphere" value={options.lighting} options={OPTIONS.lighting} onChange={(val) => setOptions(prev => ({...prev, lighting: val}))} icon={Sparkles} canToggle={true} isActive={options.activeFields?.lighting} onToggle={(val) => toggleField('lighting', val)} isLocked={options.lockedFields?.lighting} onToggleLock={(val) => toggleLock('lighting', val)} lockedPool={options.lockedPools?.lighting} onUpdateLockedPool={(vals, pick) => updateLockedPool('lighting', vals, pick)} />
-                       <CustomDropdown label="Shadows" value={options.shadowStyle} options={OPTIONS.shadowStyle} onChange={(val) => setOptions(prev => ({...prev, shadowStyle: val}))} icon={Moon} canToggle={true} isActive={options.activeFields?.shadowStyle} onToggle={(val) => toggleField('shadowStyle', val)} isLocked={options.lockedFields?.shadowStyle} onToggleLock={(val) => toggleLock('shadowStyle', val)} lockedPool={options.lockedPools?.shadowStyle} onUpdateLockedPool={(vals, pick) => updateLockedPool('shadowStyle', vals, pick)} />
+               <section className="space-y-6">
+                 <header className="flex items-center gap-3 px-1">
+                   <div className="w-1 h-4 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+                   <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">World & Style</h3>
+                 </header>
+                 <div className="space-y-5">
+                    <div className="pb-5 border-b border-dashed border-slate-200 dark:border-slate-800/60 mb-2">
+                       <CustomDropdown label="Image Medium" value={options.imageMedium || 'Default / Auto'} options={OPTIONS.imageMedium} onChange={handleImageMediumChange} icon={Layers} canToggle={true} isActive={options.activeFields?.imageMedium} onToggle={(val) => toggleField('imageMedium', val)} isLocked={options.lockedFields?.imageMedium} onToggleLock={(val) => toggleLock('imageMedium', val)} lockedPool={options.lockedPools?.imageMedium} onUpdateLockedPool={(vals, pick) => updateLockedPool('imageMedium', vals, pick)} />
                     </div>
-                  </section>
-                </>
-              )}
+                    <CustomDropdown label="Visual Style" value={options.visualType} options={filteredVisualStyles} onChange={(val) => updateManualOption('visualType', val)} icon={Layers} canToggle={true} isActive={options.activeFields?.visualType} onToggle={(val) => toggleField('visualType', val)} isLocked={options.lockedFields?.visualType} onToggleLock={(val) => toggleLock('visualType', val)} lockedPool={options.lockedPools?.visualType} onUpdateLockedPool={(vals, pick) => updateLockedPool('visualType', vals, pick)} />
+                    {isAdvanced && isMaterialFinishVisible && (
+                       <CustomDropdown 
+                         label="Material Finish" 
+                         value={options.materialStyle} 
+                         options={OPTIONS.materialStyle} 
+                         onChange={(val) => updateManualOption('materialStyle', val)} 
+                         icon={Paintbrush} 
+                         canToggle={true} 
+                         isActive={options.activeFields?.materialStyle} 
+                         onToggle={(val) => toggleField('materialStyle', val)} isLocked={options.lockedFields?.materialStyle} onToggleLock={(val) => toggleLock('materialStyle', val)}
+                         lockedPool={options.lockedPools?.materialStyle}
+                         onUpdateLockedPool={(vals, pick) => updateLockedPool('materialStyle', vals, pick)}
+                         highlight={isMaterialHighlighted}
+                         helperText={materialHelperText}
+                         deemphasize3DMaterials={options.imageMedium === 'Photography' || options.imageMedium === 'Art & Illustration'}
+                       />
+                    )}
+                    {isAdvanced && <CustomDropdown label="Concept Focus" value={options.conceptFocus || 'Default / Auto'} options={OPTIONS.conceptFocus} onChange={(val) => updateManualOption('conceptFocus', val)} icon={Lightbulb} canToggle={true} isActive={options.activeFields?.conceptFocus} onToggle={(val) => toggleField('conceptFocus', val)} isLocked={options.lockedFields?.conceptFocus} onToggleLock={(val) => toggleLock('conceptFocus', val)} lockedPool={options.lockedPools?.conceptFocus} onUpdateLockedPool={(vals, pick) => updateLockedPool('conceptFocus', vals, pick)} />}
+                    {isAdvanced && <CustomDropdown label="Authenticity" value={options.authenticity || 'Default / Auto'} options={OPTIONS.authenticity} onChange={(val) => updateManualOption('authenticity', val)} icon={Camera} canToggle={true} isActive={options.activeFields?.authenticity} onToggle={(val) => toggleField('authenticity', val)} isLocked={options.lockedFields?.authenticity} onToggleLock={(val) => toggleLock('authenticity', val)} lockedPool={options.lockedPools?.authenticity} onUpdateLockedPool={(vals, pick) => updateLockedPool('authenticity', vals, pick)} />}
+                    <CustomDropdown label="Environment" value={options.environment} options={OPTIONS.environment} onChange={(val) => updateManualOption('environment', val)} icon={Box} canToggle={true} isActive={options.activeFields?.environment} onToggle={(val) => toggleField('environment', val)} isLocked={options.lockedFields?.environment} onToggleLock={(val) => toggleLock('environment', val)} lockedPool={options.lockedPools?.environment} onUpdateLockedPool={(vals, pick) => updateLockedPool('environment', vals, pick)} />
+                    <CustomDropdown label="Color Mood" value={options.colorMood || 'Default / Auto'} options={OPTIONS.colorMood} onChange={(val) => updateManualOption('colorMood', val)} icon={Paintbrush} canToggle={true} isActive={options.activeFields?.colorMood} onToggle={(val) => toggleField('colorMood', val)} isLocked={options.lockedFields?.colorMood} onToggleLock={(val) => toggleLock('colorMood', val)} lockedPool={options.lockedPools?.colorMood} onUpdateLockedPool={(vals, pick) => updateLockedPool('colorMood', vals, pick)} helperText="Overall color temperature of the image" />
+                 </div>
+               </section>
+
+               {isAdvanced && (
+                 <>
+                   <div className="h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-800 to-transparent opacity-60" />
+                   <section className="space-y-6">
+                     <header className="flex items-center gap-3 px-1">
+                       <div className="w-1 h-4 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+                       <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Optics & Technicals</h3>
+                     </header>
+                     <div className="space-y-5">
+                        <CustomDropdown label="Quality & Camera" value={options.qualityCamera} options={OPTIONS.qualityCamera} onChange={(val) => updateManualOption('qualityCamera', val)} icon={Video} canToggle={true} isActive={options.activeFields?.qualityCamera} onToggle={(val) => toggleField('qualityCamera', val)} isLocked={options.lockedFields?.qualityCamera} onToggleLock={(val) => toggleLock('qualityCamera', val)} lockedPool={options.lockedPools?.qualityCamera} onUpdateLockedPool={(vals, pick) => updateLockedPool('qualityCamera', vals, pick)} />
+                        <CustomDropdown label="Shot Framing" value={options.framing} options={OPTIONS.framing} onChange={(val) => updateManualOption('framing', val)} icon={Maximize} canToggle={true} isActive={options.activeFields?.framing} onToggle={(val) => toggleField('framing', val)} isLocked={options.lockedFields?.framing} onToggleLock={(val) => toggleLock('framing', val)} lockedPool={options.lockedPools?.framing} onUpdateLockedPool={(vals, pick) => updateLockedPool('framing', vals, pick)} />
+                        <CustomDropdown label="Camera Elevation" value={options.cameraAngle} options={OPTIONS.cameraAngle} onChange={(val) => updateManualOption('cameraAngle', val)} icon={Camera} canToggle={true} isActive={options.activeFields?.cameraAngle} onToggle={(val) => toggleField('cameraAngle', val)} isLocked={options.lockedFields?.cameraAngle} onToggleLock={(val) => toggleLock('cameraAngle', val)} lockedPool={options.lockedPools?.cameraAngle} onUpdateLockedPool={(vals, pick) => updateLockedPool('cameraAngle', vals, pick)} />
+                        <CustomDropdown label="Atmosphere" value={options.lighting} options={OPTIONS.lighting} onChange={(val) => updateManualOption('lighting', val)} icon={Sparkles} canToggle={true} isActive={options.activeFields?.lighting} onToggle={(val) => toggleField('lighting', val)} isLocked={options.lockedFields?.lighting} onToggleLock={(val) => toggleLock('lighting', val)} lockedPool={options.lockedPools?.lighting} onUpdateLockedPool={(vals, pick) => updateLockedPool('lighting', vals, pick)} />
+                        <CustomDropdown label="Shadows" value={options.shadowStyle} options={OPTIONS.shadowStyle} onChange={(val) => updateManualOption('shadowStyle', val)} icon={Moon} canToggle={true} isActive={options.activeFields?.shadowStyle} onToggle={(val) => toggleField('shadowStyle', val)} isLocked={options.lockedFields?.shadowStyle} onToggleLock={(val) => toggleLock('shadowStyle', val)} lockedPool={options.lockedPools?.shadowStyle} onUpdateLockedPool={(vals, pick) => updateLockedPool('shadowStyle', vals, pick)} />
+                     </div>
+                   </section>
+                 </>
+               )}
 
               <div className="h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-800 to-transparent opacity-60" />
 
@@ -3747,9 +3866,13 @@ export default function App() {
                     safeLocalStorage.removeItem('prompt_session_history');
                     safeLocalStorage.removeItem('prompt_auto_run_mode');
                     safeLocalStorage.removeItem('prompt_auto_run_preset');
+                    safeLocalStorage.removeItem('prompt_auto_filled_fields');
+                    safeLocalStorage.removeItem('prompt_auto_run_auto_filled');
                     safeLocalStorage.setItem('use_system_api_key', 'false');
                     setAutoRunMode(false);
                     setAutoRunPreset(null);
+                    setAutoFilledFields({});
+                    setAutoRunAutoFilled({});
                     setOptions(getFreshDefaultOptions());
                     setBatches([]);
                     setDisplayedPresets(getRandomPresets(4));
