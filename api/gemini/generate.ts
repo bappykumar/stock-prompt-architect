@@ -47,8 +47,8 @@ export default async function handler(req: any, res: any) {
       for (const m of candidateModels) {
         const generationConfig: Record<string, any> = {
           responseMimeType: "application/json",
-          temperature: 0.95,
-          topP: 0.95,
+          temperature: 0.78,
+          topP: 0.92,
         };
         // Disable silent thinking on 2.5-flash so TTFT drops from ~10s to <1.5s
         if (m.includes("2.5-flash") || m === "gemini-flash-latest") {

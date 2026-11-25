@@ -240,8 +240,8 @@ async function startServer() {
               responseSchema: schema,
             };
             if (!isGemini4Model(m)) {
-              config.temperature = 0.95;
-              config.topP = 0.95;
+              config.temperature = 0.78;
+              config.topP = 0.92;
             }
             if (m.startsWith("gemini-2.5-flash") || m === "gemini-flash-latest") {
               config.thinkingConfig = { thinkingBudget: 0 };

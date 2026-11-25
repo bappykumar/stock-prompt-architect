@@ -357,31 +357,32 @@ ABSTRACT 3D TEXTURE, FLUTED GLASS & RIBBED BACKGROUND RULE (CRITICAL FOR 3D TEXT
   * Set 'subject', 'imageMedium', 'visualType', 'materialStyle', 'colorMood', 'lighting' to TRUE.
   * Set ALL human/demographic fields ('characterBackground', 'ageRange', 'interaction', 'authenticity') strictly to FALSE.
 CAMERA DIRECTION RULE: ONLY if the subject's face/eyes are visible in the frame, describe where they are looking (e.g., "looking forward", "making eye contact", "looking down", "looking away"), but DO NOT use the word "camera". If their head/eyes are cropped out or not visible, completely omit gaze descriptions.
+UNIVERSAL BRAND-FREE & BLANK-SURFACE RULE (APPLIES TO ALL MODES):
+- Strip ALL brand names, trademarks, logos, printed text, graphic emblems, and stickers from every drink bottle, can, coffee cup, mug, cosmetic container, food package, bag, laptop, smartphone, book, sign, and garment visible in the image${isProdPreservation ? ' (EXCEPT the single hero referenced product itself)' : ''}.
+- Describe every such object using POSITIVE blank-surface terms (e.g., "a plain unbranded clear glass bottle with a completely blank smooth surface", "an unbranded matte coffee cup with a smooth empty exterior", "a plain solid-color t-shirt", "a sleek unbranded laptop with a clean blank lid"). NEVER write negative words like "no logo" or "no text".
 ${isProdPreservation ? `STRICT PRODUCT PRESERVATION DIRECTIVE (PRODUCT PRESERVATION ACTIVE):
 - PRODUCT REFERENCE RULE (STRICTLY NO DISPENSER OR PACKAGING MECHANIC BIAS):
   You MUST refer to the hero item as "the referenced product" or "the product" (e.g. write "A woman holding the referenced product near her cheek", "the referenced product resting on a travertine stone slab", "a manicured hand holding the referenced product").
   CRITICAL & STRICTLY FORBIDDEN: DO NOT specify packaging mechanics or dispenser types like "pump bottle", "pump", "dropper bottle", "dropper", "spray bottle", "squeeze tube", or "twist cap" because naming dispenser mechanics causes AI generators to mutate the cap/packaging instead of copying the exact reference product!
 - SCENE, SURFACE & POSE FIDELITY FOR PROMPT #1 CLONING:
-  Accurately describe the exact surface/podium, model/hand pose, wardrobe, and seamless background tone visible in the reference image so Prompt #1 can recreate the reference scene 100% same-to-same while locking the product packaging. NEVER use the phrase "studio backdrop" or "cyclorama" (use "seamless background" or "clean surface" instead).
+  Accurately describe the exact surface/podium, model/hand pose, plain unbranded wardrobe, and seamless background tone visible in the reference image so Prompt #1 can recreate the reference scene 100% same-to-same while locking ONLY the hero referenced product packaging. Keep all secondary props and clothing 100% unbranded and blank-surfaced. NEVER use the phrase "studio backdrop" or "cyclorama" (use "seamless background" or "clean surface" instead).
 - CAMPAIGN & STILL-LIFE DETECTION:
-  * If a human model is holding/showcasing the product: describe the model's gender, expression, hair/skin interaction, wardrobe, and zero-occlusion hand placement holding "the referenced product". Map 'visualType' to "Ultra Realistic", 'lighting' to "Soft Studio Lighting" or "Dramatic Studio Lighting", 'framing' to "Portrait" or "Mid shot (waist-up)".
+  * If a human model is holding/showcasing the product: describe the model's gender, expression, hair/skin interaction, plain unbranded wardrobe, and zero-occlusion hand placement holding "the referenced product". Map 'visualType' to "Ultra Realistic", 'lighting' to "Soft Studio Lighting" or "Dramatic Studio Lighting", 'framing' to "Portrait" or "Mid shot (waist-up)".
   * If NO human model is present (standalone product): map 'subject' to "No person (product)", set ALL human fields ('characterBackground', 'ageRange', 'interaction', 'authenticity') strictly to FALSE, and describe ONLY the product's placement, surface material (e.g., marble slab, wooden surface, water ripples, minimalist pedestal, or pure white cutout), and lighting. NEVER mention any human, hand, or face!
   * If ONLY a faceless hand/fingers are holding the product: map 'subject' to "No person (product)", set 'characterBackground' and 'ageRange' to FALSE, set 'framing' to "Close-up / Cropped Action (Faceless)", and describe a manicured hand holding "the referenced product" with a zero-occlusion grip.` : isHumanPreservation ? `STRICT HUMAN IDENTITY & POSE TRANSFER PRESERVATION DIRECTIVE (HUMAN PRESERVATION ACTIVE - IDENTITY LOCK + EXACT POSE CLONE FOR #1):
 - PURPOSE & WORKFLOW: The user is preserving the exact human/person from the reference photo. The visual reference supplies 100% of the authentic facial identity, facial structure, skin tone, and hair.
 - In 'smartRefinement':
-  * Accurately describe the subject's GENDER ("man", "woman", "person"), EXACT POSE & BODY POSTURE from the reference (e.g., "leaning against a neutral wall", "arms crossed comfortably", "seated at a modern desk"), EXACT WARDROBE & STYLING (e.g., "wearing an olive-green button-up shirt and watch", "in a tailored charcoal blazer"), NATURAL GAZE/EXPRESSION (e.g., "looking forward with a relaxed smile"), and the setting/background so Prompt #1 is a 100% exact clone of the reference shot!
+  * Accurately describe the subject's GENDER ("man", "woman", "person"), EXACT POSE & BODY POSTURE from the reference (e.g., "leaning against a neutral wall", "arms crossed comfortably", "seated at a modern desk"), EXACT PLAIN UNBRANDED WARDROBE & STYLING (e.g., "wearing a plain olive-green button-up shirt", "in a solid charcoal blazer"), any held props as plain unbranded blank-surface items, NATURAL GAZE/EXPRESSION (e.g., "looking forward with a relaxed smile"), and the setting/background so Prompt #1 is a 100% exact clone of the reference shot!
   * STRICT BIOMETRIC-NEUTRAL RULE (PREVENTING FACE/HAIR TEXT CONFLICTS):
     1. DO NOT write specific haircut, hairstyle, hair length, or hair color words (e.g., no "short dark hair", "tapered fade", "blonde curls").
     2. DO NOT write specific skin tone or complexion words (e.g., no "warm olive skin", "fair pale skin").
     3. DO NOT write permanent facial bone landmarks or eye color (e.g., no "square jawline", "blue eyes").
     REASON: Biometric text overrides the reference face in AI generators. By omitting biometric text and describing the exact pose, outfit, expression, and scene, the reference photo locks 100% of the face/hair while Prompt #1 clones the exact reference shot!
 - In 'settings':
-  * Map 'subject' to "Solo person (Adult)" or best matching human category, and set 'interaction' to the visible body language or pose.` : `FLEXIBLE COLOR & CONTAINER RULE:
-Describe the subject, attire, container, or setting naturally as seen in the reference (e.g. "person wearing a blue shirt", "smiling woman in a magenta top holding a cosmetic bottle while touching her sleek hair", "woman in red lace holding a ruby perfume flacon near her face", "amber glass bottle on travertine slab"). You may include natural visual colors and container descriptions as observed in the image.
-- BEAUTY & HAIRCARE CAMPAIGN DIRECTIVE (PRESERVATION OFF):
-  If the image is a beauty/haircare campaign: describe model's expression (radiant smile or haute-couture gaze), wardrobe color keyed to product (e.g. "in magenta knit top", "in olive halter top with gold cuffs", "in red lace dress"), the product held near face/hair, and any tabletop product lineup present.
-- HAND-HELD LUXURY PRODUCT & BOTTLE INTERACTION (FACELESS HAND & BOTTLE):
-  If the image shows a hand holding a perfume or cosmetic bottle: map 'subject' to "Product / Object Only" or "Still life / Food & Drink", set 'interaction' to "Holding" or "Showcasing", set 'characterBackground' and 'ageRange' to FALSE (faceless crop), and describe the elegant hand holding the bottle with natural colors and luxury finishes.`}
+  * Map 'subject' to "Solo person (Adult)" or best matching human category, and set 'interaction' to the visible body language or pose.` : `FLEXIBLE COLOR & UNBRANDED STOCK RULE:
+- Describe the subject, plain unbranded attire, blank-surface container material/color, or setting naturally as observed in the image (e.g., "smiling woman in a solid magenta top holding a plain unbranded clear glass bottle with a completely blank smooth surface", "amber unbranded glass bottle with a blank smooth surface on a travertine slab").
+- HAND-HELD BOTTLE / PRODUCT INTERACTION (FACELESS HAND & BOTTLE):
+  If the image shows ONLY a hand holding a drink, perfume, or cosmetic bottle: map 'subject' to "Product / Object Only" or "Still life / Food & Drink", set 'interaction' to "Holding" or "Showcasing", set 'characterBackground' and 'ageRange' to FALSE (faceless crop), and describe the hand holding a plain unbranded bottle with a completely blank smooth surface.`}
 AVOID specifying race, ethnicity, or age IN THIS FIELD. Focus on gender, notable body build (if any), core action, key props, and expression (if face is visible). No technical camera terms or lighting terms.
 
 3. "activeFields": A boolean map of the fields. Set to true if the field is RELEVANT to the visual scene, even if not explicitly the main focus. Set to false ONLY if the field is completely irrelevant to the visual context. Include keys: subject, characterBackground, ageRange, interaction, targetMarket, imageMedium, visualType, materialStyle, conceptFocus, authenticity, environment, colorMood, qualityCamera, framing, cameraAngle, lighting, shadowStyle.
@@ -410,7 +411,7 @@ Return ONLY this JSON structure, no markdown:
   
   1. "settings": The values for the fields. If you cannot determine a field, set it to "Default / Auto". For 'characterBackground', select the best matching cultural/ethnic background if implied by the text.
   
-  2. "smartRefinement": A concise core description of the main subject and their specific action/appearance based on the input. Maximum 25 words. If a person/human is described, observe and explicitly state their GENDER (e.g., "man", "woman", "boy", "girl", "baby"). If the gender is completely unspecified or neutral, use "person". DO NOT specify age categories (like "young adult" or "senior") in this field, as age is mapped to the 'settings' object separately. For BODY BUILD, ONLY mention it if they are distinctly outside the average/standard norm (e.g., "plus-size", "heavy-set", "muscular"). If they have an average/slim body, DO NOT mention their body type at all. FACELESS & ACTION CROP RULE: If the concept focuses on hands, gestures, or cropped body parts without showing a face (e.g. holding a product, typing, wrist pain, cleaning surface), describe this framing clearly (e.g. "close-up on hands and torso, faceless composition") and omit eye gaze direction. CONCEPTUAL FLAT-LAY & TABLETOP STILL LIFE RULE: If the concept is a conceptual business/abstract tabletop still life (wooden blocks, tokens, magnifying glasses, puzzle pieces, checklists, or progress bars with minimalist 2D line icons/symbols on a solid pastel or studio background, with or without a cropped hand/fingers interacting), focus on the physical props, minimalist 2D icons, and clean composition with ample copy space. Do NOT invent full-body characters or business suits. CAMERA DIRECTION RULE: If the face is visible and the text mentions looking at the camera, rephrase it to "looking forward" or "making eye contact"; DO NOT use the word "camera". ${isProdPreservation ? `STRICT PRODUCT PRESERVATION DIRECTIVE (PRODUCT PRESERVATION ACTIVE): Refer to the hero item as "the referenced product" without specific dispenser mechanic words like "pump bottle" or "dropper". Preserve the scene, surface, and pose context accurately.` : isHumanPreservation ? `STRICT HUMAN IDENTITY & POSE TRANSFER PRESERVATION DIRECTIVE (HUMAN PRESERVATION ACTIVE): Describe the subject's gender, exact pose, posture, wardrobe, and natural expression. STRICTLY DO NOT write specific hair cut, hair style, hair color, skin tone, or permanent facial landmarks, so that visual reference face photos retain 100% identity without conflicting text overrides.` : `FLEXIBLE COLOR & CONTAINER RULE: Describe the subject, attire, container, or setting naturally based on the input text. You may include colors if specified in the concept.`} AVOID specifying race, ethnicity, or age IN THIS FIELD. Focus on gender, notable body build, core action, and props. No technical camera or lighting terms.
+  2. "smartRefinement": A concise core description of the main subject and their specific action/appearance based on the input. Maximum 25 words. If a person/human is described, observe and explicitly state their GENDER (e.g., "man", "woman", "boy", "girl", "baby"). If the gender is completely unspecified or neutral, use "person". DO NOT specify age categories (like "young adult" or "senior") in this field, as age is mapped to the 'settings' object separately. For BODY BUILD, ONLY mention it if they are distinctly outside the average/standard norm (e.g., "plus-size", "heavy-set", "muscular"). If they have an average/slim body, DO NOT mention their body type at all. FACELESS & ACTION CROP RULE: If the concept focuses on hands, gestures, or cropped body parts without showing a face (e.g. holding a product, typing, wrist pain, cleaning surface), describe this framing clearly (e.g. "close-up on hands and torso, faceless composition") and omit eye gaze direction. CONCEPTUAL FLAT-LAY & TABLETOP STILL LIFE RULE: If the concept is a conceptual business/abstract tabletop still life (wooden blocks, tokens, magnifying glasses, puzzle pieces, checklists, or progress bars with minimalist 2D line icons/symbols on a solid pastel or studio background, with or without a cropped hand/fingers interacting), focus on the physical props, minimalist 2D icons, and clean composition with ample copy space. Do NOT invent full-body characters or business suits. CAMERA DIRECTION RULE: If the face is visible and the text mentions looking at the camera, rephrase it to "looking forward" or "making eye contact"; DO NOT use the word "camera". UNIVERSAL UNBRANDED RULE (ALL MODES): Strip any brand names, logos, or printed text from bottles, cans, cups, devices, bags, signs, or clothing${isProdPreservation ? ' (except the hero referenced product)' : ''}, and rewrite them using positive blank-surface wording (e.g. "plain unbranded clear glass bottle with a completely blank smooth surface", "plain solid-color unbranded t-shirt"). ${isProdPreservation ? `STRICT PRODUCT PRESERVATION DIRECTIVE (PRODUCT PRESERVATION ACTIVE): Refer to the hero item as "the referenced product" without specific dispenser mechanic words like "pump bottle" or "dropper". Preserve the scene, surface, and pose context accurately.` : isHumanPreservation ? `STRICT HUMAN IDENTITY & POSE TRANSFER PRESERVATION DIRECTIVE (HUMAN PRESERVATION ACTIVE): Describe the subject's gender, exact pose, posture, plain unbranded wardrobe, and natural expression. STRICTLY DO NOT write specific hair cut, hair style, hair color, skin tone, or permanent facial landmarks, so that visual reference face photos retain 100% identity without conflicting text overrides.` : `Describe containers, clothing, and settings cleanly with natural colors and blank unbranded surfaces.`} AVOID specifying race, ethnicity, or age IN THIS FIELD. Focus on gender, notable body build, core action, and props. No technical camera or lighting terms.
   
   3. "activeFields": A boolean map of the fields. Set to true if the field is RELEVANT to the scene, even if not explicitly described. Set to false ONLY if the field is completely irrelevant to the scene context. You MUST provide a boolean value for ALL of these keys: subject, characterBackground, ageRange, interaction, targetMarket, imageMedium, visualType, materialStyle, conceptFocus, authenticity, environment, colorMood, qualityCamera, framing, cameraAngle, lighting, shadowStyle.
   IMPORTANT LOGIC: If there are people or characters in the scene, 'characterBackground', 'ageRange', and 'interaction' MUST be true (EXCEPT when Human Preservation is active: set 'characterBackground' to false). If there are NO people/characters, 'characterBackground', 'ageRange', and 'interaction' MUST be false, and 'subject' MUST be mapped to a non-human category (like "No person", "Isolated Object", "Background"). If the concept is a flat illustration or 2D vector art, you MUST set photographic fields (qualityCamera, framing, cameraAngle, lighting, shadowStyle, authenticity) to false, as they do not apply to flat graphics.
@@ -853,17 +854,19 @@ export const generateStockPrompts = async (
        - Enforce: Even exposure, natural colors, single dominant light direction.
        - Avoid: Mixed conflicting light sources, blown highlights, stacked lighting types.
 
-    2. ENVIRONMENT-BASED AUTO LIGHT MAPPING:
-       - IF Environment = "Modern Office" → Use "soft diffused window daylight, balanced indoor ambient fill".
-       - IF Environment = "White Background" → Use "bright even illumination, clean shadowless white background".
-       - IF Environment = "Outdoor" → Use "natural daylight, soft natural shadows".
-       - IF Environment = "Neon City" → Use "neon glow as dominant light, controlled secondary fill".
-       - Rule: Never mix incompatible lighting sources automatically.
+    2. ENVIRONMENT-BASED AUTO LIGHT MAPPING (ONLY WHEN NO EXPLICIT LIGHTING IS SET):
+       - Use ONLY if no specific Lighting option is active:
+         * "Modern Office" → "soft diffused window daylight"
+         * "White Background" → "bright even illumination, clean shadowless white background"
+         * "Outdoor" → "natural daylight with soft shadows"
+         * "Neon City" → "ambient neon glow with controlled fill"
+       - STRICT SINGLE-LIGHT RULE: NEVER stack Environment auto-lighting on top of an explicit Lighting or Color Mood choice (e.g., never combine "warm indoor lighting" + "soft diffused window daylight" + "deep dramatic low-key tones" in the same prompt). Choose ONE coherent light source and tone per prompt.
 
     3. ATMOSPHERE CONFLICT RESOLUTION:
        - IF "Golden Hour" + "Studio" → Prioritize Golden Hour, remove studio language.
        - IF "Cinematic Lighting" + "Corporate Target" → Reduce dramatic contrast, maintain professional clarity.
        - IF "Volumetric Lighting" + "Clean Commercial" → Soften volumetric intensity, avoid extreme beams.
+       - IF "Moody & Dark" + "Warm Indoor Lighting" → Use warm low-key ambient tungsten lighting with rich shadows (do NOT add bright window daylight).
        - Rule: Ensure only one dominant lighting mood remains active.
 
     4. SHADOW & BACKGROUND HYGIENE:
@@ -907,9 +910,10 @@ export const generateStockPrompts = async (
        - 3D: Apply lens simulation language (No real camera brand unless DSLR mode active).
        - Illustration: Compositional perspective only (No camera physics).
 
-    6. SHARPNESS & CLARITY RULE (CRITICAL FOR BLUR PREVENTION):
-       - ALWAYS explicitly inject sharpness modifiers into the prompt: "razor-sharp focus on subject", "crisp details", "ultra-high resolution", "tack sharp".
-       - NEVER use words that imply softness on the main subject (e.g., avoid "soft focus", "dreamy blur").
+    6. SHARPNESS & NATURAL CLARITY RULE:
+       - Keep the main subject crisp and clearly focused using natural, varied photography phrasing (e.g., "crisp focus on the subject", "clean natural detail", "authentic textures", "shallow depth of field").
+       - NEVER repeat the exact same boilerplate ending ("Razor-sharp focus, crisp details, ultra-high resolution.") on every prompt in a batch.
+       - NEVER use words that imply blur on the main subject (avoid "soft focus", "dreamy blur").
     `;
 
     // --- 5. COMMERCIAL SAFETY BLOCK ---
@@ -972,12 +976,12 @@ export const generateStockPrompts = async (
          - In Prompt #1 (Option 1): Recreate the EXACT pose, body posture, expression, wardrobe/outfit, camera framing, lighting, and setting from the reference image 100% same-to-same with the preserved person!
          - In Prompts #2 to #${options.quantity}: Keep the exact same preserved person (100% identical face, hair, skin tone, age, and body build) and vary their commercial poses, camera framings (Mid-shot, Close-up portrait, Wide environmental with copy space, Candid action), coordinated wardrobe, and lighting setups.
 
-      4. AUTHENTIC EPIDERMAL MICRO-TEXTURE:
-         - Enforce visible high-resolution natural skin texture (micro-pores, natural skin grain, lifelike catchlights in the eyes) with zero plastic/airbrushed smoothing and zero studio equipment in frame.
+      4. NATURAL SKIN REALISM & UNBRANDED PROPS:
+         - Enforce natural skin texture and lifelike details without plastic smoothing. Keep all clothing, held bottles/cups, devices, and background items 100% plain, unbranded, and blank-surfaced.
       `;
     } else {
       productPreservationEngine = `
-      [STANDARD COMMERCIAL REALISM & FIDELITY MODE]
+      [STANDARD COMMERCIAL REALISM & BRAND-FREE MICROSTOCK MODE]
       - NATURAL SUBJECT & MATERIAL FIDELITY: Describe only the actual subject, materials, and environment specified in the configuration or Smart Refinement. Do NOT inject cosmetic bottles, glass flacons, marble slabs, or human models unless the subject explicitly calls for them.
       - HARDWARE-FREE LIGHTING DESCRIPTIONS: Describe only the light quality on the subject (e.g., "soft diffused lighting", "warm directional sunlight", "even studio illumination"). NEVER mention photography equipment nouns (never write "softbox", "light stand", "c-stand", "tripod", "umbrella", "reflector", or "studio equipment"), because AI image generators literally draw those objects into the scene!
       - CLEAN COMMERCIAL FRAMING: Frame only the intended subject and environment cleanly with crisp focus and natural textures.
@@ -1029,15 +1033,16 @@ export const generateStockPrompts = async (
     // Increase history tracking to 100 to prevent long-term loops
     const recentPrompts = sessionHistory.slice(0, 25).map(h => h.text.substring(0, 55));
     const divergenceInstruction = recentPrompts.length > 0 
-      ? `CRITICAL DIVERGENCE RULE: You MUST NOT generate prompts that are structurally or conceptually identical to these recent outputs:
-         ${recentPrompts.join(" | ")}
-         
-         VARIATION MANDATE:
-         - Change the specific action, pose, or micro-interaction.
-         - Alter the exact color palette or wardrobe details.
-         - Shift the specific angle or environmental framing slightly.
-         - Visually diversify: Each prompt in this batch MUST represent the core concept/Smart Refinement from a completely different visual perspective, composition style, lighting, framing, background details, and mood. Ensure the outputs are highly distinct and visually unique from one another.` 
-      : `VARIATION MANDATE: Ensure each prompt in this batch explores a distinctly different angle, action, or micro-scenario within the given parameters. Do not make them clones of each other. Represent the core concept/Smart Refinement from a completely different visual angle, composition style, lighting setup, framing, background details, and mood for each option in the batch to maximize visual diversity.`;
+      ? `DIVERGENCE & CONCEPT-CLOSE VARIATION RULE:
+         - Avoid repeating these recent outputs verbatim: ${recentPrompts.join(" | ")}
+         - CONTROLLED CONCEPT FIDELITY (75% CONSISTENT CONCEPT / 25% FRESH VARIATION):
+           * Keep the core concept, main activity, key props, and visual feel tightly connected to the Smart Refinement / reference across the batch — NEVER drop the core prop or turn a lifestyle action scene into a generic unrelated headshot.
+           * Vary natural details meaningfully across prompts: gesture/micro-action, subtle non-conflicting camera angle or framing shift, wardrobe color/texture, specific room or surface details, and any active Multi-Lock pool options.
+           * Never create word-for-word duplicate clones.` 
+      : `CONTROLLED CONCEPT-CLOSE VARIATION MANDATE (75% CONSISTENT CONCEPT / 25% FRESH VARIATION):
+         - Keep the core concept, main activity, key props, and overall mood closely anchored to the reference/Smart Refinement across all prompts — NEVER drop the main prop or drift into an unrelated scene.
+         - Make each prompt after #1 a fresh, closely related commercial take by naturally varying: micro-action or pose, subtle non-conflicting framing/perspective shift, wardrobe/prop accents, realistic room/surface details, and rotating evenly through any active Multi-Lock options.
+         - Never make two prompts word-for-word clones of each other.`;
 
     // --- 8. GATHER INPUTS ---
     
@@ -1182,8 +1187,8 @@ export const generateStockPrompts = async (
         - STRICTLY LOCKED: Exact core dish or product, appetizing clarity, uncluttered background. NEVER invent humans or hands if none exist in Smart Refinement.
         - SAFE STOCK VARIATIONS: Cycle 90-degree flat-lay, 45-degree dining angle, eye-level close-up, and rule-of-thirds copy space; vary natural oak wood, white marble, travertine stone, dark slate, and linen surfaces.`
       : `* CATEGORY D — HUMAN, LIFESTYLE & CORPORATE STOCK (ACTIVE FOR ALL PROMPTS):
-        - STRICTLY LOCKED: Authentic epidermal skin micro-texture, natural 5-finger anatomy, specified gender, body build, age range, or cultural locks.
-        - SAFE STOCK VARIATIONS: Cycle medium waist-up, close-up portrait, wide environmental copy-space framing, and over-the-shoulder action angles with varied natural poses, wardrobe tones, and lighting.`;
+        - STRICTLY LOCKED: Core concept/activity and main props from the reference, specified gender, body build, age range, or cultural locks, and natural lifelike human realism.
+        - SAFE STOCK VARIATIONS (CONCEPT-CLOSE): Keep the core scene and key props intact while naturally varying candid micro-actions, subtle pose shifts, non-conflicting framing (waist-up, close-up, three-quarter environmental), coordinated wardrobe tones, and realistic room details.`;
 
     const isFlatLineIcon = options.visualType === 'Flat Line Icon';
 
@@ -1273,16 +1278,35 @@ export const generateStockPrompts = async (
        - [NATURAL OPTICS & FOCUS DISCIPLINE]:
          * For Isolated Objects (PNG Ready), 3D Renders, Flat-Lays, Stages, and Cutouts: Enforce edge-to-edge tack-sharp focus across the entire subject with clean, even illumination and ZERO bokeh or lens blur. Do NOT inject "85mm-100mm macro prime lens" or "creamy depth-of-field bokeh" on isolated objects, 3D renders, or full-frame subjects!
          * For Photography Portraits or Close-up Still Life: Use natural lens perspective with tack-sharp focus on the main subject and gentle, natural background separation.`}
-    6. [COMMERCIAL INTENT]: End cleanly with a concise positive quality phrase (e.g., "Razor-sharp focus, crisp details, ultra-high resolution." or for preservation modes: "${isHumanPreservation ? 'Preserve exact reference human facial identity, facial structure, natural skin tone, and hairstyle identically.' : isProductPreservation ? 'Preserve exact reference product packaging, label typography, and authentic product colors identically.' : 'Razor-sharp focus, crisp details, ultra-high resolution.'}").
+    6. [COMMERCIAL INTENT]: End naturally with a clean, varied photographic quality phrase suited to the scene (for preservation modes: "${isHumanPreservation ? 'Preserve exact reference human facial identity, facial structure, natural skin tone, and hairstyle identically.' : isProductPreservation ? 'Preserve exact reference product packaging, label typography, and authentic product colors identically.' : 'e.g., authentic commercial lifestyle photography with natural textures and soft depth of field.'}"). Do NOT stamp the exact same closing sentence onto every prompt.
+
+    NATURAL LANGUAGE & ZERO-CONTRADICTION RULES (CRITICAL — READ CAREFULLY):
+    - ZERO RAW UI LABELS, SLASHES, OR BRACKETS: NEVER copy dropdown strings verbatim into the final prompt! Strictly FORBIDDEN tokens in output text: slashes "/" (like "close-up / cropped", "North American / Diverse", "Hispanic / Latin American", "Documentary / Editorial", "Top view / flat lay"), UI parentheticals ("(waist-up)", "(20s-30s)", "(40s-50s)", "(faceless)"), robotic labels ("Standard photo", "independent and reflective interaction", "natural shadow", generic "in a home interior"), and clinical AI jargon ("authentic epidermal skin micro-texture", "natural 5-finger anatomy").
+    - TRANSLATE SETTINGS INTO NATURAL PHOTOGRAPHIC PROSE:
+      * "North American / Diverse" → pick a specific natural subject (e.g., "a Caucasian woman", "an African American woman", "a mixed-race American man").
+      * "Hispanic / Latin American" → "a Latina woman" or "a Hispanic man".
+      * "South Asian" → "a South Asian woman" or "an Indian woman".
+      * "Young Adult (20s-30s)" → "in her late 20s" or "in her early 30s"; "Middle-Aged (40s-50s)" → "in her mid-40s" or "in her early 50s".
+      * "Mid Shot (Waist-Up)" → "waist-up medium shot"; "Home Interior" → concrete room matching the action (e.g., "a sunlit modern bathroom", "a cozy bedroom with soft linen bedding", "a warm living room").
+      * "Independent / Reflective" → show visually ("paused in quiet reflection", "calmly absorbed in her routine").
+      * Natural skin/hands → simply write "natural skin texture" or "lifelike details" (NEVER "epidermal micro-texture" or "5-finger anatomy").
+    - ZERO GEOMETRIC & CAMERA CONTRADICTIONS:
+      * FACELESS CROP CONSISTENCY: If a prompt is a faceless close-up crop, describe ONLY hands, arms, clothing, or objects below the chin — NEVER describe face, eyes, gaze, glasses, smiling, or head! Conversely, if the reference/Smart Refinement centers on facial expression, glasses, eye contact, or looking in a mirror, DO NOT make it faceless — use a clean waist-up or close-up portrait instead.
+      * ANGLE vs FRAMING CONSISTENCY: NEVER combine "waist-up" / "portrait" with "top view" / "flat lay" in the same prompt! Use overhead/top-down view ONLY for genuine overhead desk/bed/hands-from-above compositions; pair waist-up/portrait shots with eye-level, slightly elevated, or three-quarter perspectives.
+      * SINGLE COHESIVE LIGHTING: Never mix conflicting light moods (never stack warm indoor light + bright window daylight + dramatic low-key in one prompt).
 
     PROMPT HYGIENE RULES (CRITICAL — READ CAREFULLY):
-    - STRICT BAN ON NEGATIVE KEYWORD LISTS: NEVER append negative prompt lists, "no X, no Y" lists, or banned noun lists to the prompt! Modern AI image generators (Seedream 4.5, Google Nano Banana, Flux, DALL-E 3) interpret every noun in the prompt as a positive instruction to draw that object.
-    - BANNED PHOTOGRAPHY HARDWARE & ARTIFACT NOUNS: NEVER write any of these words anywhere in the prompt (not even preceded by "no" or "without"): "studio equipment", "light stands", "softboxes", "softbox", "lighting fixtures", "backdrop lights", "c-stands", "tripods", "umbrellas", "reflectors", "cables", "wires", "clamps", "behind the scenes", "production hardware", "studio clutter", "checkerboard background", "transparency grid", "pristine seamless cyclorama". Writing these words causes AI image generators to draw tripods, softboxes, and PNG checkerboards inside the image!
-    - Describe ONLY what SHOULD be visible in the final image using positive, concrete visual language.
+    - STRICT BAN ON NEGATIVE KEYWORD LISTS: NEVER append negative prompt lists, "no X, no Y" lists, or banned noun lists to the prompt! Modern AI image generators interpret every noun in the prompt as a positive instruction to draw that object.
+    - UNIVERSAL COMMERCIAL BRAND-FREE & BLANK-SURFACE RULE (APPLIES TO EVERY SINGLE PROMPT IN ALL MODES):
+      * Whenever ANY drink bottle, water bottle, soda can, coffee cup, mug, food/skincare package, shopping bag, laptop, phone, notebook, hat, garment, sign, or background prop appears in a prompt${isProductPreservation ? ' (EVERY item OTHER than the single referenced hero product)' : ''}, ALWAYS explicitly describe it with POSITIVE blank-surface terms: e.g., "a plain unbranded clear glass bottle with a completely blank smooth surface and solid cap", "a plain unbranded matte aluminum can with a smooth empty exterior", "a clean unbranded ceramic cup with a blank surface", "a sleek unbranded laptop with an empty metallic lid", "a plain solid-color cotton shirt".
+      * NEVER include brand names, trademarks, stickers, emblems, printed graphics, or text on containers, devices, signs, or apparel${isProductPreservation ? ' (only the hero referenced product retains its authentic original label)' : ''}.
+      * DIFFUSION SAFETY — ZERO NEGATIVE TRIGGER WORDS: NEVER write "no logo", "no text", "no branding", "without labels", or "no watermark" anywhere in any prompt — mentioning "logo", "text", or "label" makes AI image generators hallucinate fake logos and gibberish text! Rely strictly on positive blank-surface visual words ("plain", "unbranded", "completely blank smooth surface", "solid empty exterior").
+    - BANNED PHOTOGRAPHY HARDWARE & ARTIFACT NOUNS: NEVER write any of these words anywhere in the prompt (not even preceded by "no" or "without"): "studio equipment", "light stands", "softboxes", "softbox", "lighting fixtures", "backdrop lights", "c-stands", "tripods", "umbrellas", "reflectors", "cables", "wires", "clamps", "behind the scenes", "production hardware", "studio clutter", "checkerboard background", "transparency grid", "pristine seamless cyclorama".
+    - Describe ONLY what SHOULD be visible in the final image using positive, natural, concrete visual prose.
     - Remove redundant adjectives and avoid repeating sharpness phrases twice in the same prompt.
     - RENDER ENGINE RULE: Never mention specific 3D render engine names (Octane Render, Unreal Engine 5, V-Ray, Blender, Cinema 4D). Use generic terms only: '3D render', '3D CGI'.
-    - LENGTH: Photography medium: 55-85 words. 3D & CGI, Isolated Objects, or Art & Illustration medium: 35-55 words maximum. Concise, focused positive prompts produce dramatically cleaner results in AI image generators.
-    - CONFLICT HANDLING: Prioritize Image Medium logic. Reset incompatible vocabulary.
+    - LENGTH: Photography medium: 50-80 words of fluent visual prose. 3D & CGI, Isolated Objects, or Art & Illustration medium: 35-55 words maximum.
+    - CONFLICT HANDLING: Prioritize Image Medium logic and visual realism. Reset incompatible vocabulary.
 
     ${divergenceInstruction}
 
@@ -1311,8 +1335,8 @@ export const generateStockPrompts = async (
             try {
               const generationConfig: Record<string, any> = {
                 responseMimeType: 'application/json',
-                temperature: 0.95,
-                topP: 0.95
+                temperature: 0.78,
+                topP: 0.92
               };
               if (m.includes('2.5-flash') || m === 'gemini-flash-latest') {
                 generationConfig.thinkingConfig = { thinkingBudget: 0 };
@@ -1401,8 +1425,8 @@ export const generateStockPrompts = async (
           body: JSON.stringify({
             model: m,
             messages: [{ role: 'user', content: systemPrompt }],
-            temperature: 0.9,
-            top_p: 0.95,
+            temperature: 0.78,
+            top_p: 0.92,
             response_format: { type: 'json_object' }
           })
         });
@@ -1435,8 +1459,8 @@ export const generateStockPrompts = async (
           body: JSON.stringify({
             model: m,
             messages: [{ role: 'user', content: systemPrompt }],
-            temperature: 0.9,
-            top_p: 0.95,
+            temperature: 0.78,
+            top_p: 0.92,
             response_format: { type: 'json_object' }
           })
         });
@@ -1472,8 +1496,8 @@ export const generateStockPrompts = async (
           body: JSON.stringify({
             model: m,
             messages: [{ role: 'user', content: systemPrompt }],
-            temperature: 0.9,
-            top_p: 0.95
+            temperature: 0.78,
+            top_p: 0.92
           })
         });
         if (response.ok) {
