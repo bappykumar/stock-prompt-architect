@@ -1509,6 +1509,7 @@ export default function App() {
           if (file) {
             setReferenceImage(file);
             setAutoFillMode('image');
+            setErrorMessage(null);
             setOptions(prev => ({
               ...prev,
               activeFields: { ...prev.activeFields, smartRefinement: true }
@@ -1999,7 +2000,7 @@ export default function App() {
     setLastUsedReference({ mode: null, value: null, file: null, status: 'idle' });
     const runMode = autoFillMode;
     const runFile = runMode === 'image' ? referenceImage : null;
-    const runText = runMode === 'text' ? (options.smartRefinementText || null) : null;
+    const runText = runMode === 'text' ? (options.smartRefinementText.trim() || null) : null;
     let generatedInAutoRun = false;
     try {
       const basePreset = (autoRunMode && autoRunPreset) ? autoRunPreset : options;
@@ -2247,12 +2248,12 @@ export default function App() {
         }));
         setIsAnalyzing(false);
         generatedInAutoRun = true;
-        await handleGenerate(newOptions, { mode: runMode, file: runFile, text: cleanSrText || runText });
+        await handleGenerate(newOptions, { mode: runMode, file: runFile, text: (cleanSrText || '').trim() || runText });
       } else {
         setOptions(newOptions);
         setLastUsedReference({
           mode: runMode === 'image' ? 'both' : 'text',
-          value: cleanSrText || runText,
+          value: (cleanSrText || '').trim() || runText,
           file: runFile,
           status: 'success'
         });
@@ -2294,9 +2295,10 @@ export default function App() {
     setLoadingStepIdx(0);
     setErrorMessage(null);
 
+    const shouldTrackSrStatus = !!refMeta || !!activeOpts.activeFields?.smartRefinement;
     const effectiveRefMode = refMeta ? refMeta.mode : autoFillMode;
     const effectiveRefFile = refMeta ? refMeta.file : (autoFillMode === 'image' || activeOpts.isFromImageReference ? referenceImage : null);
-    const effectiveRefText = refMeta ? refMeta.text : (activeOpts.smartRefinementText || null);
+    const effectiveRefText = refMeta ? (refMeta.text?.trim() || null) : (activeOpts.smartRefinementText?.trim() || null);
 
     loadingIntervalRef.current = window.setInterval(() => {
       setLoadingStepIdx(prev => (prev + 1) % LOADING_STEPS.length);
@@ -2328,7 +2330,7 @@ export default function App() {
       setBatches(prev => [newBatch, ...prev]);
       setDisplayedPresets(getRandomPresets(4));
 
-      if (effectiveRefFile || effectiveRefText) {
+      if (shouldTrackSrStatus && (effectiveRefFile || effectiveRefText)) {
         setLastUsedReference({
           mode: effectiveRefFile ? 'both' : effectiveRefMode,
           value: effectiveRefText,
@@ -2339,7 +2341,7 @@ export default function App() {
     } catch (error: any) {
       console.warn('Generation failed:', error);
       setErrorMessage(error.message || "An unexpected error occurred while generating prompts.");
-      if (effectiveRefFile || effectiveRefText) {
+      if (shouldTrackSrStatus && (effectiveRefFile || effectiveRefText)) {
         setLastUsedReference({
           mode: effectiveRefFile ? 'both' : effectiveRefMode,
           value: effectiveRefText,
@@ -2982,7 +2984,7 @@ export default function App() {
 
                     {autoFillMode === 'image' ? (
                       <div className="relative border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden text-center hover:bg-white/40 dark:hover:bg-white/[0.02] transition-colors flex items-center justify-center min-h-[8.5rem]">
-                        <input type="file" accept="image/jpeg, image/png" onChange={(e) => { const f = e.target.files?.[0] || null; if (f) setReferenceImage(f); e.target.value = ''; }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-30" />
+                        <input type="file" accept="image/jpeg, image/png" onChange={(e) => { const f = e.target.files?.[0] || null; if (f) { setReferenceImage(f); setErrorMessage(null); } e.target.value = ''; }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-30" />
                         {referenceImage && referenceImageUrl ? (
                           <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-slate-900/5 dark:bg-slate-900/50">
                             <img src={referenceImageUrl} alt="Preview Background" className="absolute inset-0 w-full h-full object-cover opacity-20 blur-sm pointer-events-none" />
@@ -3001,6 +3003,7 @@ export default function App() {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setReferenceImage(null);
+                                setErrorMessage(null);
                                 setLastUsedReference({ mode: null, value: null, file: null, status: 'idle' });
                               }}
                               className="absolute top-2 right-2 z-40 p-1.5 rounded-full bg-black/60 hover:bg-black/80 text-white backdrop-blur-md transition-colors shadow-md"
@@ -3022,7 +3025,7 @@ export default function App() {
                         <div className="relative">
                           <textarea 
                             value={options.smartRefinementText} 
-                            onChange={(e) => setOptions({...options, smartRefinementText: e.target.value, isFromImageReference: false})} 
+                            onChange={(e) => { setOptions({...options, smartRefinementText: e.target.value, isFromImageReference: false}); setErrorMessage(null); }} 
                             placeholder="Describe your concept (e.g. 'a moody cinematic shot of a businessman in rain')..." 
                             className="w-full h-24 bg-white/70 dark:bg-white/[0.04] backdrop-blur-md border border-white/80 dark:border-white/[0.08] shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] rounded-2xl pl-3.5 pr-9 py-2.5 text-[12px] leading-relaxed text-slate-900 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all resize-none custom-scrollbar" 
                           />
@@ -3031,6 +3034,7 @@ export default function App() {
                               type="button"
                               onClick={() => {
                                 setOptions(prev => ({...prev, smartRefinementText: ''}));
+                                setErrorMessage(null);
                                 setLastUsedReference({ mode: null, value: null, file: null, status: 'idle' });
                               }}
                               className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full bg-slate-200/80 dark:bg-slate-800/90 hover:bg-red-500/15 dark:hover:bg-red-500/20 text-slate-400 hover:text-red-500 dark:hover:text-red-400 border border-black/5 dark:border-white/10 flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-90 z-20"
@@ -3053,6 +3057,7 @@ export default function App() {
                               type="button"
                               onClick={() => {
                                 setOptions(prev => ({ ...prev, smartRefinementText: '' }));
+                                setErrorMessage(null);
                                 setLastUsedReference({ mode: null, value: null, file: null, status: 'idle' });
                               }}
                               className="hover:text-red-500 dark:hover:text-red-400 transition-colors cursor-pointer"
@@ -3065,12 +3070,13 @@ export default function App() {
                     )}
 
                     {(() => {
-                      const hasSrContent = autoFillMode === 'image' ? !!referenceImage : !!options.smartRefinementText;
+                      const trimmedSrText = options.smartRefinementText.trim();
+                      const hasSrContent = autoFillMode === 'image' ? !!referenceImage : !!trimmedSrText;
                       const isSameRef =
                         hasSrContent &&
                         (autoFillMode === 'image'
                           ? (lastUsedReference.mode === 'image' || lastUsedReference.mode === 'both') && lastUsedReference.file === referenceImage
-                          : (lastUsedReference.mode === 'text' || lastUsedReference.mode === 'both') && lastUsedReference.value === (options.smartRefinementText || null));
+                          : (lastUsedReference.mode === 'text' || lastUsedReference.mode === 'both') && lastUsedReference.value === (trimmedSrText || null));
                       const isBusy = isAnalyzing || isGenerating;
                       const isSrUsed = !isBusy && isSameRef && lastUsedReference.status === 'success';
                       const isSrFailed = !isBusy && isSameRef && lastUsedReference.status === 'error';
@@ -3153,6 +3159,7 @@ export default function App() {
                                   } else {
                                     setOptions(prev => ({ ...prev, smartRefinementText: '' }));
                                   }
+                                  setErrorMessage(null);
                                   setLastUsedReference({ mode: null, value: null, file: null, status: 'idle' });
                                 }}
                                 className="text-[10px] text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors flex items-center gap-1 cursor-pointer"
