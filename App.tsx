@@ -215,6 +215,7 @@ const OPTIONS = {
 
     // --- Animals & Wildlife ---
     { value: 'Domestic Pet (Cat, Dog, etc.)', label: 'Domestic Pet (Cat, Dog)' },
+    { value: 'Wild Animal / Bird', label: 'Wild Animal / Bird' },
     // --- Non-Human Content ---
     { value: 'Still life / Food & Drink', label: 'Still life / Food & Drink' },
     { value: 'No person (product)', label: 'Product / Object Only' },
@@ -1009,6 +1010,9 @@ export default function App() {
       preservationType?: 'product' | 'human';
       environment?: string;
       shadowStyle?: string;
+      lighting?: string;
+      colorMood?: string;
+      smartRefinementText?: string;
     },
     reEnableValidLocks: boolean = true
   ): Record<string, boolean> => {
@@ -1016,6 +1020,7 @@ export default function App() {
     const locks = lockedFields || {};
     const subj = String(context.subject || '');
     const med = String(context.imageMedium || '');
+    const srLower = String(context.smartRefinementText || '').toLowerCase();
     const isProdLock = !!context.productPreservation && (context.preservationType || 'product') === 'product';
     const isHumanLock = !!context.productPreservation && context.preservationType === 'human';
 
@@ -1026,7 +1031,12 @@ export default function App() {
     ];
     const isNonHuman = nonHumanKeywords.some(k => subj.includes(k));
     const isBackgroundOnly = subj.includes('Background');
-    const isAbstractGraphic = subj.includes('Abstract Shape') || context.visualType === 'Abstract Environmental 3D';
+    const hasScenicTerms = /\b(moss|hill|meadow|forest|mountain|beach|ocean|lake|flower|floral|botanical|tree|sky|cloud|field|grass|terrain|driftwood|landscape|scenic|nature|sunset|sunrise|stage|curtain|cityscape)\b/i.test(srLower);
+    const hasAbstractTerms = /\b(abstract|gradient|fluted|reeded|ribbed|pleated|louver|bauhaus|swiss|geometric|grid|quarter-circle|semi-circle|glass\s*card|frosted\s*glass|glass\s*panel|glass\s*sheet|glass\s*strip|refraction|scanline|motion[\s-]?blur|light\s*streak|sine[\s-]?wave|waveform|chromatic|film\s*grain|analog\s*grain|wallpaper|optical|holographic|iridescent|ribbon|slat|sphere|dome|wave\s*pattern|minimalist\s*vector|light[\s-]?wave)\b/i.test(srLower);
+    const isAbstractGraphic =
+      subj.includes('Abstract Shape') ||
+      context.visualType === 'Abstract Environmental 3D' ||
+      (isBackgroundOnly && (hasAbstractTerms || (!hasScenicTerms && (med === '3D & CGI' || med === 'Art & Illustration'))));
     const isIsolatedPng = subj.includes('Isolated Object');
     const isNonPhotoMedium = med === '3D & CGI' || med === 'Art & Illustration';
 
@@ -1059,6 +1069,13 @@ export default function App() {
       const abstractSafeEnvs = ['Default / Auto', 'Solid Color / Studio', 'Pitch Black / Void', 'White Background'];
       if (context.environment && !abstractSafeEnvs.includes(context.environment)) {
         next.environment = false;
+      }
+      const lightLower = String(context.lighting || '').toLowerCase();
+      if (med === 'Art & Illustration' || lightLower.includes('natural daylight') || lightLower.includes('warm indoor') || lightLower.includes('golden hour') || lightLower.includes('soft studio') || lightLower.includes('overcast')) {
+        next.lighting = false;
+      }
+      if (context.colorMood === 'Cool & Clinical') {
+        next.colorMood = false;
       }
     }
 
@@ -2039,19 +2056,10 @@ export default function App() {
         }
       });
 
-      // Filter available options for locked fields (and explicitly configured fields in Auto-Run mode)
+      // Always send FULL visualOptions to analysis so AI classifies the uploaded image/text accurately
+      // without being blinded by locked fields; user locks & OFF toggles are enforced deterministically below.
       const lockedPools = basePreset.lockedPools || {};
       const lockedKeys = Object.keys(basePreset.lockedFields || {}).filter(k => basePreset.lockedFields[k]);
-      
-      lockedKeys.forEach(k => {
-        const pool = lockedPools[k] || (basePreset[k as keyof PromptOptions] ? [String(basePreset[k as keyof PromptOptions])] : []);
-        if (pool.length > 0 && (visualOptions as any)[k]) {
-          const filtered = (visualOptions as any)[k].filter((val: any) => pool.includes(String(val)));
-          if (filtered.length > 0) {
-            (visualOptions as any)[k] = filtered;
-          }
-        }
-      });
 
       const passedPreservation = !!options.productPreservation;
       const preservationType = options.preservationType || 'product';
@@ -2063,8 +2071,19 @@ export default function App() {
       const rawSettings = { ...result.settings };
       delete rawSettings.model;
 
-      // Normalize all settings against OPTIONS definitions
+      const configurableFieldKeys = [
+        'subject', 'characterBackground', 'ageRange', 'interaction', 'targetMarket',
+        'imageMedium', 'visualType', 'materialStyle', 'conceptFocus', 'authenticity',
+        'environment', 'colorMood', 'qualityCamera', 'framing', 'cameraAngle',
+        'subjectPosition', 'lighting', 'shadowStyle'
+      ];
+
+      // Initialize EVERY configurable field to 'Default / Auto' first so omitted AI keys
+      // can NEVER inherit stale unlocked values from basePreset via spread!
       const newSettings: Record<string, any> = {};
+      configurableFieldKeys.forEach(k => {
+        newSettings[k] = 'Default / Auto';
+      });
       Object.keys(rawSettings).forEach(k => {
         newSettings[k] = normalizeOptionValue(k, rawSettings[k]);
       });
@@ -2077,32 +2096,25 @@ export default function App() {
         smartRefinement: true
       };
 
-      const configurableFieldKeys = [
-        'subject', 'characterBackground', 'ageRange', 'interaction', 'targetMarket',
-        'imageMedium', 'visualType', 'materialStyle', 'conceptFocus', 'authenticity',
-        'environment', 'colorMood', 'qualityCamera', 'framing', 'cameraAngle',
-        'lighting', 'shadowStyle'
+      const nonHumanSubjectKeywords = [
+        'Domestic Pet', 'Wild Animal', 'Bird', 'Marine', 'Macro',
+        'Still life', 'No person', 'Isolated Object', 'Background',
+        'Abstract Shape', 'Icon / Logo'
       ];
+      const aiDetectedNonHuman = nonHumanSubjectKeywords.some(kw => String(newSettings.subject || '').includes(kw));
+      const presetSubjectIsNonHuman = nonHumanSubjectKeywords.some(kw => String(basePreset.subject || '').includes(kw));
 
       if (autoRunMode) {
-        const nonHumanSubjectKeywords = [
-          'Domestic Pet', 'Wild Animal', 'Bird', 'Marine', 'Macro',
-          'Still life', 'No person', 'Isolated Object', 'Background',
-          'Abstract Shape', 'Icon / Logo'
-        ];
-        const aiDetectedNonHuman = nonHumanSubjectKeywords.some(kw => String(newSettings.subject || '').includes(kw));
-        const presetSubjectIsNonHuman = nonHumanSubjectKeywords.some(kw => String(basePreset.subject || '').includes(kw));
-
-        // In Auto-Run Mode: strictly honor EVERY user-configured field from the saved preset!
-        // - Manually turned OFF fields stay OFF
-        // - Locked / Multi-Locked fields keep their pool & values (unless AI marks irrelevant)
-        // - Explicitly chosen non-default values stay fixed (unless AI marks irrelevant, OR an unlocked human subject meets a non-human product/landscape image)
-        // - Fields left as 'Default / Auto' dynamically adapt to the analyzed image/text
+        // In Auto-Run Mode, follow the exact same clean Lock + Toggle contract as Classic Mode:
+        // 1. Manually turned OFF toggles stay OFF across every run.
+        // 2. Explicitly LOCKED / Multi-Locked fields strictly honor their saved lock or pool
+        //    (except when an uploaded non-human image like food/animal/abstract art would conflict with a human subject lock).
+        // 3. UNLOCKED fields dynamically adapt to the newly analyzed image/text (ZERO stale leftovers from prior images!).
         configurableFieldKeys.forEach(k => {
           const wasActiveInPreset = basePreset.activeFields?.[k] !== false;
           const presetVal = (basePreset as any)[k];
           const isFieldLocked = !!basePreset.lockedFields?.[k];
-          const pool = lockedPools[k] || [];
+          const pool = (lockedPools[k] || []).filter((v: string) => v && v !== 'Default / Auto');
 
           if (!wasActiveInPreset) {
             newSettings[k] = presetVal ?? 'Default / Auto';
@@ -2111,6 +2123,11 @@ export default function App() {
           }
 
           if (isFieldLocked) {
+            // Protect non-human images (food, bird, product, abstract wallpaper) from being overwritten by a human subject lock
+            if (input.type === 'image' && k === 'subject' && aiDetectedNonHuman && !presetSubjectIsNonHuman) {
+              nextActiveFields[k] = true;
+              return;
+            }
             if (pool.length > 1) {
               if (!newSettings[k] || !pool.includes(String(newSettings[k]))) {
                 newSettings[k] = pool[0];
@@ -2121,21 +2138,17 @@ export default function App() {
               newSettings[k] = presetVal;
             }
             nextActiveFields[k] = result.activeFields?.[k] === false ? false : true;
-          } else if (k === 'subject' && aiDetectedNonHuman && !presetSubjectIsNonHuman) {
-            // If reference image clearly has NO human (product/object/landscape/animal) and subject wasn't explicitly locked,
-            // keep AI's non-human subject for this run so human-only fields auto-turn OFF cleanly
-            nextActiveFields[k] = true;
-          } else if (presetVal && presetVal !== 'Default / Auto') {
-            // Preserve user's explicit non-default selection without overwriting
-            newSettings[k] = presetVal;
-            nextActiveFields[k] = result.activeFields?.[k] === false ? false : true;
           }
-          // Otherwise (presetVal === 'Default / Auto' and active): keep AI-detected newSettings[k] & nextActiveFields[k]
+          // Unlocked & active fields keep AI's fresh analysis (newSettings[k] & nextActiveFields[k])
         });
       } else {
         // Classic 2-step mode: Restore locked fields values while turning OFF any locked fields not needed for the detected context
         lockedKeys.forEach(k => {
-          const pool = lockedPools[k] || (options[k as keyof PromptOptions] ? [String(options[k as keyof PromptOptions])] : []);
+          if (input.type === 'image' && k === 'subject' && aiDetectedNonHuman && !presetSubjectIsNonHuman) {
+            nextActiveFields[k] = true;
+            return;
+          }
+          const pool = (lockedPools[k] || (options[k as keyof PromptOptions] ? [String(options[k as keyof PromptOptions])] : [])).filter((v: string) => v && v !== 'Default / Auto');
           if (pool.length > 1) {
             if (newSettings[k] && pool.includes(String(newSettings[k]))) {
               // Keep AI selection within allowed pool
@@ -2209,8 +2222,7 @@ export default function App() {
 
       if (input.type === 'image') {
         ['conceptFocus', 'targetMarket', 'authenticity', 'qualityCamera'].forEach(metaField => {
-          const hasExplicitPreset = autoRunMode && basePreset[metaField as keyof PromptOptions] && basePreset[metaField as keyof PromptOptions] !== 'Default / Auto' && basePreset.activeFields?.[metaField] !== false;
-          if (!basePreset.lockedFields?.[metaField] && !hasExplicitPreset) {
+          if (!basePreset.lockedFields?.[metaField]) {
             newSettings[metaField] = 'Default / Auto';
             nextActiveFields[metaField] = false;
           }
@@ -2237,7 +2249,10 @@ export default function App() {
           productPreservation: resolvedOptions.productPreservation,
           preservationType: resolvedOptions.preservationType,
           environment: resolvedOptions.environment,
-          shadowStyle: resolvedOptions.shadowStyle
+          shadowStyle: resolvedOptions.shadowStyle,
+          lighting: resolvedOptions.lighting,
+          colorMood: resolvedOptions.colorMood,
+          smartRefinementText: cleanSrText
         },
         false
       );

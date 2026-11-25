@@ -219,7 +219,14 @@ export function stripBiometricDescriptors(text: string): string {
   return sanitized;
 }
 
-export function sanitizeGeneratedPrompt(text: string): string {
+export function sanitizeGeneratedPrompt(
+  text: string,
+  context?: {
+    isAbstractGraphicBackground?: boolean;
+    isHumanSubject?: boolean;
+    isOutdoorScene?: boolean;
+  }
+): string {
   if (!text) return text;
   let cleaned = text.trim();
 
@@ -238,14 +245,69 @@ export function sanitizeGeneratedPrompt(text: string): string {
     cleaned = cleaned.replace(pattern, '');
   }
 
+  // Strip robotic "Photography of ..." / "Photograph of ..." opening wrapper
+  cleaned = cleaned.replace(/^(?:a\s+)?(?:commercial\s+|editorial\s+|lifestyle\s+|candid\s+)?(?:photography|photograph|photo)\s+of\s+/i, '');
+  if (cleaned.length > 0) {
+    cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  }
+
   // Strip standalone banned hardware / artifact terms that cause image generators to hallucinate equipment, paper rolls, or grids
   cleaned = cleaned.replace(/\b(studio equipment|light stands?|softbox(es)?|octabox(es)?|c-stands?|lighting umbrellas?|reflector panels?|backdrop lights?|production hardware|studio clutter|behind the scenes|checkerboard background|transparency grid|pristine seamless cyclorama|paper cyclorama|studio cyclorama|infinity cove)\b[,\s]*/gi, '');
   cleaned = cleaned.replace(/\bminimalist studio setting\b/gi, 'clean minimalist composition');
   cleaned = cleaned.replace(/\bgradient studio backdrop\b/gi, 'seamless gradient background');
   cleaned = cleaned.replace(/\bstudio backdrop\b/gi, 'seamless background');
 
-  // Clean up trailing commas or periods
-  cleaned = cleaned.replace(/,\s*$/, '.').replace(/\s{2,}/g, ' ').replace(/\s+([,.\?!])/g, '$1').trim();
+  // Eliminate raw UI dropdown labels, literal slashes, and doubled phrases
+  cleaned = cleaned.replace(/\btop\s+view\s*\/\s*flat\s+lay\b/gi, 'overhead flat-lay view');
+  cleaned = cleaned.replace(/\bdocumentary\s*\/\s*editorial\b/gi, 'editorial documentary');
+  cleaned = cleaned.replace(/\bclose-up\s*\/\s*cropped\s+action\s*\(faceless\)/gi, context?.isHumanSubject === false ? 'tight macro close-up' : 'faceless close-up focused on hands');
+  cleaned = cleaned.replace(/\bcool\s+and\s+clinical\s+crisp\s+cool\s+daylight\s+tones\b/gi, 'crisp cool daylight tones');
+  cleaned = cleaned.replace(/\bwarm\s+and\s+golden\s+warm\s+golden\s+tones\b/gi, 'warm golden tones');
+  cleaned = cleaned.replace(/\bneutral\s+and\s+earthy\s+natural\s+earthy\s+neutral\s+tones\b/gi, 'natural earthy tones');
+  cleaned = cleaned.replace(/\bvibrant\s+and\s+bold\s+vibrant\s+rich\s+colors\b/gi, 'vibrant rich colors');
+  cleaned = cleaned.replace(/\bstandard\s+photo\s+style\b/gi, 'clean natural photography');
+  cleaned = cleaned.replace(/\bindependent\s+and\s+reflective\s+interaction\b/gi, 'calm, reflective moment');
+  cleaned = cleaned.replace(/\ba\s+domestic\s+pet,\s+(a|an)\s+/gi, '$1 ');
+  cleaned = cleaned.replace(/\bdomestic\s+pet,\s+(a|an)\s+/gi, '$1 ');
+
+  // Never stamp "faceless" phrasing onto food, animals, or objects
+  if (context?.isHumanSubject === false) {
+    cleaned = cleaned.replace(/\bclose-up\s+cropped\s+action,\s*faceless\s+view\s+of\b/gi, 'close-up view of');
+    cleaned = cleaned.replace(/\bcropped\s+action,\s*faceless\s+view\s+of\b/gi, 'close-up view of');
+    cleaned = cleaned.replace(/\bfaceless\s+(close-up\s+)?view\s+of\b/gi, 'close-up view of');
+    cleaned = cleaned.replace(/\bfaceless\s+composition\b/gi, 'tight macro composition');
+  }
+
+  // Outdoor scenes must never carry "warm indoor lighting"
+  if (context?.isOutdoorScene) {
+    cleaned = cleaned.replace(/\bwarm\s+indoor\s+lighting\b/gi, 'warm ambient outdoor lighting');
+  }
+
+  // Abstract graphic wallpapers must never carry room/lab/daylight/global-illumination leaks
+  if (context?.isAbstractGraphicBackground) {
+    cleaned = cleaned.replace(/\b(?:simulating\s+natural\s+daylight\s+)?(?:in|within)\s+a\s+scientific\s+research\s+lab\b[,\s]*/gi, '');
+    cleaned = cleaned.replace(/\bscientific\s+research\s+lab\b[,\s]*/gi, '');
+    cleaned = cleaned.replace(/\ban\s+abstract\s+graphic\s+element\s+(?:with|featuring)\b/gi, 'layered abstract forms with');
+    cleaned = cleaned.replace(/\bthe\s+abstract\s+graphic\s+element\s+is\s+presented\b/gi, 'the abstract composition flows');
+    cleaned = cleaned.replace(/\bphysically\s+accurate\s+(?:lighting,\s*)?global\s+illumination(?:,?\s*and\s+realistic\s+soft\s+shadows)?\b[,\s]*/gi, '');
+    cleaned = cleaned.replace(/\bwith\s+crisp\s+cool\s+daylight\s+tones\b[,\s]*/gi, '');
+    cleaned = cleaned.replace(/\bcrisp\s+cool\s+daylight\s+tones\b[,\s]*/gi, '');
+    cleaned = cleaned.replace(/\b(?:captured\s+(?:from\s+a|at)\s+)?(?:top\s+view\s*(?:\/\s*flat\s+lay)?|overhead\s+flat-lay\s+view|eye[\s-]level\s+(?:view|perspective))\b[,\s]*/gi, '');
+  }
+
+  // Clean up punctuation, double commas, orphaned connectors, or extra spaces
+  cleaned = cleaned
+    .replace(/\s*,\s*,+/g, ',')
+    .replace(/\s*,\s*\./g, '.')
+    .replace(/\.\s*,/g, '.')
+    .replace(/\b(?:set\s+in|captured\s+at|captured\s+from\s+a|with|and|in|at|from|of)\s*\./gi, '.')
+    .replace(/,\s*$/, '.')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+([,.\?!])/g, '$1')
+    .trim();
+  if (cleaned.length > 0) {
+    cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  }
   return cleaned;
 }
 
@@ -297,7 +359,10 @@ COHERENCE & MEDIUM RULES:
   Then 'visualType' MUST be one of: "Anime Style", "Oil Painting", "Minimalist Vector", "Flat Illustration", "Flat Line Icon", "Paper Cut Art", "Line Art".
 
 SUBJECT & CONTENT RECOGNITION RULES:
-- Animals / Pets: Set 'subject' to "Domestic Pet (Cat, Dog, etc.)". Set 'characterBackground', 'ageRange', 'interaction' to FALSE in 'activeFields'.
+- Animals, Pets & Wildlife:
+  * Indoor/companion pets (cats, dogs, rabbits, hamsters) -> Set 'subject' to "Domestic Pet (Cat, Dog, etc.)".
+  * Wild birds (perched on branches, flying, outdoors), wildlife, insects, or nature animals -> Set 'subject' to "Wild Animal / Bird" (NEVER call a wild bird a "Domestic Pet"!).
+  * In ALL animal/bird cases, set 'characterBackground', 'ageRange', 'interaction', and 'authenticity' strictly to FALSE in 'activeFields'.
 - Food, Beverage & Culinary:
   * ISOLATED FOOD / INGREDIENT CUTOUTS ON WHITE (CRITICAL): If food ingredients, fruit/vegetable slices (e.g., overlapping tomato slices), scattered herbs/basil leaves, spices, or food items are floating or arranged directly on a 100% pure white cutout background with NO plate, NO bowl, NO table surface texture, and NO cast ground shadows (PNG cutout asset style): You MUST set 'subject' to "Isolated Object (PNG Ready)", 'environment' to "White Background", 'shadowStyle' to "No Shadow / Flat", and 'framing' to "Full shot (full body)". In 'smartRefinement', explicitly state if the slices/items are overlapping in the center (e.g., "two overlapping round cross-section red tomato slices in the center surrounded by floating basil leaves, black peppercorns, and seeds") with uncropped white margins.
   * PLATED / TABLETOP FOOD & STILL LIFE: If the food/dish is served in a bowl, on a plate, banana leaf, or tabletop surface: Set 'subject' to "Still life / Food & Drink". Set 'characterBackground', 'ageRange', 'interaction' to FALSE in 'activeFields'.
@@ -326,15 +391,19 @@ SUBJECT & CONTENT RECOGNITION RULES:
   * Overhead 90-degree tabletop view -> 'cameraAngle': "Top View / Flat Lay"
   * Straight-on front view -> 'cameraAngle': "Eye Level"
   * Looking upwards -> 'cameraAngle': "Low Angle"
-- Environment & Background:
+- Environment & Lighting Accuracy:
   * Pure white or transparent cutout -> 'environment': "White Background"
   * Clean tabletop or solid studio backdrop -> 'environment': "Solid Color / Studio"
   * Black background -> 'environment': "Pitch Black / Void"
   * Office / workplace -> 'environment': "Modern Office"
-  * Outdoor / nature / sky -> 'environment': "Nature / Outdoor"
+  * Outdoor / nature / sky / trees -> 'environment': "Nature / Outdoor"
+  * Outdoor city street / rain / crosswalk -> 'environment': "City Street"
+  * Outdoor street food / night market / bazaar -> 'environment': "Outdoor Market / Bazaar"
+  * Train station / platform / airport -> 'environment': "Airport / Transit Hub"
+  * OUTDOOR LIGHTING RULE: If the scene is outdoors (street, rain, night market, park, train platform, tree branch), NEVER set 'lighting' to "Warm indoor" or "Soft studio" — use "Natural daylight", "Overcast / Diffused", "Golden hour", or "Cinematic Lighting" (for night/evening street lights).
 
 2. "smartRefinement": a concise core description of the main subject and their specific action/appearance. Maximum 25 words for standard scenes (or 35–48 words ONLY for modern abstract, optical, geometric graphic, or 3D glass backgrounds/wallpapers so exact geometry, color transitions, optical refraction/glow, surface grain, and depth are captured accurately).
-CRITICAL GENDER RULE: If there is a person/human in the image, you MUST explicitly state their GENDER (e.g., "man", "woman", "boy", "girl", "baby"). If the person's gender is completely indiscernible due to clothing or cropping, use "person". DO NOT specify age categories (like "young adult" or "elderly") in this field, as age is mapped to the 'settings' object separately.
+CRITICAL GENDER & PERSON-COUNT RULE: If there is a person/human in the image, you MUST explicitly state their GENDER (e.g., "man", "woman", "boy", "girl", "baby") AND exact person count when multiple people are present (e.g., "two businesswomen shaking hands", "a couple walking together", "three coworkers reviewing documents"). If the person's gender is completely indiscernible due to clothing or cropping, use "person". DO NOT specify age categories (like "young adult" or "elderly") in this field, as age is mapped to the 'settings' object separately.
 BODY BUILD RULE: ONLY mention body build if they are distinctly outside the average/standard norm (e.g., "plus-size", "heavy-set", "muscular"). If they have an average/slim body, DO NOT mention their body type at all.
 FACELESS & ACTION CROP RULE (CRITICAL FOR CROPPED/DETAIL SHOTS): If the person's head, face, or eyes are cropped out of frame (e.g. focused on hands cleaning, wrist pain, holding a glass, passing an envelope, typing on keyboard), you MUST explicitly describe this framing, such as: "close-up on hands and torso, head out of frame" or "faceless shot focused on hands and action". In such cases, DO NOT describe eye direction or facial gaze!
 CONCEPTUAL FLAT-LAY & TABLETOP STILL LIFE RULE (CRITICAL FOR BUSINESS/METAPHOR PROPS): If the image is a conceptual business/abstract tabletop still life (such as wooden blocks/cubes, tokens, magnifying glasses, puzzle pieces, checklists, or progress bars with minimalist 2D line icons/symbols on a clean solid pastel or studio background, with or without a cropped hand/fingers interacting):
@@ -422,10 +491,10 @@ Return ONLY this JSON structure, no markdown:
   
   1. "settings": The values for the fields. If you cannot determine a field, set it to "Default / Auto". For 'characterBackground', select the best matching cultural/ethnic background if implied by the text.
   
-  2. "smartRefinement": A concise core description of the main subject and their specific action/appearance based on the input. Maximum 25 words for standard scenes (or 35–48 words for modern abstract, optical, geometric graphic, or 3D glass backgrounds so exact geometry, multi-stop gradients, optical effects, grain/smooth finish, and depth are preserved). If a person/human is described, observe and explicitly state their GENDER (e.g., "man", "woman", "boy", "girl", "baby"). If the gender is completely unspecified or neutral, use "person". DO NOT specify age categories (like "young adult" or "senior") in this field, as age is mapped to the 'settings' object separately. For BODY BUILD, ONLY mention it if they are distinctly outside the average/standard norm (e.g., "plus-size", "heavy-set", "muscular"). If they have an average/slim body, DO NOT mention their body type at all. FACELESS & ACTION CROP RULE: If the concept focuses on hands, gestures, or cropped body parts without showing a face (e.g. holding a product, typing, wrist pain, cleaning surface), describe this framing clearly (e.g. "close-up on hands and torso, faceless composition") and omit eye gaze direction. CONCEPTUAL FLAT-LAY & TABLETOP STILL LIFE RULE: If the concept is a conceptual business/abstract tabletop still life (wooden blocks, tokens, magnifying glasses, puzzle pieces, checklists, or progress bars with minimalist 2D line icons/symbols on a solid pastel or studio background, with or without a cropped hand/fingers interacting), focus on the physical props, minimalist 2D icons, and clean composition with ample copy space. Do NOT invent full-body characters or business suits. CAMERA DIRECTION RULE: If the face is visible and the text mentions looking at the camera, rephrase it to "looking forward" or "making eye contact"; DO NOT use the word "camera". UNIVERSAL UNBRANDED RULE (ALL MODES): Strip any brand names, logos, or printed text from bottles, cans, cups, devices, bags, signs, or clothing${isProdPreservation ? ' (except the hero referenced product)' : ''}, and rewrite them using positive blank-surface wording (e.g. "plain unbranded clear glass bottle with a completely blank smooth surface", "plain solid-color unbranded t-shirt"). ${isProdPreservation ? `STRICT PRODUCT PRESERVATION DIRECTIVE (PRODUCT PRESERVATION ACTIVE): Refer to the hero item as "the referenced product" without specific dispenser mechanic words like "pump bottle" or "dropper". Preserve the scene, surface, and pose context accurately.` : isHumanPreservation ? `STRICT HUMAN IDENTITY & POSE TRANSFER PRESERVATION DIRECTIVE (HUMAN PRESERVATION ACTIVE): Describe the subject's gender, exact pose, posture, plain unbranded wardrobe, and natural expression. STRICTLY DO NOT write specific hair cut, hair style, hair color, skin tone, or permanent facial landmarks, so that visual reference face photos retain 100% identity without conflicting text overrides.` : `Describe containers, clothing, and settings cleanly with natural colors and blank unbranded surfaces.`} AVOID specifying race, ethnicity, or age IN THIS FIELD. Focus on gender, notable body build, core action, and props. No technical camera or lighting terms.
+  2. "smartRefinement": A concise core description of the main subject and their specific action/appearance based on the input. Maximum 25 words for standard scenes (or 35–48 words for modern abstract, optical, geometric graphic, or 3D glass backgrounds so exact geometry, multi-stop gradients, optical effects, grain/smooth finish, and depth are preserved). If a person/human is described, observe and explicitly state their GENDER (e.g., "man", "woman", "boy", "girl", "baby") AND exact person count when multiple people are present (e.g., "two businesswomen shaking hands", "a couple walking together"). If the gender is completely unspecified or neutral, use "person". DO NOT specify age categories (like "young adult" or "senior") in this field, as age is mapped to the 'settings' object separately. For BODY BUILD, ONLY mention it if they are distinctly outside the average/standard norm (e.g., "plus-size", "heavy-set", "muscular"). If they have an average/slim body, DO NOT mention their body type at all. FACELESS & ACTION CROP RULE: If the concept focuses on hands, gestures, or cropped body parts without showing a face (e.g. holding a product, typing, wrist pain, cleaning surface), describe this framing clearly (e.g. "close-up on hands and torso, faceless composition") and omit eye gaze direction. CONCEPTUAL FLAT-LAY & TABLETOP STILL LIFE RULE: If the concept is a conceptual business/abstract tabletop still life (wooden blocks, tokens, magnifying glasses, puzzle pieces, checklists, or progress bars with minimalist 2D line icons/symbols on a solid pastel or studio background, with or without a cropped hand/fingers interacting), focus on the physical props, minimalist 2D icons, and clean composition with ample copy space. Do NOT invent full-body characters or business suits. CAMERA DIRECTION RULE: If the face is visible and the text mentions looking at the camera, rephrase it to "looking forward" or "making eye contact"; DO NOT use the word "camera". UNIVERSAL UNBRANDED RULE (ALL MODES): Strip any brand names, logos, or printed text from bottles, cans, cups, devices, bags, signs, or clothing${isProdPreservation ? ' (except the hero referenced product)' : ''}, and rewrite them using positive blank-surface wording (e.g. "plain unbranded clear glass bottle with a completely blank smooth surface", "plain solid-color unbranded t-shirt"). ${isProdPreservation ? `STRICT PRODUCT PRESERVATION DIRECTIVE (PRODUCT PRESERVATION ACTIVE): Refer to the hero item as "the referenced product" without specific dispenser mechanic words like "pump bottle" or "dropper". Preserve the scene, surface, and pose context accurately.` : isHumanPreservation ? `STRICT HUMAN IDENTITY & POSE TRANSFER PRESERVATION DIRECTIVE (HUMAN PRESERVATION ACTIVE): Describe the subject's gender, exact pose, posture, plain unbranded wardrobe, and natural expression. STRICTLY DO NOT write specific hair cut, hair style, hair color, skin tone, or permanent facial landmarks, so that visual reference face photos retain 100% identity without conflicting text overrides.` : `Describe containers, clothing, and settings cleanly with natural colors and blank unbranded surfaces.`} AVOID specifying race, ethnicity, or age IN THIS FIELD. Focus on gender, notable body build, core action, and props. No technical camera or lighting terms.
   
   3. "activeFields": A boolean map of the fields. Set to true if the field is RELEVANT to the scene, even if not explicitly described. Set to false ONLY if the field is completely irrelevant to the scene context. You MUST provide a boolean value for ALL of these keys: subject, characterBackground, ageRange, interaction, targetMarket, imageMedium, visualType, materialStyle, conceptFocus, authenticity, environment, colorMood, qualityCamera, framing, cameraAngle, lighting, shadowStyle.
-  IMPORTANT LOGIC: If there are people or characters in the scene, 'characterBackground', 'ageRange', and 'interaction' MUST be true (EXCEPT when Human Preservation is active: set 'characterBackground' to false). If there are NO people/characters, 'characterBackground', 'ageRange', and 'interaction' MUST be false, and 'subject' MUST be mapped to a non-human category (like "No person", "Isolated Object", "Background"). If the concept is a flat illustration or 2D vector art, you MUST set photographic fields (qualityCamera, framing, cameraAngle, lighting, shadowStyle, authenticity) to false, as they do not apply to flat graphics.
+  IMPORTANT LOGIC: If there are people or characters in the scene, 'characterBackground', 'ageRange', and 'interaction' MUST be true (EXCEPT when Human Preservation is active: set 'characterBackground' to false). If there are NO people/characters, 'characterBackground', 'ageRange', and 'interaction' MUST be false, and 'subject' MUST be mapped to a non-human category (like "No person", "Isolated Object", "Background", "Domestic Pet (Cat, Dog, etc.)", or "Wild Animal / Bird"). For wild birds or outdoor wildlife, ALWAYS use "Wild Animal / Bird" (never "Domestic Pet"). For outdoor streets, rain, night markets, parks, or train platforms, NEVER set 'lighting' to "Warm indoor" or "Soft studio". If the concept is a flat illustration or 2D vector art, you MUST set photographic fields (qualityCamera, framing, cameraAngle, lighting, shadowStyle, authenticity) to false, as they do not apply to flat graphics.
   SPECIAL RULE FOR PRODUCTS & ISOLATED OBJECTS: If describing a product in an environment, on a desk/table, or with background atmosphere, set 'subject' to "No person (product)". If the description explicitly specifies a cutout, PNG, transparent background, or isolated object on white/solid background with no environment or floor shadows, set 'subject' to "Isolated Object (PNG Ready)".
   SPECIAL RULE FOR HAND-ONLY CROPS & TABLETOP PROPS: If ONLY a hand or fingers interact with tabletop props/objects (faceless conceptual flat-lay or still life): set 'subject' to "Still life / Food & Drink" or "No person (product)", set 'characterBackground' and 'ageRange' to FALSE in 'activeFields' (and 'Default / Auto' in settings), set 'framing' to "Top View / Flat Lay" or "Close-up / Cropped Action (Faceless)", and set 'environment' to "Solid Color / Studio Background".
   MODERN ABSTRACT, OPTICAL, GRAPHIC & 3D GLASS BACKGROUND RULE: If describing an abstract wallpaper, flat luminous curved gradient waves with analog grain, horizontal scanline motion-blur light streaks, 2D Swiss/Bauhaus geometric gradient grids, straight-on vertical reeded/fluted glass sheets refracting glowing liquid waves, or 3D frosted glass card sequences in perspective: set ALL human fields ('characterBackground', 'ageRange', 'interaction', 'authenticity') strictly to FALSE and NEVER set 'environment' to any physical room (never "Scientific Research Lab", "Modern Office", etc.). For flat 2D luminous curved gradients, 2D Swiss/Bauhaus grids, and horizontal scanline motion-blur streaks, map 'imageMedium' to "Art & Illustration", 'visualType' to "Flat Illustration" or "Minimalist Vector", and turn photographic fields (qualityCamera, framing, cameraAngle, lighting, shadowStyle) to FALSE. For straight-on vertical reeded/fluted glass sheets (NEVER call them "columns" or "pillars") or 3D frosted glass card perspective sequences, map 'imageMedium' to "3D & CGI", 'visualType' to "Abstract Environmental 3D" or "3D Render", 'environment' to "Solid Color / Studio" or "Pitch Black / Void", and turn 'framing', 'cameraAngle', 'shadowStyle' to FALSE.
@@ -768,23 +837,6 @@ export const generateStockPrompts = async (
     return chunkResults.flat().slice(0, totalRequested);
   }
 
-  // Helper to check if a field is active and not default (respects Multi-Lock pools)
-  const getFieldVal = (key: keyof PromptOptions, val: string) => {
-    if (options.activeFields && options.activeFields[key] === false) return null;
-    if (options.lockedFields?.[key]) {
-      const rawPool = ((options as any).lockedPools?.[key] || []) as string[];
-      const cleanPool = rawPool.filter(v => v && v !== 'Default / Auto');
-      if (cleanPool.length > 1) {
-        return `MULTI-LOCK POOL (ALL ${cleanPool.length} ACTIVE — rotate evenly across prompts): ${cleanPool.join(' | ')}`;
-      }
-      if (cleanPool.length === 1) {
-        return cleanPool[0];
-      }
-    }
-    if (val === 'Default / Auto') return null;
-    return val;
-  };
-
   try {
 
     // --- 1. DETERMINE MODES ---
@@ -863,7 +915,7 @@ export const generateStockPrompts = async (
 
     const srRawLower = (options.smartRefinementText || '').toLowerCase();
     const hasScenicLandscapeTerms = /\b(moss|hill|meadow|forest|mountain|beach|ocean|lake|flower|floral|botanical|tree|sky|cloud|field|grass|terrain|driftwood|landscape|scenic|nature|sunset|sunrise|stage|curtain|cityscape)\b/i.test(srRawLower);
-    const hasAbstractDesignTerms = /\b(abstract|gradient|fluted|reeded|ribbed|pleated|louver|bauhaus|swiss|geometric|grid|quarter-circle|semi-circle|glass\s*card|frosted\s*glass|glass\s*panel|glass\s*sheet|glass\s*strip|acrylic|refraction|scanline|motion[\s-]?blur|light\s*streak|sine[\s-]?wave|waveform|chromatic|film\s*grain|analog\s*grain|wallpaper|optical|holographic|iridescent|ribbon|slat|wave\s*pattern|minimalist\s*vector|light[\s-]?wave)\b/i.test(srRawLower);
+    const hasAbstractDesignTerms = /\b(abstract|gradient|fluted|reeded|ribbed|pleated|louver|bauhaus|swiss|geometric|grid|quarter-circle|semi-circle|glass\s*card|frosted\s*glass|glass\s*panel|glass\s*sheet|glass\s*strip|acrylic|refraction|scanline|motion[\s-]?blur|light\s*streak|sine[\s-]?wave|waveform|chromatic|film\s*grain|analog\s*grain|wallpaper|optical|holographic|iridescent|ribbons?|slats?|sphere\s+or\s+dome|wave\s*pattern|minimalist\s*vector|light[\s-]?wave)\b/i.test(srRawLower);
     const hasDepthOfFieldAbstractCue = /\b(shallow\s+depth|depth[\s-]?of[\s-]?field|receding|glass\s*card|frosted\s*glass\s*panel|perspectiv\w*\s+(row|sequence|array)|mirror\s+reflection|floor\s+reflection)\b/i.test(srRawLower);
 
     const isAbstractGraphicBackground =
@@ -879,6 +931,31 @@ export const generateStockPrompts = async (
           (!hasScenicLandscapeTerms && (is3D || isArt || options.environment === 'Solid Color / Studio' || options.environment === 'Pitch Black / Void'))
         ))
       );
+
+    // Outdoor / Night / Face-visibility / Overhead compatibility detectors
+    const outdoorEnvs = ['Nature / Outdoor', 'City Street', 'Outdoor Market / Bazaar'];
+    const isOutdoorScene =
+      !isAbstractGraphicBackground &&
+      (
+        outdoorEnvs.includes(options.environment) ||
+        /\b(outdoor|outdoors|street|sidewalk|rain|rainy|umbrella|night\s+market|street\s+market|bazaar|tree\s+branch|branch|forest|park|beach|ocean|mountain|sky|train\s+station|railway|platform|crosswalk|plaza|cityscape|rooftop|bridge|alley|garden)\b/i.test(srRawLower)
+      );
+    const isNightScene = /\b(night|evening|dusk|twilight|sparkler|neon|streetlights?|lanterns?|night\s+market|fireworks?|dark\s+sky|after\s+dark)\b/i.test(srRawLower);
+
+    const srExplicitlyFaceless = /\b(faceless|head\s+out\s+of\s+frame|cropped\s+(?:at|below)\s+(?:the\s+)?(?:chin|neck|shoulders|waist)|hands?\s+only|only\s+(?:a\s+)?hands?|close-up\s+(?:on|of)\s+hands?)\b/i.test(srRawLower);
+    const srExplicitlyShowsFace =
+      isHumanSubject &&
+      !srExplicitlyFaceless &&
+      /\b(smiling|smile|laughing|grinning|eye\s+contact|looking\s+(?:forward|up|down|away|at|toward)|staring|glancing|watching|peeking|eyes?\s+closed|closed\s+eyes?|gaze|glasses|eyewear|sunglasses|beard|mustache|facial|expression|sneezing|blowing\s+(?:her|his|their)\s+nose|tissue|yawning|drinking|eating|portrait|headshot|\bface\b|cheek|lipstick|makeup|applying\s+(?:skincare|makeup)|brushing\s+teeth|washing\s+face|talking|speaking|surprised|frowning|crying|winking|thinking|thoughtful)\b/i.test(srRawLower);
+
+    const isWildlifeOrPerchedAnimal =
+      options.subject === 'Wild Animal / Bird' ||
+      /\b(bird|sparrow|robin|owl|eagle|parrot|perched|tree\s+branch|branch|flying|wildlife|deer|squirrel)\b/i.test(srRawLower);
+
+    const hasOverheadCompatibleScene =
+      (!isHumanSubject && !isWildlifeOrPerchedAnimal) ||
+      srExplicitlyFaceless ||
+      /\b(flat[\s-]?lay|overhead|top[\s-]?down|bird'?s[\s-]?eye|lying\s+(?:on|down|in\s+bed)|hands?\s+(?:on|over|holding|placing|arranging|typing|writing|preparing|chopping))\b/i.test(srRawLower);
 
     // Emoji/Icon Mode Detection — NEVER hijack Photography, Art & Illustration, or Abstract Wallpaper mode!
     const isEmojiMode = !isPhoto && !isArt && !isAbstractGraphicBackground && options.subject === 'No person (product)' && 
@@ -1162,14 +1239,193 @@ export const generateStockPrompts = async (
          - Make each prompt after #1 a fresh, closely related commercial take by naturally varying: micro-action or pose, subtle non-conflicting framing/perspective shift, wardrobe/prop accents, realistic room/surface details, and rotating evenly through any active Multi-Lock options.
          - Never make two prompts word-for-word clones of each other.`;
 
-    // --- 8. GATHER INPUTS ---
-    
-    const rawStyleVal = getFieldVal('visualType', options.visualType);
+    // --- 8. GATHER & TRANSLATE INPUTS (ZERO RAW UI LABELS / ZERO CAMERA CONTRADICTIONS) ---
+    const isDaylightOrIndoorRoomLight = (val: string) => {
+      const l = String(val || '').toLowerCase();
+      return (
+        l.includes('natural daylight') ||
+        l.includes('warm indoor') ||
+        l.includes('window light') ||
+        l.includes('golden hour') ||
+        l.includes('soft studio') ||
+        l.includes('overcast')
+      );
+    };
+
+    const translateSingleValue = (field: string, rawVal: string): string => {
+      if (!rawVal || rawVal === 'Default / Auto') return rawVal;
+      const v = String(rawVal).trim();
+
+      if (field === 'framing') {
+        if (!isHumanSubject) {
+          if (v === 'Close-up / Cropped Action (Faceless)') return 'tight macro close-up';
+          if (v === 'Portrait') return 'tight hero close-up';
+          if (v === 'Mid shot (waist-up)') return 'medium tabletop shot';
+          if (v === 'Full shot (full body)') return 'full uncropped wide shot';
+        }
+        if (v === 'Mid shot (waist-up)') return 'waist-up medium shot';
+        if (v === 'Full shot (full body)') return 'full-body wide shot';
+        if (v === 'Close-up / Cropped Action (Faceless)') return 'faceless close-up focused on hands and action (head out of frame)';
+        if (v === 'Portrait') return 'close-up portrait';
+      }
+
+      if (field === 'cameraAngle') {
+        if (v === 'Top View / Flat Lay') return 'overhead flat-lay perspective';
+        if (v === "Bird's Eye View") return 'high overhead aerial perspective';
+        if (v === 'Eye Level') return 'eye-level perspective';
+        if (v === 'High Angle') return 'slightly elevated high-angle perspective';
+        if (v === 'Low Angle') return 'subtle low-angle perspective';
+        if (v === 'Side View') return 'natural side-profile perspective';
+      }
+
+      if (field === 'lighting') {
+        const lower = v.toLowerCase();
+        if (isOutdoorScene && (lower.includes('warm indoor') || lower.includes('studio'))) {
+          return isNightScene ? 'warm ambient evening outdoor street lighting' : 'natural outdoor daylight';
+        }
+        if (v === 'Natural daylight') return 'soft natural daylight';
+        if (v === 'Warm indoor') return 'warm cozy indoor ambient lighting';
+        if (v === 'Soft studio') return 'soft even diffused lighting';
+        if (v === 'Professional Studio Lighting') return 'crisp balanced directional studio lighting';
+        if (v === 'Golden hour') return 'warm golden-hour sunlight';
+        if (v === 'Overcast / Diffused') return 'soft overcast diffused daylight';
+      }
+
+      if (field === 'visualType') {
+        if (v === 'Standard photo') return 'clean natural commercial photography';
+        if (v === 'Documentary / Editorial') return 'authentic editorial documentary photography';
+        if (v === 'Cinematic Film (Kodak Portra)') return 'cinematic natural-grain film photography';
+      }
+
+      if (field === 'materialStyle') {
+        if (v === 'Realistic') return 'authentic real-world surface textures';
+        if (v === 'Glossy / Shiny') return 'glossy reflective finish';
+        if (v === 'Matte / Soft') return 'soft matte tactile finish';
+        if (v === 'Metallic / Chrome') return 'sleek brushed metallic finish';
+        if (v === 'Clay / Pastel') return 'soft matte clay pastel finish';
+      }
+
+      if (field === 'shadowStyle') {
+        if (v === 'Natural Shadow') return 'soft natural contact shadows';
+        if (v === 'No Shadow / Flat') return 'shadowless flat illumination';
+        if (v === 'Soft Studio Shadow') return 'subtle soft diffused shadows';
+        if (v === 'Strong / Bold Shadow') return 'crisp defined directional shadows';
+        if (v === 'Minimal Base Shadow') return 'delicate grounded contact shadow beneath the base';
+      }
+
+      if (field === 'colorMood') {
+        if (v === 'Warm & Golden') return 'warm golden color palette';
+        if (v === 'Cool & Clinical') return 'crisp cool daylight palette';
+        if (v === 'Soft Pastel') return 'soft muted pastel palette';
+        if (v === 'Neutral & Earthy') return 'natural earthy neutral palette';
+        if (v === 'Vibrant & Bold') return 'vibrant rich color palette';
+        if (v === 'Moody & Dark') return 'deep atmospheric low-key palette';
+        if (v === 'Monochromatic') return 'harmonious single-hue tonal palette';
+      }
+
+      if (field === 'interaction') {
+        if (v === 'Examining / Consulting') return 'engaged in attentive examination or consultation';
+        if (v === 'Independent / Reflective') return 'calmly absorbed in a quiet reflective moment';
+        if (v === 'Caring / Comforting') return 'warm caring gesture';
+        if (v === 'Support Gesture') return 'supportive collaborative gesture';
+        if (v === 'Side by Side') return 'positioned naturally side by side';
+        if (v === 'Eye Contact') return 'making warm natural eye contact';
+      }
+
+      if (field === 'environment') {
+        if (v === 'Home Interior') return 'realistic lived-in residential room fitting the scene';
+        if (v === 'Solid Color / Studio') return 'clean seamless neutral background';
+        if (v === 'Nature / Outdoor') return 'natural outdoor environment';
+        if (v === 'Outdoor Market / Bazaar') return 'vibrant outdoor street market';
+        if (v === 'Cafe / Restaurant') return 'warm contemporary cafe or restaurant interior';
+        if (v === 'Hospital / Clinic') return 'bright modern medical clinic';
+        if (v === 'Airport / Transit Hub') return 'modern transit station or platform';
+      }
+
+      if (field === 'subject') {
+        if (v === 'Domestic Pet (Cat, Dog, etc.)') return 'companion pet (use exact animal species from Smart Refinement, never write the words "domestic pet")';
+        if (v === 'Wild Animal / Bird') return 'wild animal or bird in nature (use exact species from Smart Refinement)';
+        if (v === 'Still life / Food & Drink') return 'culinary still life';
+        if (v === 'No person (product)') return 'standalone commercial product or object';
+        if (v === 'Student / Academic') return 'university student or academic';
+        if (v === 'Content Creator / Influencer') return 'modern content creator';
+      }
+
+      if (field === 'characterBackground') {
+        if (v === 'North American / Diverse') return 'diverse North American individual (choose one specific natural ethnicity per prompt, never write slashes)';
+        if (v === 'Hispanic / Latin American') return 'Hispanic or Latin American person';
+        if (v === 'Middle Eastern / North African') return 'Middle Eastern or North African person';
+        if (v === 'African / Black') return 'Black or African individual';
+        if (v === 'European / Caucasian') return 'European or Caucasian individual';
+        if (v === 'Global / Neutral (Inclusive Casting)') return 'naturally diverse inclusive subject';
+        if (v === 'Multiracial / Mixed Heritage') return 'multiracial individual';
+      }
+
+      if (field === 'ageRange') {
+        if (v === 'Young Adult (20s-30s)') return 'in their late 20s or early 30s';
+        if (v === 'Middle-Aged (40s-50s)') return 'in their mid-40s or early 50s';
+        if (v === 'Senior (60s+)') return 'in their 60s';
+        if (v === 'Young Teen (13-17, school context only)') return 'teenager in a school setting';
+      }
+
+      if (field === 'authenticity') {
+        if (v === 'Candid / Natural') return 'authentic candid moment';
+        if (v === 'Posed / Commercial') return 'polished commercial composition';
+      }
+
+      return v.replace(/\s*\/\s*/g, ' and ');
+    };
+
+    const getSanitizedFieldPool = (key: keyof PromptOptions): string[] => {
+      if (options.activeFields && options.activeFields[key] === false) return [];
+      const isLocked = !!options.lockedFields?.[key];
+      const rawPool: string[] = isLocked
+        ? (((options as any).lockedPools?.[key] || []) as string[]).filter(v => v && v !== 'Default / Auto')
+        : [];
+      const fallbackSingle = String((options as any)[key] || '');
+      let values = rawPool.length > 0 ? [...rawPool] : (fallbackSingle && fallbackSingle !== 'Default / Auto' ? [fallbackSingle] : []);
+
+      // Context-aware filtering for Framing (prevent faceless vs visible-face contradictions!)
+      if (key === 'framing') {
+        if (isHumanSubject && srExplicitlyShowsFace) {
+          values = values.filter(v => v !== 'Close-up / Cropped Action (Faceless)');
+          if (values.length === 0) values = ['Mid shot (waist-up)'];
+        } else if (isHumanSubject && srExplicitlyFaceless) {
+          values = values.filter(v => v !== 'Portrait');
+          if (values.length === 0) values = ['Close-up / Cropped Action (Faceless)'];
+        }
+      }
+
+      // Context-aware filtering for Camera Angle (prevent impossible Top View / Flat Lay on standing/portrait humans or perched wildlife!)
+      if (key === 'cameraAngle') {
+        if ((isHumanSubject || isWildlifeOrPerchedAnimal) && !hasOverheadCompatibleScene) {
+          const hadOnlyOverhead = values.length > 0 && values.every(v => v === 'Top View / Flat Lay' || v === "Bird's Eye View");
+          values = values.filter(v => v !== 'Top View / Flat Lay' && v !== "Bird's Eye View");
+          if (values.length === 0 && hadOnlyOverhead) {
+            values = [isWildlifeOrPerchedAnimal ? 'Eye Level' : 'High Angle'];
+          }
+        }
+      }
+
+      // Deduplicate after natural-language translation
+      return Array.from(new Set(values.map(v => translateSingleValue(String(key), v)).filter(Boolean)));
+    };
+
+    const getTranslatedFieldVal = (key: keyof PromptOptions): string | null => {
+      const pool = getSanitizedFieldPool(key);
+      if (pool.length === 0) return null;
+      if (options.lockedFields?.[key] && pool.length > 1) {
+        return `MULTI-LOCK POOL (ALL ${pool.length} ACTIVE — rotate evenly across prompts): ${pool.join(' | ')}`;
+      }
+      return pool[0];
+    };
+
+    const rawStyleVal = getTranslatedFieldVal('visualType');
     const effectiveStyleVal = (rawStyleVal && !isVisualTypeCompatibleWithMedium(options.visualType) && !options.lockedFields?.visualType)
-      ? (isPhoto ? 'Realistic commercial photography' : null)
+      ? (isPhoto ? 'clean natural commercial photography' : null)
       : rawStyleVal;
 
-    const rawMaterialVal = getFieldVal('materialStyle', options.materialStyle);
+    const rawMaterialVal = getTranslatedFieldVal('materialStyle');
     const is3DOnlyMaterial = ['Glassmorphism', 'Clay', 'Frosted'].some(m => (options.materialStyle || '').includes(m));
     const effectiveMaterialVal = (isPhoto && is3DOnlyMaterial && !options.lockedFields?.materialStyle) ? null : rawMaterialVal;
 
@@ -1179,51 +1435,51 @@ export const generateStockPrompts = async (
     const effectiveSmartRefinement = baseSmartRefinement ? sanitizeSmartRefinementForMedium(baseSmartRefinement) : null;
 
     const abstractAllowedEnvs = ['Pitch Black / Void', 'White Background'];
-    const daylightRoomLights = ['Natural Daylight', 'Warm Indoor Lighting', 'Window Light', 'Golden Hour', 'Soft Studio Lighting'];
     const envPoolValues: string[] = ((options as any).lockedPools?.environment || []).filter((v: string) => v && v !== 'Default / Auto');
     const isAbstractEnvSafe = envPoolValues.length > 0
       ? envPoolValues.every(v => abstractAllowedEnvs.includes(v))
       : abstractAllowedEnvs.includes(options.environment);
     const lightPoolValues: string[] = ((options as any).lockedPools?.lighting || []).filter((v: string) => v && v !== 'Default / Auto');
     const hasDaylightRoomLight = lightPoolValues.length > 0
-      ? lightPoolValues.some(v => daylightRoomLights.includes(v))
-      : daylightRoomLights.includes(options.lighting);
+      ? lightPoolValues.some(v => isDaylightOrIndoorRoomLight(v))
+      : isDaylightOrIndoorRoomLight(options.lighting);
 
     const effectiveAbstractEnv = isAbstractGraphicBackground
-      ? (isAbstractEnvSafe ? getFieldVal('environment', options.environment) : null)
-      : (isIsolatedPngMode ? 'Pure flat solid color (White or contrasting, NO environment details)' : getFieldVal('environment', options.environment));
+      ? (isAbstractEnvSafe ? getTranslatedFieldVal('environment') : null)
+      : (isIsolatedPngMode ? 'Pure flat solid color (White or contrasting, NO environment details)' : getTranslatedFieldVal('environment'));
     const effectiveAbstractLighting = isAbstractGraphicBackground
-      ? ((isArt || hasDaylightRoomLight) ? null : getFieldVal('lighting', options.lighting))
-      : getFieldVal('lighting', options.lighting);
+      ? ((isArt || hasDaylightRoomLight) ? null : getTranslatedFieldVal('lighting'))
+      : getTranslatedFieldVal('lighting');
+    const srMentionsCoolClinical = /\b(clinical|sterile|ice\s+white|hospital\s+blue)\b/i.test(srRawLower);
     const effectiveAbstractColorMood = isProductPreservation
       ? null
-      : (isAbstractGraphicBackground && options.colorMood === 'Cool & Clinical' && !options.lockedFields?.colorMood)
+      : (isAbstractGraphicBackground && options.colorMood === 'Cool & Clinical' && !srMentionsCoolClinical)
         ? null
-        : getFieldVal('colorMood', options.colorMood || 'Default / Auto');
+        : getTranslatedFieldVal('colorMood');
 
     const inputs = {
       imageMedium: isImageMediumActive && medium !== 'Default / Auto' ? medium : null,
       subject: isAbstractGraphicBackground
         ? 'Full-bleed abstract wallpaper background (NOT a standalone sculptural object or element)'
-        : getFieldVal('subject', options.subject),
-      culturalContext: !isHumanSubject || isHumanPreservation ? null : getFieldVal('characterBackground', options.characterBackground),
+        : getTranslatedFieldVal('subject'),
+      culturalContext: !isHumanSubject || isHumanPreservation ? null : getTranslatedFieldVal('characterBackground'),
       environment: effectiveAbstractEnv,
       lighting: effectiveAbstractLighting,
       // Ignore subject-specific framing/position/shadows/camera-angles if Background or Abstract Graphic Background Mode is active
-      framing: (isBackgroundMode || isAbstractGraphicBackground) ? null : (isIsolatedPngMode ? 'Full Object in Frame (Centered, Uncropped)' : getFieldVal('framing', options.framing)),
-      angle: isAbstractGraphicBackground ? null : getFieldVal('cameraAngle', options.cameraAngle),
-      position: (isBackgroundMode || isAbstractGraphicBackground) ? null : (isIsolatedPngMode ? 'Perfectly Centered' : getFieldVal('subjectPosition', options.subjectPosition)),
-      shadows: (isBackgroundMode || isAbstractGraphicBackground) ? null : (isIsolatedPngMode ? 'No Shadow / Flat (No cast shadows on ground)' : getFieldVal('shadowStyle', options.shadowStyle)),
+      framing: (isBackgroundMode || isAbstractGraphicBackground) ? null : (isIsolatedPngMode ? 'Full Object in Frame (Centered, Uncropped)' : getTranslatedFieldVal('framing')),
+      angle: isAbstractGraphicBackground ? null : getTranslatedFieldVal('cameraAngle'),
+      position: (isBackgroundMode || isAbstractGraphicBackground) ? null : (isIsolatedPngMode ? 'Perfectly Centered' : getTranslatedFieldVal('subjectPosition')),
+      shadows: (isBackgroundMode || isAbstractGraphicBackground) ? null : (isIsolatedPngMode ? 'shadowless flat illumination (zero cast ground shadows)' : getTranslatedFieldVal('shadowStyle')),
       style: effectiveStyleVal,
       material: effectiveMaterialVal,
-      concept: getFieldVal('conceptFocus', options.conceptFocus || 'Default / Auto'),
-      authenticity: !isHumanSubject ? null : getFieldVal('authenticity', options.authenticity || 'Default / Auto'),
+      concept: getTranslatedFieldVal('conceptFocus'),
+      authenticity: !isHumanSubject ? null : getTranslatedFieldVal('authenticity'),
       // Ignore interaction if Background Mode, Isolated PNG Mode, or Non-Human Subject is active
-      interaction: (!isHumanSubject || isBackgroundMode || isIsolatedPngMode) ? null : getFieldVal('interaction', options.interaction || 'Default / Auto'),
-      target: getFieldVal('targetMarket', options.targetMarket || 'Default / Auto'),
+      interaction: (!isHumanSubject || isBackgroundMode || isIsolatedPngMode) ? null : getTranslatedFieldVal('interaction'),
+      target: getTranslatedFieldVal('targetMarket'),
       season: options.useCalendar ? `${options.calendarMonth} (${options.calendarEvent})` : null,
       smartRefinement: effectiveSmartRefinement,
-      ageRange: (!isHumanSubject || isHumanPreservation) ? null : getFieldVal('ageRange', options.ageRange || 'Default / Auto'),
+      ageRange: (!isHumanSubject || isHumanPreservation) ? null : getTranslatedFieldVal('ageRange'),
       colorMood: effectiveAbstractColorMood,
       preservationMode: isProductPreservation 
         ? 'PRODUCT PRESERVATION ENABLED (Prompt #1 = 100% Exact Reference Clone; Prompts #2+ = 100% Locked Reference Product Packaging & Label + Commercial Shoot Variations)' 
@@ -1255,7 +1511,8 @@ export const generateStockPrompts = async (
         conceptFocus: 'Concept Focus'
       };
 
-      const lockedPools = (options as any).lockedPools || {};
+      let hasMultiFraming = false;
+      let hasOverheadAngle = false;
 
       for (const [key, isLocked] of Object.entries(options.lockedFields || {})) {
         if (!isLocked || !map[key]) continue;
@@ -1267,21 +1524,25 @@ export const generateStockPrompts = async (
         if (isAbstractGraphicBackground && key === 'cameraAngle') continue;
         if (isAbstractGraphicBackground && key === 'environment' && !isAbstractEnvSafe) continue;
         if (isAbstractGraphicBackground && (isArt || hasDaylightRoomLight) && key === 'lighting') continue;
+        if (isAbstractGraphicBackground && key === 'colorMood' && options.colorMood === 'Cool & Clinical' && !srMentionsCoolClinical) continue;
         if (isIsolatedPngMode && ['environment', 'shadowStyle', 'interaction'].includes(key)) continue;
         if ((is3D || isArt) && key === 'qualityCamera') continue;
         if (isProductPreservation && key === 'colorMood') continue;
         if (isHumanPreservation && ['characterBackground', 'ageRange'].includes(key)) continue;
 
-        const rawPool: string[] = lockedPools[key] || [];
-        const pool = rawPool.filter(v => v && v !== 'Default / Auto');
+        const pool = getSanitizedFieldPool(key as keyof PromptOptions);
         if (pool.length > 1) {
-          lockedRules.push(`${map[key]} has MULTI-LOCK ACTIVE with ${pool.length} EQUALLY ACTIVE options: [ ${pool.join(', ')} ]. You MUST distribute and rotate evenly across ALL ${pool.length} selected options across the prompts in this batch (do NOT fixate on only 1 option), and NEVER use any option outside this pool.`);
-        } else {
-          const singleVal = pool[0] || (options as any)[key];
-          if (singleVal && singleVal !== 'Default / Auto') {
-            lockedRules.push(`${map[key]} is LOCKED strictly to "${singleVal}" (must not be varied across the batch)`);
-          }
+          if (key === 'framing') hasMultiFraming = true;
+          if (key === 'cameraAngle' && pool.some(v => v.includes('overhead'))) hasOverheadAngle = true;
+          lockedRules.push(`${map[key]} has MULTI-LOCK ACTIVE with ${pool.length} EQUALLY ACTIVE options: [ ${pool.join(', ')} ]. Distribute and rotate evenly across ALL ${pool.length} options across the batch (never fixate on only 1), and NEVER use any option outside this pool.`);
+        } else if (pool.length === 1) {
+          if (key === 'cameraAngle' && pool[0].includes('overhead')) hasOverheadAngle = true;
+          lockedRules.push(`${map[key]} is LOCKED strictly to "${pool[0]}" (must not be varied across the batch)`);
         }
+      }
+
+      if (hasOverheadAngle && (hasMultiFraming || inputs.framing)) {
+        lockedRules.push(`CAMERA COMPATIBILITY MATRIX (STRICT): NEVER combine "overhead flat-lay perspective" with "waist-up medium shot" or "close-up portrait" in the same prompt! Use "overhead flat-lay perspective" ONLY on genuine overhead tabletop/hands/arrangement shots, and pair "waist-up medium shot" or "close-up portrait" ONLY with eye-level, high-angle, low-angle, or side perspectives.`);
       }
 
       if (lockedRules.length > 0) {
@@ -1345,19 +1606,22 @@ export const generateStockPrompts = async (
           1. PROMPT #1 (EXACT MASTER CLONE): MUST preserve 100% of the EXACT observed colors, spatial color placement, structural technique, and surface finish from Smart Refinement — NEVER swap Prompt #1's colors to another palette!
           2. Keep the EXACT signature visual technique across the entire batch (e.g., completely flat 2D luminous curved gradient waves with fine analog grain; flat 2D Swiss Bauhaus geometric gradient grid; straight-on macro full-bleed sheet of parallel vertical reeded glass refracting liquid color waves; horizontal scanline motion-blur streaks; or angled 3D frosted glass card sequence with floor reflection).
           3. Full-bleed edge-to-edge wallpaper framing — NEVER write "abstract graphic element", "columns", "pillars", "scientific research lab", "top view", "flat lay", "eye level", "global illumination and realistic soft shadows", or "crisp cool daylight tones", and NEVER turn flat gradients into 3D coiled plastic/paper ribbons or rooms!
-        - SAFE DESIGNER VARIATIONS FOR PROMPTS #2 TO #${options.quantity} ONLY (75% SAME SIGNATURE TECHNIQUE / 25% FRESH ART DIRECTION):
-          * Keep the EXACT same flat/reeded/perspective visual technique and surface finish as Prompt #1 while thoughtfully shifting ONLY the curated designer color palette and wave/arc sweep direction (or focal card elevation for 3D glass card rows).`
+        - SAFE DESIGNER VARIATIONS FOR PROMPTS #2 TO #${options.quantity} ONLY (75% SAME SIGNATURE TECHNIQUE / 25% FRESH ART DIRECTION — NEVER DUPLICATE PROMPT #1!):
+          * Keep the EXACT same flat/reeded/perspective visual technique and surface finish as Prompt #1, while meaningfully shifting BOTH the curated designer color palette (e.g., cobalt/coral, emerald/amber, violet/magenta, teal/lime) AND the sweep direction, wave rhythm, or geometric layout so every prompt is visually distinct (NEVER duplicate Prompt #1 word-for-word!).`
       : isBackgroundMode
       ? `* CATEGORY B2 — SCENIC COPY-SPACE BACKDROPS & FOREGROUNDS (ACTIVE FOR ALL PROMPTS):
         - STRICTLY LOCKED: Continuous edge-to-edge foreground (never a small isolated mound), 50%–65% clean open copy space, zero "studio backdrop/paper roll/metal stand" terms, keep front horizon perspective.
         - SAFE STOCK VARIATIONS: Rotate seamless sky/background gradients (peach-to-cream, sage-to-ivory, golden morning amber, pastel lavender, sky-blue), varied floral/botanical accents, and gentle terrain contours.`
       : !isHumanSubject
-      ? `* CATEGORY C — PLATED FOOD & COMMERCIAL STILL-LIFE (ACTIVE FOR ALL PROMPTS):
-        - STRICTLY LOCKED: Exact core dish or product, appetizing clarity, uncluttered background. NEVER invent humans or hands if none exist in Smart Refinement.
-        - SAFE STOCK VARIATIONS: Cycle 90-degree flat-lay, 45-degree dining angle, eye-level close-up, and rule-of-thirds copy space; vary natural oak wood, white marble, travertine stone, dark slate, and linen surfaces.`
+      ? `* CATEGORY C — PLATED FOOD, WILDLIFE & COMMERCIAL STILL-LIFE (ACTIVE FOR ALL PROMPTS):
+        - STRICTLY LOCKED ACROSS ALL PROMPTS (#1 TO #${options.quantity}): Exact core dish, animal species, or product and its real-world setting from Smart Refinement, appetizing/natural clarity, uncluttered background. NEVER invent humans or hands if none exist in Smart Refinement, NEVER call a wild bird a "domestic pet", and NEVER write "faceless" on food, animals, or objects!
+        - SAFE STOCK VARIATIONS: Cycle 90-degree overhead flat-lay (for tabletop food/objects only), 45-degree dining angle, eye-level close-up, and rule-of-thirds copy space; vary natural surfaces or natural foliage lighting cleanly.`
       : `* CATEGORY D — HUMAN, LIFESTYLE & CORPORATE STOCK (ACTIVE FOR ALL PROMPTS):
-        - STRICTLY LOCKED: Core concept/activity and main props from the reference, specified gender, body build, age range, or cultural locks, and natural lifelike human realism.
-        - SAFE STOCK VARIATIONS (CONCEPT-CLOSE): Keep the core scene and key props intact while naturally varying candid micro-actions, subtle pose shifts, non-conflicting framing (waist-up, close-up, three-quarter environmental), coordinated wardrobe tones, and realistic room details.`;
+        - STRICTLY LOCKED ACROSS ALL PROMPTS (#1 TO #${options.quantity}):
+          1. EXACT CORE SCENE, PROPS & ACTIVITY: Every prompt (#1 through #${options.quantity}) MUST keep the exact focal props, main action, and setting type described in Smart Refinement (e.g., sparkler at night, train platform, rainy street with umbrella, dango skewer, alarm clock, backpack, handshake). NEVER abandon Smart Refinement on Prompt #2 to fall back to generic unrelated office or lab scenes!
+          2. EXACT PERSON COUNT: If Smart Refinement depicts two people (e.g., two businesswomen shaking hands) or a group, EVERY prompt (#1 through #${options.quantity}) MUST keep that exact same number of people — NEVER collapse 2 people into 1 person!
+          3. Honor specified gender, body build, age range, or cultural locks with lifelike human realism.
+        - SAFE STOCK VARIATIONS (CONCEPT-CLOSE): Keep the exact core scene, key props, and person count intact while naturally varying candid micro-actions, subtle pose/gaze shifts, non-conflicting framing (waist-up, close-up, three-quarter environmental), coordinated plain unbranded wardrobe tones, and realistic environmental details.`;
 
     const isolatedPngRuleBlock = isIsolatedPngMode ? `
     [ISOLATED PNG MODE RULE]:
@@ -1374,7 +1638,7 @@ export const generateStockPrompts = async (
     const categoryPoolsBlock = isBroadCategorySeed ? `
     [CATEGORY AUTO-EXPAND RULE]:
     Treat broad Smart Refinement seeds as a category and auto-select a unique specific concept for each prompt (never repeat twice in a batch) across healthcare, food, business, tech, travel, fitness, education, real estate, or icons while keeping key diversity/setting/mood words consistent.` : `
-    [SPECIFIC SCENE LOCK]: Since a specific scene/reference is provided, keep the core subject 100% faithful across all ${options.quantity} prompts.`;
+    [SPECIFIC SCENE & PERSON-COUNT LOCK (ALL PROMPTS #1–#${options.quantity})]: Since a specific scene/reference is provided in Smart Refinement, EVERY single prompt from #1 to #${options.quantity} MUST preserve the exact core subject, exact person count, focal props, and setting context from Smart Refinement — NEVER drift into unrelated professions, rooms, or props on Prompt #2+!`;
 
     const systemPrompt = `
     ROLE: COMMERCIAL MICROSTOCK PROMPT ARCHITECT (ADOBE STOCK, FREEPIK, SHUTTERSTOCK STANDARD).
@@ -1447,22 +1711,19 @@ export const generateStockPrompts = async (
          * For Isolated Objects (PNG Ready), Flat-Lays, Stages, Cutouts, and Flat 2D Graphic Grids: Enforce edge-to-edge tack-sharp focus across the entire frame with clean, even illumination and ZERO bokeh or lens blur. Do NOT inject "85mm-100mm macro prime lens" or "creamy depth-of-field bokeh" on isolated objects, flat 2D graphics, or full-frame flat textures!
          * For 3D Receding Perspective Glass/Panel Arrays: Keep crisp focus on the foreground/hero lifted glass panel while allowing gentle, natural shallow depth-of-field blur to soften far receding panels and glossy floor reflections.
          * For Photography Portraits or Close-up Still Life: Use natural lens perspective with tack-sharp focus on the main subject and gentle, natural background separation.`}
-    6. [COMMERCIAL INTENT]: End naturally with a fresh, concise visual finish suited to the medium and scene (for preservation modes: "${isHumanPreservation ? 'Preserve exact reference human facial identity, facial structure, natural skin tone, and hairstyle identically.' : isProductPreservation ? 'Preserve exact reference product packaging, label typography, and authentic product colors identically.' : isAbstractGraphicBackground ? 'close naturally on the actual surface texture, luminous color harmony, and seamless full-bleed wallpaper feel without repeating stock boilerplate or camera terms.' : 'e.g., authentic commercial lifestyle photography with natural textures and soft depth of field.'}"). Do NOT stamp the exact same closing sentence onto every prompt.
+    6. [COMMERCIAL INTENT & VARIED OPENINGS/CLOSINGS]:
+       - NEVER start a prompt with robotic wrappers like "Photography of a...", "Photograph of...", "Photo of...", or "3D render of a captivating composition..." — open directly and vividly with the visual composition (e.g., "A candid eye-level shot of...", "Overhead flat-lay composition of...", "Warm morning light illuminates...", "Sweeping flat 2D luminous curves...", "Straight-on macro view through vertical reeded glass...").
+       - End each prompt with a unique, natural visual finish tailored to its specific scene and textures${isHumanPreservation ? ' (ending with: "Preserve exact reference human facial identity, facial structure, natural skin tone, and hairstyle identically.")' : isProductPreservation ? ' (ending with: "Preserve exact reference product packaging, label typography, and authentic product colors identically.")' : ''}. NEVER copy-paste the same generic closing line (such as "Authentic commercial lifestyle photography with natural textures and soft depth of field." or "Modern editorial graphic wallpaper with refined color balance and tactile surface depth.") across prompts!
 
     NATURAL LANGUAGE & ZERO-CONTRADICTION RULES (CRITICAL — READ CAREFULLY):
-    - ZERO RAW UI LABELS, SLASHES, OR BRACKETS: NEVER copy dropdown strings verbatim into the final prompt! Strictly FORBIDDEN tokens in output text: slashes "/" (like "close-up / cropped", "North American / Diverse", "Hispanic / Latin American", "Documentary / Editorial", "Top view / flat lay"), UI parentheticals ("(waist-up)", "(20s-30s)", "(40s-50s)", "(faceless)"), robotic labels ("Standard photo", "independent and reflective interaction", "natural shadow", generic "in a home interior"), and clinical AI jargon ("authentic epidermal skin micro-texture", "natural 5-finger anatomy").
+    - ZERO RAW UI LABELS, SLASHES, OR BRACKETS: NEVER copy dropdown strings verbatim into the final prompt! Strictly FORBIDDEN tokens in output text: slashes "/" (like "close-up / cropped", "North American / Diverse", "Hispanic / Latin American", "Documentary / Editorial", "Top view / flat lay"), UI parentheticals ("(waist-up)", "(20s-30s)", "(40s-50s)", "(faceless)"), robotic labels ("Standard photo style", "independent and reflective interaction", "natural shadow", "realistic material", "a domestic pet, a small bird", generic "in a home interior"), doubled color phrases ("cool and clinical crisp cool daylight tones"), and clinical AI jargon ("authentic epidermal skin micro-texture", "natural 5-finger anatomy").
     - TRANSLATE SETTINGS INTO NATURAL PHOTOGRAPHIC PROSE:
-      * "North American / Diverse" → pick a specific natural subject (e.g., "a Caucasian woman", "an African American woman", "a mixed-race American man").
-      * "Hispanic / Latin American" → "a Latina woman" or "a Hispanic man".
-      * "South Asian" → "a South Asian woman" or "an Indian woman".
-      * "Young Adult (20s-30s)" → "in her late 20s" or "in her early 30s"; "Middle-Aged (40s-50s)" → "in her mid-40s" or "in her early 50s".
-      * "Mid Shot (Waist-Up)" → "waist-up medium shot"; "Home Interior" → concrete room matching the action (e.g., "a sunlit modern bathroom", "a cozy bedroom with soft linen bedding", "a warm living room").
-      * "Independent / Reflective" → show visually ("paused in quiet reflection", "calmly absorbed in her routine").
+      * Pick concrete natural phrasing for ethnicity, age, room setting, and textures.
       * Natural skin/hands → simply write "natural skin texture" or "lifelike details" (NEVER "epidermal micro-texture" or "5-finger anatomy").
-    - ZERO GEOMETRIC & CAMERA CONTRADICTIONS:
-      * FACELESS CROP CONSISTENCY: If a prompt is a faceless close-up crop, describe ONLY hands, arms, clothing, or objects below the chin — NEVER describe face, eyes, gaze, glasses, smiling, or head! Conversely, if the reference/Smart Refinement centers on facial expression, glasses, eye contact, or looking in a mirror, DO NOT make it faceless — use a clean waist-up or close-up portrait instead.
-      * ANGLE vs FRAMING CONSISTENCY: NEVER combine "waist-up" / "portrait" with "top view" / "flat lay" in the same prompt! Use overhead/top-down view ONLY for genuine overhead desk/bed/hands-from-above compositions; pair waist-up/portrait shots with eye-level, slightly elevated, or three-quarter perspectives.
-      * SINGLE COHESIVE LIGHTING: Never mix conflicting light moods (never stack warm indoor light + bright window daylight + dramatic low-key in one prompt).
+    - ZERO GEOMETRIC, LIGHTING & CAMERA CONTRADICTIONS:
+      * FACELESS CROP CONSISTENCY: If a prompt is a faceless close-up crop, describe ONLY hands, arms, clothing, or objects below the chin — NEVER describe face, eyes, gaze, glasses, smiling, sneezing, or head! Conversely, if Smart Refinement centers on facial expression, glasses, eye contact, or looking in a mirror, DO NOT make it faceless — use a clean waist-up or close-up portrait instead. NEVER use the word "faceless" for food, animals, birds, or products!
+      * ANGLE vs FRAMING CONSISTENCY: NEVER combine "waist-up" / "portrait" with "top view" / "flat lay" / "overhead" in the same prompt! Use overhead/top-down view ONLY for genuine overhead desk/tabletop/bed/hands-from-above compositions; pair waist-up/portrait shots with eye-level, slightly elevated, or three-quarter perspectives.
+      * SINGLE COHESIVE LIGHTING & OUTDOOR ACCURACY: Never mix conflicting light moods (never stack warm indoor light + bright window daylight + dramatic low-key in one prompt), and NEVER use "warm indoor lighting" on outdoor streets, rain, train stations, parks, or night markets!
 
     PROMPT HYGIENE RULES (CRITICAL — READ CAREFULLY):
     - STRICT BAN ON NEGATIVE KEYWORD LISTS: NEVER append negative prompt lists, "no X, no Y" lists, or banned noun lists to the prompt! Modern AI image generators interpret every noun in the prompt as a positive instruction to draw that object.
@@ -1705,7 +1966,11 @@ export const generateStockPrompts = async (
       let rawPText = (p.text || '').trim();
       rawPText = rawPText.replace(/^["']|["']$/g, '');
 
-      const cleanedText = sanitizeGeneratedPrompt(rawPText);
+      const cleanedText = sanitizeGeneratedPrompt(rawPText, {
+        isAbstractGraphicBackground,
+        isHumanSubject,
+        isOutdoorScene
+      });
 
       return {
         text: cleanedText
