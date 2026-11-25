@@ -777,14 +777,57 @@ export const generateStockPrompts = async (
   try {
 
     // --- 1. DETERMINE MODES ---
-    const medium = options.imageMedium || 'Default / Auto';
+    const isImageMediumActive = options.activeFields?.imageMedium !== false;
+    const medium = isImageMediumActive ? (options.imageMedium || 'Default / Auto') : 'Default / Auto';
     const isDefaultMode = medium === 'Default / Auto';
     const isPhoto = medium === 'Photography';
     const is3D = medium === '3D & CGI';
     const isArt = medium === 'Art & Illustration';
-    
-    // Emoji/Icon Mode Detection
-    const isEmojiMode = options.subject === 'No person (product)' && 
+
+    const photoVisualStyles = ['Standard photo', 'Ultra Realistic', 'Cinematic', 'Cinematic Film (Kodak Portra)', 'Minimalist Studio Photo', 'Hyper Detailed', 'Documentary / Editorial'];
+    const threeDVisualStyles = ['Premium 3D Icon', '3D Render', '3D illustration', 'Isometric 3D', 'Claymorphism', 'Abstract Environmental 3D'];
+    const artVisualStyles = ['Anime Style', 'Oil Painting', 'Minimalist Vector', 'Flat Illustration', 'Flat Line Icon', 'Paper Cut Art', 'Line Art'];
+
+    const isVisualTypeCompatibleWithMedium = (vt: string) => {
+      if (!vt || vt === 'Default / Auto') return true;
+      if (isPhoto) return photoVisualStyles.includes(vt);
+      if (is3D) return threeDVisualStyles.includes(vt);
+      if (isArt) return artVisualStyles.includes(vt);
+      return true;
+    };
+
+    const sanitizeSmartRefinementForMedium = (text: string): string => {
+      if (!text) return text;
+      if (isPhoto) {
+        return text
+          .replace(/\b(abstract\s+)?3d\s+(cgi\s+)?(render|rendered|rendering|illustration|icon|character|model|graphic|scene|artwork|style|animation|animated|clay|isometric|visual|art)\b/gi, '')
+          .replace(/\b(3d|cgi|claymorphism|clay-style|isometric|low-poly|low poly|vector\s+art|vector\s+illustration|flat\s+illustration|digital\s+illustration|illustration|cartoon|anime|stylized|cel-shaded|rendered|3d-style|2d\s+line\s+icons?|line\s+art|paper\s+cut\s+art|infographic\s+symbols?)\b/gi, '')
+          .replace(/\b(cute\s+)?animated\s+character\b/gi, 'person')
+          .replace(/\bcharacter\b/gi, 'person')
+          .replace(/\s{2,}/g, ' ')
+          .replace(/\s+([,.;:!?])/g, '$1')
+          .replace(/^[\s,.;:-]+/, '')
+          .trim();
+      }
+      if (is3D) {
+        return text
+          .replace(/\b(dslr|film\s+grain|kodak\s+portra|candid\s+photograph|real-world\s+photograph|photograph|photo\s+of|watercolor|oil\s+painting|flat\s+vector|line\s+art)\b/gi, '')
+          .replace(/\s{2,}/g, ' ')
+          .replace(/^[\s,.;:-]+/, '')
+          .trim();
+      }
+      if (isArt) {
+        return text
+          .replace(/\b(3d\s+render|3d\s+cgi|dslr|photograph|photorealistic|hyper-realistic\s+photo)\b/gi, '')
+          .replace(/\s{2,}/g, ' ')
+          .replace(/^[\s,.;:-]+/, '')
+          .trim();
+      }
+      return text;
+    };
+
+    // Emoji/Icon Mode Detection — NEVER hijack Photography or Art & Illustration mode!
+    const isEmojiMode = !isPhoto && !isArt && options.subject === 'No person (product)' && 
       ['Premium 3D Icon', 'Claymorphism', '3D Render'].some(t => options.visualType.includes(t));
 
     // --- 2. CONSTRUCT RENDERING LAYER (MEDIUM DEPENDENT) ---
@@ -811,28 +854,31 @@ export const generateStockPrompts = async (
       if (cameraModel) {
         cameraGear = `professional full-frame camera quality, ${cameraModel.includes('Generic') ? 'natural lens perspective' : 'high-resolution sensor quality'}`;
       } else {
-        cameraGear = `commercial photography`; 
+        cameraGear = `real-world commercial photography`; 
       }
 
       renderingInstructions = `
-      - MODE: REALISTIC PHOTOGRAPHY
+      - MODE: 100% REAL-WORLD PHOTOGRAPHY (ABSOLUTE PRIORITY OVERRIDE)
+      - MEDIUM TRANSLATION RULE (CRITICAL): The user explicitly selected PHOTOGRAPHY. Even if the reference image or concept came from a 3D render, CGI graphic, clay icon, or illustration, you MUST completely translate that concept into a GENUINE REAL-WORLD CAMERA PHOTOGRAPH shot on location or in a real studio — using real human people, real physical materials (real glass, wood, fabric, metal, ceramic, skin), authentic natural lighting, and true optical lens realism!
       - VOCABULARY: Use natural photographic language (${cameraGear}). Never capitalize "Professional Photography" in the middle of a sentence.
       - LENS LOGIC: Dynamic adaptation based on framing and environment scale.
       - RESTRICTION: Do not overuse "premium" or "high-end".
-      - STRICT RULE: DO NOT use 3D or Art terms (Render, Vector, Illustration).
+      - STRICT BAN: NEVER write ANY 3D, CGI, render, clay, toy-like, plastic-figure, isometric, cartoon, stylized, vector, flat-design, or illustration words anywhere in the output! Every single prompt MUST read as a real camera photograph!
       `;
     } else if (is3D) {
       renderingInstructions = `
-      - MODE: 3D RENDER / CGI
-      - VOCABULARY: Use render-based language (e.g., "Ray Tracing", "Global Illumination", "Subsurface Scattering").
+      - MODE: 100% 3D RENDER / CGI (ABSOLUTE PRIORITY OVERRIDE)
+      - MEDIUM TRANSLATION RULE: Reimagine the reference concept as a clean, polished 3D CGI render with sculpted geometry, tactile CGI materials, and global illumination.
+      - VOCABULARY: Use render-based language (e.g., "3D render", "3D CGI", "global illumination", "subsurface scattering", "smooth sculpted geometry").
       - PRIORITY: Prioritize material and lighting descriptions before subject emotion.
-      - STRICT RULE: Never use real camera brands (Canon, Sony, etc.). DO NOT use photography terms like "ISO" or "Shutter Speed".
+      - STRICT RULE: Never use real camera brands (Canon, Sony, etc.). DO NOT use photography terms like "DSLR", "ISO", "Shutter Speed", or "candid photograph".
       `;
     } else if (isArt) {
       renderingInstructions = `
-      - MODE: DIGITAL ART / ILLUSTRATION
+      - MODE: 100% DIGITAL ART / ILLUSTRATION (ABSOLUTE PRIORITY OVERRIDE)
+      - MEDIUM TRANSLATION RULE: Reimagine the reference concept cleanly as stylized 2D art or illustration matching the selected Visual Style.
       - VOCABULARY: Use stylized artistic language appropriate for the visual style.
-      - FOCUS: Composition and graphic clarity.
+      - FOCUS: Composition, linework/brushwork, and graphic clarity.
       - STRICT RULE: No camera brands. DO NOT use photography or 3D render terms.
       `;
     } else {
@@ -918,17 +964,21 @@ export const generateStockPrompts = async (
 
     // --- 5. COMMERCIAL SAFETY BLOCK ---
     const nonHumanSubjects = [
-      'Background / Landscape only',
+      'Background',
       'No person',
+      'Isolated Object',
       'Still life',
       'Abstract Shape',
       'Icon / Logo',
       'Domestic Pet',
-      'Wild Animal'
+      'Wild Animal',
+      'Bird',
+      'Marine',
+      'Macro'
     ];
     const isBackgroundMode = options.subject === 'Background / Landscape only';
     const isIsolatedPngMode = options.subject === 'Isolated Object (PNG Ready)';
-    const isEnvironmental3D = options.visualType === 'Abstract Environmental 3D';
+    const isEnvironmental3D = !isPhoto && !isArt && options.visualType === 'Abstract Environmental 3D';
     const isHumanSubject = !nonHumanSubjects.some(key => options.subject?.includes(key));
     const isPreservationActive = !!options.productPreservation;
     const preservationType = options.preservationType || 'product';
@@ -1046,7 +1096,22 @@ export const generateStockPrompts = async (
 
     // --- 8. GATHER INPUTS ---
     
+    const rawStyleVal = getFieldVal('visualType', options.visualType);
+    const effectiveStyleVal = (rawStyleVal && !isVisualTypeCompatibleWithMedium(options.visualType) && !options.lockedFields?.visualType)
+      ? (isPhoto ? 'Realistic commercial photography' : null)
+      : rawStyleVal;
+
+    const rawMaterialVal = getFieldVal('materialStyle', options.materialStyle);
+    const is3DOnlyMaterial = ['Glassmorphism', 'Clay', 'Frosted'].some(m => (options.materialStyle || '').includes(m));
+    const effectiveMaterialVal = (isPhoto && is3DOnlyMaterial && !options.lockedFields?.materialStyle) ? null : rawMaterialVal;
+
+    const baseSmartRefinement = options.activeFields?.smartRefinement
+      ? (isProductPreservation ? stripColorDescriptors(options.smartRefinementText) : options.smartRefinementText)
+      : null;
+    const effectiveSmartRefinement = baseSmartRefinement ? sanitizeSmartRefinementForMedium(baseSmartRefinement) : null;
+
     const inputs = {
+      imageMedium: isImageMediumActive && medium !== 'Default / Auto' ? medium : null,
       subject: getFieldVal('subject', options.subject),
       culturalContext: !isHumanSubject || isHumanPreservation ? null : getFieldVal('characterBackground', options.characterBackground),
       environment: isIsolatedPngMode ? 'Pure flat solid color (White or contrasting, NO environment details)' : getFieldVal('environment', options.environment),
@@ -1056,15 +1121,15 @@ export const generateStockPrompts = async (
       angle: getFieldVal('cameraAngle', options.cameraAngle),
       position: isBackgroundMode ? null : (isIsolatedPngMode ? 'Perfectly Centered' : getFieldVal('subjectPosition', options.subjectPosition)),
       shadows: isBackgroundMode ? null : (isIsolatedPngMode ? 'No Shadow / Flat (No cast shadows on ground)' : getFieldVal('shadowStyle', options.shadowStyle)),
-      style: getFieldVal('visualType', options.visualType),
-      material: getFieldVal('materialStyle', options.materialStyle),
+      style: effectiveStyleVal,
+      material: effectiveMaterialVal,
       concept: getFieldVal('conceptFocus', options.conceptFocus || 'Default / Auto'),
       authenticity: !isHumanSubject ? null : getFieldVal('authenticity', options.authenticity || 'Default / Auto'),
       // Ignore interaction if Background Mode, Isolated PNG Mode, or Non-Human Subject is active
       interaction: (!isHumanSubject || isBackgroundMode || isIsolatedPngMode) ? null : getFieldVal('interaction', options.interaction || 'Default / Auto'),
       target: getFieldVal('targetMarket', options.targetMarket || 'Default / Auto'),
       season: options.useCalendar ? `${options.calendarMonth} (${options.calendarEvent})` : null,
-      smartRefinement: options.activeFields?.smartRefinement ? (isProductPreservation ? stripColorDescriptors(options.smartRefinementText) : options.smartRefinementText) : null,
+      smartRefinement: effectiveSmartRefinement,
       ageRange: (!isHumanSubject || isHumanPreservation) ? null : getFieldVal('ageRange', options.ageRange || 'Default / Auto'),
       colorMood: isProductPreservation ? null : getFieldVal('colorMood', options.colorMood || 'Default / Auto'),
       preservationMode: isProductPreservation 
@@ -1190,7 +1255,7 @@ export const generateStockPrompts = async (
         - STRICTLY LOCKED: Core concept/activity and main props from the reference, specified gender, body build, age range, or cultural locks, and natural lifelike human realism.
         - SAFE STOCK VARIATIONS (CONCEPT-CLOSE): Keep the core scene and key props intact while naturally varying candid micro-actions, subtle pose shifts, non-conflicting framing (waist-up, close-up, three-quarter environmental), coordinated wardrobe tones, and realistic room details.`;
 
-    const isFlatLineIcon = options.visualType === 'Flat Line Icon';
+    const isFlatLineIcon = !isPhoto && !is3D && options.visualType === 'Flat Line Icon';
 
     const isolatedPngRuleBlock = isIsolatedPngMode ? `
     [ISOLATED PNG MODE RULE]:
@@ -1217,8 +1282,8 @@ export const generateStockPrompts = async (
     ${JSON.stringify(inputs)}
     ${lockedFieldsRule}
     ${isMasterAnchorMode ? `
-    [RULE 1 — PROMPT #1 MUST BE A 100% EXACT SAME-TO-SAME MASTER CLONE OF REFERENCE]:
-    - Option 1 MUST faithfully clone the exact Smart Refinement reference and Input Configuration: exact camera angle, pose/arrangement, lighting, colors, and surface/background with pristine stock clarity (${isProductPreservation ? '100% locked product packaging, typography & original colors — refer to "the referenced hero product" without guessing pump/dropper mechanics' : isHumanPreservation ? '100% locked facial identity, bone structure, skin tone & hair — avoid biometric text overrides' : 'zero text, watermarks, or studio hardware'}).` : ''}
+    [RULE 1 — PROMPT #1 MUST BE A 100% EXACT SAME-TO-SAME MASTER CLONE OF REFERENCE${medium !== 'Default / Auto' ? ` (STRICTLY IN ${medium.toUpperCase()} MEDIUM)` : ''}]:
+    - Option 1 MUST faithfully clone the exact subject, pose/arrangement, composition, colors, and scene from Smart Refinement and Input Configuration${isPhoto ? ' — translated 100% into a genuine real-world camera photograph (NEVER 3D render, CGI, clay, cartoon, or illustration!)' : is3D ? ' — rendered strictly as a clean 3D CGI render' : isArt ? ' — rendered strictly as 2D art/illustration' : ''} (${isProductPreservation ? '100% locked product packaging, typography & original colors — refer to "the referenced hero product" without guessing pump/dropper mechanics' : isHumanPreservation ? '100% locked facial identity, bone structure, skin tone & hair — avoid biometric text overrides' : 'plain unbranded blank surfaces on all props/bottles/clothing, zero studio hardware'}).` : ''}
     [RULE 2 — PROMPTS #${isMasterAnchorMode ? '2' : '1'} TO #${options.quantity}: COMMERCIAL STOCK VARIATIONS]:
     - Keep every prompt 100% commercially usable and visually distinct from others in the batch:
     ${activeCategoryBlock}

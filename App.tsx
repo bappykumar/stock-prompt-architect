@@ -907,6 +907,64 @@ export default function App() {
     return parsed;
   });
 
+  const [autoRunMode, setAutoRunMode] = useState<boolean>(() => {
+    return safeLocalStorage.getItem('prompt_auto_run_mode') === 'true';
+  });
+  const [autoRunPreset, setAutoRunPreset] = useState<PromptOptions | null>(() => {
+    try {
+      const saved = safeLocalStorage.getItem('prompt_auto_run_preset');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    safeLocalStorage.setItem('prompt_auto_run_mode', String(autoRunMode));
+  }, [autoRunMode]);
+
+  useEffect(() => {
+    if (autoRunPreset) {
+      safeLocalStorage.setItem('prompt_auto_run_preset', JSON.stringify(autoRunPreset));
+    } else {
+      safeLocalStorage.removeItem('prompt_auto_run_preset');
+    }
+  }, [autoRunPreset]);
+
+  const handleToggleAutoRun = (nextVal: boolean) => {
+    if (nextVal) {
+      const snapshot: PromptOptions = {
+        ...options,
+        activeFields: { ...options.activeFields, smartRefinement: true },
+        lockedFields: { ...(options.lockedFields || {}) },
+        lockedPools: JSON.parse(JSON.stringify(options.lockedPools || {}))
+      };
+      setAutoRunPreset(snapshot);
+      setOptions(prev => ({
+        ...prev,
+        activeFields: { ...prev.activeFields, smartRefinement: true }
+      }));
+      setAutoRunMode(true);
+    } else {
+      if (autoRunPreset) {
+        setOptions(prev => ({
+          ...autoRunPreset,
+          smartRefinementText: prev.smartRefinementText,
+          isFromImageReference: prev.isFromImageReference,
+          productPreservation: prev.productPreservation,
+          preservationType: prev.preservationType,
+          model: prev.model,
+          activeFields: {
+            ...autoRunPreset.activeFields,
+            smartRefinement: prev.activeFields?.smartRefinement ?? true
+          }
+        }));
+      }
+      setAutoRunPreset(null);
+      setAutoRunMode(false);
+    }
+  };
+
   // Image Medium Filtering Logic
   const getFilteredVisualStyles = () => {
     const medium = options.imageMedium;
@@ -1046,6 +1104,14 @@ export default function App() {
 
         if (!isCompatible && !prev.lockedFields?.visualType) {
           newOptions.visualType = 'Default / Auto';
+        }
+      }
+
+      // Clear 3D-only material finishes when switching to Photography unless locked
+      if (val === 'Photography' && !prev.lockedFields?.materialStyle) {
+        const is3DMaterial = ['Glassmorphism', 'Clay', 'Frosted'].some(m => String(prev.materialStyle || '').includes(m));
+        if (is3DMaterial) {
+          newOptions.materialStyle = 'Default / Auto';
         }
       }
 
@@ -1924,7 +1990,11 @@ export default function App() {
 
   const handleAutoFill = async () => {
     setIsAnalyzing(true);
+    setErrorMessage(null);
+    let generatedInAutoRun = false;
     try {
+      const basePreset = (autoRunMode && autoRunPreset) ? autoRunPreset : options;
+
       let input: any;
       if (autoFillMode === 'image' && referenceImage) {
         const imageResult = await fileToBase64(referenceImage);
@@ -1950,12 +2020,12 @@ export default function App() {
         }
       });
 
-      // Filter available options for any locked fields with restricted pools so AI picks from allowed options
-      const lockedPools = options.lockedPools || {};
-      const lockedKeys = Object.keys(options.lockedFields || {}).filter(k => options.lockedFields[k]);
+      // Filter available options for locked fields (and explicitly configured fields in Auto-Run mode)
+      const lockedPools = basePreset.lockedPools || {};
+      const lockedKeys = Object.keys(basePreset.lockedFields || {}).filter(k => basePreset.lockedFields[k]);
       
       lockedKeys.forEach(k => {
-        const pool = lockedPools[k] || (options[k as keyof PromptOptions] ? [String(options[k as keyof PromptOptions])] : []);
+        const pool = lockedPools[k] || (basePreset[k as keyof PromptOptions] ? [String(basePreset[k as keyof PromptOptions])] : []);
         if (pool.length > 0 && (visualOptions as any)[k]) {
           const filtered = (visualOptions as any)[k].filter((val: any) => pool.includes(String(val)));
           if (filtered.length > 0) {
@@ -1980,56 +2050,117 @@ export default function App() {
         newSettings[k] = normalizeOptionValue(k, rawSettings[k]);
       });
 
-      // Ensure Medium and Visual Type compatibility
-      if (newSettings.imageMedium && newSettings.imageMedium !== 'Default / Auto') {
-        const medium = newSettings.imageMedium;
+      const resetActiveFields = Object.keys(basePreset.activeFields).reduce((acc, key) => ({...acc, [key]: false}), {} as Record<string, boolean>);
+      
+      const nextActiveFields: Record<string, boolean> = {
+        ...resetActiveFields,
+        ...(result.activeFields || {}),
+        smartRefinement: true
+      };
+
+      const configurableFieldKeys = [
+        'subject', 'characterBackground', 'ageRange', 'interaction', 'targetMarket',
+        'imageMedium', 'visualType', 'materialStyle', 'conceptFocus', 'authenticity',
+        'environment', 'colorMood', 'qualityCamera', 'framing', 'cameraAngle',
+        'lighting', 'shadowStyle'
+      ];
+
+      if (autoRunMode) {
+        const nonHumanSubjectKeywords = [
+          'Domestic Pet', 'Wild Animal', 'Bird', 'Marine', 'Macro',
+          'Still life', 'No person', 'Isolated Object', 'Background',
+          'Abstract Shape', 'Icon / Logo'
+        ];
+        const aiDetectedNonHuman = nonHumanSubjectKeywords.some(kw => String(newSettings.subject || '').includes(kw));
+        const presetSubjectIsNonHuman = nonHumanSubjectKeywords.some(kw => String(basePreset.subject || '').includes(kw));
+
+        // In Auto-Run Mode: strictly honor EVERY user-configured field from the saved preset!
+        // - Manually turned OFF fields stay OFF
+        // - Locked / Multi-Locked fields keep their pool & values (unless AI marks irrelevant)
+        // - Explicitly chosen non-default values stay fixed (unless AI marks irrelevant, OR an unlocked human subject meets a non-human product/landscape image)
+        // - Fields left as 'Default / Auto' dynamically adapt to the analyzed image/text
+        configurableFieldKeys.forEach(k => {
+          const wasActiveInPreset = basePreset.activeFields?.[k] !== false;
+          const presetVal = (basePreset as any)[k];
+          const isFieldLocked = !!basePreset.lockedFields?.[k];
+          const pool = lockedPools[k] || [];
+
+          if (!wasActiveInPreset) {
+            newSettings[k] = presetVal ?? 'Default / Auto';
+            nextActiveFields[k] = false;
+            return;
+          }
+
+          if (isFieldLocked) {
+            if (pool.length > 1) {
+              if (!newSettings[k] || !pool.includes(String(newSettings[k]))) {
+                newSettings[k] = pool[0];
+              }
+            } else if (pool.length === 1) {
+              newSettings[k] = pool[0];
+            } else if (presetVal !== undefined) {
+              newSettings[k] = presetVal;
+            }
+            nextActiveFields[k] = result.activeFields?.[k] === false ? false : true;
+          } else if (k === 'subject' && aiDetectedNonHuman && !presetSubjectIsNonHuman) {
+            // If reference image clearly has NO human (product/object/landscape/animal) and subject wasn't explicitly locked,
+            // keep AI's non-human subject for this run so human-only fields auto-turn OFF cleanly
+            nextActiveFields[k] = true;
+          } else if (presetVal && presetVal !== 'Default / Auto') {
+            // Preserve user's explicit non-default selection without overwriting
+            newSettings[k] = presetVal;
+            nextActiveFields[k] = result.activeFields?.[k] === false ? false : true;
+          }
+          // Otherwise (presetVal === 'Default / Auto' and active): keep AI-detected newSettings[k] & nextActiveFields[k]
+        });
+      } else {
+        // Classic 2-step mode: Restore locked fields values while turning OFF any locked fields not needed for the detected context
+        lockedKeys.forEach(k => {
+          const pool = lockedPools[k] || (options[k as keyof PromptOptions] ? [String(options[k as keyof PromptOptions])] : []);
+          if (pool.length > 1) {
+            if (newSettings[k] && pool.includes(String(newSettings[k]))) {
+              // Keep AI selection within allowed pool
+            } else if (pool.length > 0) {
+              (newSettings as any)[k] = pool[0];
+            }
+          } else if (pool.length === 1) {
+            (newSettings as any)[k] = pool[0];
+          } else if (options[k as keyof PromptOptions] !== undefined) {
+            (newSettings as any)[k] = options[k as keyof PromptOptions];
+          }
+          
+          if (result.activeFields && result.activeFields[k] === false) {
+            nextActiveFields[k] = false;
+          } else {
+            nextActiveFields[k] = true;
+          }
+        });
+      }
+
+      // Ensure Medium and Visual Type / Material compatibility AFTER restoring locked/preset fields
+      const effectiveMedium = newSettings.imageMedium || basePreset.imageMedium;
+      if (effectiveMedium && effectiveMedium !== 'Default / Auto') {
         const currentVisual = newSettings.visualType;
-        if (currentVisual && currentVisual !== 'Default / Auto') {
+        if (currentVisual && currentVisual !== 'Default / Auto' && !basePreset.lockedFields?.visualType) {
           let isCompatible = true;
-          if (medium === 'Photography') {
+          if (effectiveMedium === 'Photography') {
             isCompatible = ['Standard photo', 'Ultra Realistic', 'Cinematic', 'Cinematic Film (Kodak Portra)', 'Minimalist Studio Photo', 'Hyper Detailed', 'Documentary / Editorial'].includes(currentVisual);
-          } else if (medium === '3D & CGI') {
+          } else if (effectiveMedium === '3D & CGI') {
             isCompatible = ['Premium 3D Icon', '3D Render', '3D illustration', 'Isometric 3D', 'Claymorphism', 'Abstract Environmental 3D'].includes(currentVisual);
-          } else if (medium === 'Art & Illustration') {
+          } else if (effectiveMedium === 'Art & Illustration') {
             isCompatible = ['Anime Style', 'Oil Painting', 'Minimalist Vector', 'Flat Illustration', 'Flat Line Icon', 'Paper Cut Art', 'Line Art'].includes(currentVisual);
           }
           if (!isCompatible) {
             newSettings.visualType = 'Default / Auto';
           }
         }
-      }
-
-      const resetActiveFields = Object.keys(options.activeFields).reduce((acc, key) => ({...acc, [key]: false}), {});
-      
-      const nextActiveFields = {
-        ...resetActiveFields,
-        ...(result.activeFields || {}),
-        smartRefinement: true
-      };
-
-      // Restore locked fields values while turning OFF any locked fields not needed for the detected context
-      lockedKeys.forEach(k => {
-        const pool = lockedPools[k] || (options[k as keyof PromptOptions] ? [String(options[k as keyof PromptOptions])] : []);
-        if (pool.length > 1) {
-          // If multiple options were allowed in the pool, keep AI's selection if it falls within the pool; otherwise default to pool[0]
-          if (newSettings[k] && pool.includes(String(newSettings[k]))) {
-            // Keep AI selection within allowed pool
-          } else if (pool.length > 0) {
-            (newSettings as any)[k] = pool[0];
+        if (effectiveMedium === 'Photography' && !basePreset.lockedFields?.materialStyle) {
+          const is3DMaterial = ['Glassmorphism', 'Clay', 'Frosted'].some(m => String(newSettings.materialStyle || '').includes(m));
+          if (is3DMaterial) {
+            newSettings.materialStyle = 'Default / Auto';
           }
-        } else if (pool.length === 1) {
-          (newSettings as any)[k] = pool[0];
-        } else if (options[k as keyof PromptOptions] !== undefined) {
-          (newSettings as any)[k] = options[k as keyof PromptOptions];
         }
-        
-        // Turn locked field ON only if AI analysis did NOT mark it false
-        if (result.activeFields && result.activeFields[k] === false) {
-          nextActiveFields[k] = false;
-        } else {
-          nextActiveFields[k] = true;
-        }
-      });
+      }
       
       let cleanSrText = input.type === 'text' ? options.smartRefinementText : (result.smartRefinement || options.smartRefinementText);
       const isProdActive = !!options.productPreservation && (options.preservationType || 'product') === 'product';
@@ -2041,16 +2172,16 @@ export default function App() {
       }
 
       if (isProdActive) {
-        if (!options.lockedFields?.colorMood) {
+        if (!basePreset.lockedFields?.colorMood) {
           newSettings.colorMood = 'Default / Auto';
         }
         nextActiveFields.colorMood = false;
       }
       if (isHumanActive) {
-        if (!options.lockedFields?.characterBackground) {
+        if (!basePreset.lockedFields?.characterBackground) {
           newSettings.characterBackground = 'Default / Auto';
         }
-        if (!options.lockedFields?.ageRange) {
+        if (!basePreset.lockedFields?.ageRange) {
           newSettings.ageRange = 'Default / Auto';
         }
         nextActiveFields.characterBackground = false;
@@ -2059,7 +2190,8 @@ export default function App() {
 
       if (input.type === 'image') {
         ['conceptFocus', 'targetMarket', 'authenticity', 'qualityCamera'].forEach(metaField => {
-          if (!options.lockedFields?.[metaField]) {
+          const hasExplicitPreset = autoRunMode && basePreset[metaField as keyof PromptOptions] && basePreset[metaField as keyof PromptOptions] !== 'Default / Auto' && basePreset.activeFields?.[metaField] !== false;
+          if (!basePreset.lockedFields?.[metaField] && !hasExplicitPreset) {
             newSettings[metaField] = 'Default / Auto';
             nextActiveFields[metaField] = false;
           }
@@ -2067,13 +2199,18 @@ export default function App() {
       }
 
       // Deterministic Context-Aware Auto-Off: even if a section is LOCKED, turn its active toggle OFF when not needed
-      const resolvedOptions = {
-        ...options,
-        ...newSettings
+      const resolvedOptions: PromptOptions = {
+        ...basePreset,
+        ...newSettings,
+        model: options.model,
+        productPreservation: options.productPreservation,
+        preservationType: options.preservationType,
+        lockedFields: { ...(basePreset.lockedFields || {}) },
+        lockedPools: { ...(basePreset.lockedPools || {}) }
       };
       const finalActiveFields = applyContextRelevanceToActiveFields(
         nextActiveFields,
-        options.lockedFields,
+        basePreset.lockedFields,
         {
           subject: resolvedOptions.subject,
           imageMedium: resolvedOptions.imageMedium,
@@ -2085,30 +2222,47 @@ export default function App() {
         false
       );
 
-      const newOptions = {
+      const newOptions: PromptOptions = {
         ...resolvedOptions,
         smartRefinementText: cleanSrText,
         isFromImageReference: input.type === 'image',
         activeFields: finalActiveFields
       };
       
-      setOptions(newOptions);
-      
-      if (autoFillMode === 'image') {
-        setAutoFillMode('text');
-        addToast("Image analyzed and settings auto-filled successfully.", "success");
+      if (autoRunMode) {
+        // Keep user's live options synced with SR text while preserving autoRunPreset untouched for next run
+        setOptions(prev => ({
+          ...prev,
+          smartRefinementText: cleanSrText,
+          isFromImageReference: input.type === 'image'
+        }));
+        setIsAnalyzing(false);
+        generatedInAutoRun = true;
+        await handleGenerate(newOptions);
       } else {
-        addToast("Reference text analyzed and settings auto-filled successfully.", "success");
+        setOptions(newOptions);
+        if (autoFillMode === 'image') {
+          setAutoFillMode('text');
+          addToast("Image analyzed and settings auto-filled successfully.", "success");
+        } else {
+          addToast("Reference text analyzed and settings auto-filled successfully.", "success");
+        }
       }
     } catch (err: any) {
       console.warn('Auto-fill failed:', err);
       setErrorMessage(err.message || 'Auto-fill failed');
     } finally {
-      setIsAnalyzing(false);
+      if (!generatedInAutoRun) {
+        setIsAnalyzing(false);
+      }
     }
   };
 
-  const handleGenerate = useCallback(async () => {
+  const handleGenerate = useCallback(async (overrideOptions?: PromptOptions) => {
+    const activeOpts: PromptOptions = (overrideOptions && typeof overrideOptions === 'object' && 'subject' in overrideOptions)
+      ? overrideOptions
+      : options;
+
     if (typeof window !== 'undefined' && window.innerWidth < 1024) {
       setIsSidebarOpen(false);
     }
@@ -2118,7 +2272,7 @@ export default function App() {
 
     setLastUsedReference({
       mode: autoFillMode,
-      value: autoFillMode === 'image' ? (referenceImage?.name || null) : (options.smartRefinementText || null)
+      value: autoFillMode === 'image' ? (referenceImage?.name || null) : (activeOpts.smartRefinementText || null)
     });
 
     loadingIntervalRef.current = window.setInterval(() => {
@@ -2130,13 +2284,10 @@ export default function App() {
         batch.prompts.map(p => ({ text: p.text }))
       );
       
-      const activeModelObj = OPTIONS.model.find(m => m.value === options.model);
-      const activeProvider = activeModelObj ? activeModelObj.provider as 'gemini'|'groq'|'mistral'|'openrouter' : 'gemini';
-
       const effectiveOptions = {
-        ...options,
-        productPreservation: !!options.productPreservation,
-        preservationType: options.preservationType || 'product'
+        ...activeOpts,
+        productPreservation: !!activeOpts.productPreservation,
+        preservationType: activeOpts.preservationType || 'product'
       };
 
       const results = await executeWithKeyRotation((keyRecord, fallbackModel) => {
@@ -2164,7 +2315,7 @@ export default function App() {
         loadingIntervalRef.current = null;
       }
     }
-  }, [options, batches, apiKeys, activeKeyId]);
+  }, [options, batches, apiKeys, activeKeyId, autoFillMode, referenceImage]);
 
   const copyIndividual = (batchId: string, promptId: string, text: string) => {
     navigator.clipboard.writeText(text);
@@ -2754,7 +2905,16 @@ export default function App() {
                     type="button"
                     role="switch"
                     aria-checked={options.activeFields?.smartRefinement}
-                    onClick={() => setOptions({...options, activeFields: {...options.activeFields, smartRefinement: !options.activeFields?.smartRefinement}})} 
+                    onClick={() => {
+                      const nextSr = !options.activeFields?.smartRefinement;
+                      if (!nextSr && autoRunMode) {
+                        handleToggleAutoRun(false);
+                      }
+                      setOptions(prev => ({
+                        ...prev,
+                        activeFields: { ...prev.activeFields, smartRefinement: nextSr }
+                      }));
+                    }} 
                     className={`inline-flex items-center shrink-0 w-9 h-5 rounded-full p-[2px] apple-switch-track focus:outline-none cursor-pointer ${
                       options.activeFields?.smartRefinement 
                         ? 'bg-blue-500/90 dark:bg-blue-500/85' 
@@ -2867,14 +3027,41 @@ export default function App() {
                     {(() => {
                       const hasSrContent = autoFillMode === 'image' ? !!referenceImage : !!options.smartRefinementText;
                       const currentSrValue = autoFillMode === 'image' ? (referenceImage?.name || null) : (options.smartRefinementText || null);
-                      const isSrUsed = hasSrContent && lastUsedReference.mode === autoFillMode && lastUsedReference.value === currentSrValue;
+                      const isSrUsed = !autoRunMode && hasSrContent && lastUsedReference.mode === autoFillMode && lastUsedReference.value === currentSrValue;
+                      const isBusy = isAnalyzing || isGenerating;
                       
                       return (
-                        <div className="mt-3 space-y-1.5">
+                        <div className="mt-3 space-y-2.5">
+                          {/* Minimal 1-Click Auto-Run Toggle */}
+                          <div className="flex items-center justify-between px-2.5 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.05] dark:border-white/[0.06]">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <Zap size={12} className={autoRunMode ? 'text-blue-500 shrink-0' : 'text-slate-400 shrink-0'} />
+                              <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate">Auto-Run Mode</span>
+                            </div>
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={autoRunMode}
+                              onClick={() => handleToggleAutoRun(!autoRunMode)}
+                              className={`inline-flex items-center shrink-0 w-7 h-4 rounded-full p-[2px] apple-switch-track focus:outline-none cursor-pointer ${
+                                autoRunMode
+                                  ? 'bg-blue-500/90 dark:bg-blue-500/85'
+                                  : 'bg-slate-200/90 dark:bg-white/[0.08] ring-1 ring-inset ring-slate-300/70 dark:ring-white/[0.12]'
+                              }`}
+                              title={autoRunMode ? 'Turn off Auto-Run to reveal & edit settings' : 'Lock current settings, hide panels & generate in 1 click'}
+                            >
+                              <span className={`block w-3 h-3 rounded-full apple-switch-thumb ${
+                                autoRunMode
+                                  ? 'translate-x-3 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.2)]'
+                                  : 'translate-x-0 bg-white dark:bg-slate-400 shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
+                              }`} />
+                            </button>
+                          </div>
+
                           <button 
                             type="button"
                             onClick={handleAutoFill}
-                            disabled={isAnalyzing || !hasSrContent}
+                            disabled={isBusy || !hasSrContent}
                             className={`w-full h-9 py-1.5 px-3 rounded-xl font-semibold uppercase tracking-wider text-[10.5px] sm:text-[11px] flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] border disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap select-none ${
                               !hasSrContent
                                 ? 'bg-slate-200/70 dark:bg-white/[0.05] text-slate-400 dark:text-slate-500 border-transparent' 
@@ -2883,19 +3070,25 @@ export default function App() {
                                   : 'bg-blue-600 hover:bg-blue-500 text-white border-blue-500/40 shadow-xs'
                             }`}
                           >
-                            {isAnalyzing ? (
+                            {isBusy ? (
                               <Loader2 size={13} className="animate-spin shrink-0" />
                             ) : isSrUsed ? (
                               <Check size={13} className="shrink-0" strokeWidth={2.5} />
+                            ) : autoRunMode ? (
+                              <Zap size={13} className="shrink-0" />
                             ) : (
                               <Sparkles size={13} className="shrink-0" />
                             )}
                             <span className="truncate">
                               {isAnalyzing 
                                 ? 'Analyzing...' 
-                                : isSrUsed 
-                                  ? 'Applied • Re-analyze' 
-                                  : (autoFillMode === 'image' ? 'Auto-Fill from Image' : 'Auto-Fill Settings')}
+                                : isGenerating && autoRunMode
+                                  ? 'Generating...'
+                                  : autoRunMode
+                                    ? 'Analyze & Generate'
+                                    : isSrUsed 
+                                      ? 'Applied • Re-analyze' 
+                                      : (autoFillMode === 'image' ? 'Auto-Fill from Image' : 'Auto-Fill Settings')}
                             </span>
                           </button>
                           
@@ -2925,9 +3118,42 @@ export default function App() {
                   </>
                 )}
               </div>
+
+              {autoRunMode && (
+                <div className="space-y-3">
+                  <div className="px-3.5 py-2.5 rounded-2xl bg-slate-100/70 dark:bg-white/[0.03] border border-slate-200/70 dark:border-white/[0.06] flex items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                    <span className="truncate font-medium">
+                      Settings locked &amp; hidden · {(autoRunPreset || options).quantity} Prompts
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleAutoRun(false)}
+                      className="shrink-0 text-[10.5px] font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                  {errorMessage && (
+                    <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-xl text-red-600 dark:text-red-400 text-[11px] flex items-start gap-2.5 shadow-sm">
+                      <div className="mt-0.5"><AlertCircle size={15} className="shrink-0 text-red-500" /></div>
+                      <div className="flex-1 font-medium leading-tight">{errorMessage}</div>
+                      <button 
+                        type="button"
+                        onClick={() => setErrorMessage(null)} 
+                        className="p-1 rounded-lg hover:bg-red-500/10 text-red-500 hover:text-red-700 dark:hover:text-red-300 transition-colors shrink-0 cursor-pointer"
+                        title="Dismiss error"
+                        aria-label="Dismiss error"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* Config Sections */}
+            {/* Config Sections (Hidden in Auto-Run Mode) */}
+            {!autoRunMode && (
             <div className="space-y-10">
               <section className="space-y-6">
                 <header className="flex items-center gap-3 px-1">
@@ -3028,10 +3254,12 @@ export default function App() {
                 </div>
               </section>
             </div>
+            )}
           </div>
         </div>
 
-        {/* Action Button Docking Bar */}
+        {/* Action Button Docking Bar (Hidden in Auto-Run Mode) */}
+        {!autoRunMode && (
         <div className="shrink-0 p-3.5 sm:p-4 md:p-5 bg-white/95 dark:bg-slate-950/95 lg:bg-white/90 lg:dark:bg-slate-950/90 backdrop-blur-2xl backdrop-saturate-[180%] border-t border-slate-200/80 dark:border-white/[0.08] shadow-[0_-8px_24px_rgba(0,0,0,0.04)] dark:shadow-[0_-8px_24px_rgba(0,0,0,0.4)] z-50 flex flex-col gap-2.5 relative">
           {/* Subtle top rim highlight */}
           <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/20 to-transparent pointer-events-none" />
@@ -3052,13 +3280,14 @@ export default function App() {
             </div>
           )}
           <RunArchitectButton 
-            onClick={handleGenerate} 
+            onClick={() => handleGenerate()} 
             isGenerating={isGenerating} 
             label="Run Architect" 
             disabled={isGenerating} 
             hasError={!!errorMessage}
           />
         </div>
+        )}
         </div>
       </aside>
 
@@ -3433,7 +3662,11 @@ export default function App() {
                     setIsResetConfirmOpen(false);
                     safeLocalStorage.removeItem('prompt_options');
                     safeLocalStorage.removeItem('prompt_session_history');
+                    safeLocalStorage.removeItem('prompt_auto_run_mode');
+                    safeLocalStorage.removeItem('prompt_auto_run_preset');
                     safeLocalStorage.setItem('use_system_api_key', 'false');
+                    setAutoRunMode(false);
+                    setAutoRunPreset(null);
                     setOptions(getFreshDefaultOptions());
                     setBatches([]);
                     setDisplayedPresets(getRandomPresets(4));
