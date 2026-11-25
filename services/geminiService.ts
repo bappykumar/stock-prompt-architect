@@ -756,9 +756,19 @@ export const generateStockPrompts = async (
     return chunkResults.flat().slice(0, totalRequested);
   }
 
-  // Helper to check if a field is active and not default
+  // Helper to check if a field is active and not default (respects Multi-Lock pools)
   const getFieldVal = (key: keyof PromptOptions, val: string) => {
     if (options.activeFields && options.activeFields[key] === false) return null;
+    if (options.lockedFields?.[key]) {
+      const rawPool = ((options as any).lockedPools?.[key] || []) as string[];
+      const cleanPool = rawPool.filter(v => v && v !== 'Default / Auto');
+      if (cleanPool.length > 1) {
+        return `MULTI-LOCK POOL (ALL ${cleanPool.length} ACTIVE — rotate evenly across prompts): ${cleanPool.join(' | ')}`;
+      }
+      if (cleanPool.length === 1) {
+        return cleanPool[0];
+      }
+    }
     if (val === 'Default / Auto') return null;
     return val;
   };
@@ -1096,11 +1106,12 @@ export const generateStockPrompts = async (
         if (isProductPreservation && key === 'colorMood') continue;
         if (isHumanPreservation && ['characterBackground', 'ageRange'].includes(key)) continue;
 
-        const pool: string[] = lockedPools[key] || [];
+        const rawPool: string[] = lockedPools[key] || [];
+        const pool = rawPool.filter(v => v && v !== 'Default / Auto');
         if (pool.length > 1) {
-          lockedRules.push(`${map[key]} is RESTRICTED to ONLY these allowed options: [ ${pool.join(', ')} ] (any dynamic variation across prompts in the batch MUST choose strictly from this pool)`);
+          lockedRules.push(`${map[key]} has MULTI-LOCK ACTIVE with ${pool.length} EQUALLY ACTIVE options: [ ${pool.join(', ')} ]. You MUST distribute and rotate evenly across ALL ${pool.length} selected options across the prompts in this batch (do NOT fixate on only 1 option), and NEVER use any option outside this pool.`);
         } else {
-          const singleVal = (options as any)[key] || pool[0];
+          const singleVal = pool[0] || (options as any)[key];
           if (singleVal && singleVal !== 'Default / Auto') {
             lockedRules.push(`${map[key]} is LOCKED strictly to "${singleVal}" (must not be varied across the batch)`);
           }

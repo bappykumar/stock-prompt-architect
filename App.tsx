@@ -511,12 +511,19 @@ const CustomDropdown = ({
     const currentSelectedValues: string[] = useMemo(() => {
       if (isLocked) {
         if (Array.isArray(lockedPool) && lockedPool.length > 0) {
-          return lockedPool.map(String);
+          return lockedPool.map(String).filter(v => v && v !== 'Default / Auto');
         }
         return value !== undefined && value !== null && value !== 'Default / Auto' ? [String(value)] : [];
       }
       return value !== undefined && value !== null ? [String(value)] : [];
     }, [isLocked, lockedPool, value]);
+
+    const selectedLabels: string[] = useMemo(() => {
+      return currentSelectedValues.map(val => {
+        const found = safeOptions.find(opt => String(opt.value) === val);
+        return found ? found.label : val;
+      });
+    }, [currentSelectedValues, safeOptions]);
   
     // Visual Style Badge Logic
     const getVisualStyleBadge = (val: string | number) => {
@@ -621,15 +628,17 @@ const CustomDropdown = ({
                   e.stopPropagation();
                   onToggle(!isActive);
                 }}
-                className={`w-7 h-4 rounded-full relative p-0.5 apple-switch-track focus:outline-none cursor-pointer active:scale-95 ${
+                className={`inline-flex items-center shrink-0 w-7 h-4 rounded-full p-[2px] apple-switch-track focus:outline-none cursor-pointer ${
                   isActive 
-                    ? 'bg-blue-600 dark:bg-blue-500 shadow-[0_1px_6px_rgba(37,99,235,0.4)] border border-blue-400/30' 
-                    : 'bg-black/15 dark:bg-white/15 border border-black/10 dark:border-white/10'
+                    ? 'bg-blue-500/90 dark:bg-blue-500/85' 
+                    : 'bg-slate-200/90 dark:bg-white/[0.08] ring-1 ring-inset ring-slate-300/70 dark:ring-white/[0.12]'
                 }`}
                 title={isActive ? "Disable parameter" : "Enable parameter"}
               >
-                <div className={`w-3 h-3 rounded-full bg-white shadow-xs apple-switch-thumb transform ${
-                  isActive ? 'translate-x-3' : 'translate-x-0'
+                <span className={`block w-3 h-3 rounded-full apple-switch-thumb ${
+                  isActive
+                    ? 'translate-x-3 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.2)]'
+                    : 'translate-x-0 bg-white dark:bg-slate-400 shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
                 }`} />
               </button>
             )}
@@ -640,6 +649,7 @@ const CustomDropdown = ({
             type="button"
             disabled={isInputDisabled}
             onClick={() => setIsOpen(!isOpen)}
+            title={isLocked && selectedLabels.length > 1 ? selectedLabels.join(', ') : selectedOption.label}
             className={`w-full flex items-center justify-between bg-white/85 dark:bg-white/[0.04] hover:bg-white dark:hover:bg-white/[0.08] backdrop-blur-xl backdrop-saturate-[180%] border px-4 py-3 rounded-2xl text-[13px] font-medium text-left transition-all duration-200 outline-none
               ${isOpen ? (isLocked ? 'border-amber-500 ring-2 ring-amber-500/20' : 'border-blue-500 ring-2 ring-blue-500/20 shadow-md') : highlight ? 'border-purple-500/50 ring-1 ring-purple-500/20 shadow-[0_0_12px_rgba(168,85,247,0.15)]' : isLocked ? 'border-amber-500/40 dark:border-amber-500/30' : 'border-slate-200/90 dark:border-white/[0.08] shadow-[0_2px_8px_rgba(0,0,0,0.03),inset_0_1px_1px_rgba(255,255,255,0.9)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)] hover:border-slate-300 dark:hover:border-slate-700'}
               ${isDefault && !isLocked ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-slate-100'}
@@ -650,9 +660,18 @@ const CustomDropdown = ({
                 <span className="block text-amber-500/80 italic text-[12px] truncate">
                   Click to select allowed options...
                 </span>
+              ) : isLocked && selectedLabels.length > 1 ? (
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="truncate text-slate-900 dark:text-slate-100 font-medium">
+                    {selectedLabels.join(', ')}
+                  </span>
+                  <span className="shrink-0 whitespace-nowrap text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/15 border border-amber-500/25 px-1.5 py-0.5 rounded-md leading-none">
+                    {selectedLabels.length} Active
+                  </span>
+                </div>
               ) : (
                 <span className="block truncate text-slate-900 dark:text-slate-100 font-medium">
-                  {selectedOption.label}
+                  {isLocked && selectedLabels.length === 1 ? selectedLabels[0] : selectedOption.label}
                 </span>
               )}
             </div>
@@ -666,14 +685,14 @@ const CustomDropdown = ({
           {isOpen && (
             <div className="absolute z-[200] w-full mt-2 bg-white/95 dark:bg-slate-900/85 backdrop-blur-2xl backdrop-saturate-[180%] border border-slate-200/90 dark:border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.18),inset_0_1px_1px_rgba(255,255,255,0.9)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.1)] overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top">
               {isLocked ? (
-                <div className="px-3.5 py-2 bg-amber-500/10 border-b border-amber-500/20 flex items-center justify-between text-[11px] text-amber-700 dark:text-amber-300 select-none">
-                  <div className="flex items-center gap-1.5 font-semibold">
+                <div className="px-3.5 py-2 bg-amber-500/10 border-b border-amber-500/20 flex items-center justify-between gap-2 text-[11px] text-amber-700 dark:text-amber-300 select-none">
+                  <div className="flex items-center gap-1.5 font-semibold min-w-0">
                     <Lock size={11} className="text-amber-500 shrink-0" />
-                    <span>Multi-Lock Active (click to add/remove)</span>
+                    <span className="truncate">Multi-Lock Pool</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black bg-amber-500/20 px-1.5 py-0.5 rounded text-amber-700 dark:text-amber-300 font-mono">
-                      {currentSelectedValues.length} selected
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="whitespace-nowrap text-[10px] font-bold bg-amber-500/20 px-1.5 py-0.5 rounded text-amber-700 dark:text-amber-300 font-mono">
+                      {currentSelectedValues.length} active
                     </span>
                     {onToggleLock && (
                       <button
@@ -682,7 +701,7 @@ const CustomDropdown = ({
                           e.stopPropagation();
                           onToggleLock(false);
                         }}
-                        className="text-[10px] text-amber-600 dark:text-amber-400 hover:underline cursor-pointer ml-1 font-medium"
+                        className="text-[10px] text-amber-600 dark:text-amber-400 hover:underline cursor-pointer font-medium whitespace-nowrap"
                       >
                         Single
                       </button>
@@ -732,11 +751,10 @@ const CustomDropdown = ({
                         </div>
                       );
                     }
-                    const isSelected = isLocked
-                      ? currentSelectedValues.includes(String(opt.value))
-                      : opt.value === value;
-                    const isActiveChoice = isLocked && String(opt.value) === String(value);
                     const isDefaultOption = opt.value === 'Default / Auto';
+                    const isSelected = isLocked
+                      ? (isDefaultOption ? currentSelectedValues.length === 0 : currentSelectedValues.includes(String(opt.value)))
+                      : opt.value === value;
                     
                     // Contextual opacity for Material Finish
                     let opacityClass = "opacity-100";
@@ -754,15 +772,18 @@ const CustomDropdown = ({
                             e.stopPropagation();
                             const optVal = String(opt.value);
                             let nextPool: string[];
-                            let nextActive = value;
-                            if (currentSelectedValues.includes(optVal)) {
+                            let nextActive: string | number = value;
+                            if (optVal === 'Default / Auto') {
+                              nextPool = [];
+                              nextActive = 'Default / Auto';
+                            } else if (currentSelectedValues.includes(optVal)) {
                               nextPool = currentSelectedValues.filter(v => v !== optVal);
-                              if (String(value) === optVal) {
+                              if (String(value) === optVal || nextPool.length === 0) {
                                 nextActive = nextPool.length > 0 ? nextPool[0] : 'Default / Auto';
                               }
                             } else {
-                              nextPool = [...currentSelectedValues, optVal];
-                              nextActive = opt.value;
+                              nextPool = [...currentSelectedValues.filter(v => v !== 'Default / Auto'), optVal];
+                              nextActive = nextPool[0];
                             }
                             if (onUpdateLockedPool) {
                               onUpdateLockedPool(nextPool, String(nextActive));
@@ -781,8 +802,8 @@ const CustomDropdown = ({
                       >
                         <span className={`truncate ${opacityClass}`}>{opt.label}</span>
                         <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                          {isActiveChoice && (
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-500/15 px-1.5 py-0.5 rounded leading-none">
+                          {isLocked && isSelected && !isDefaultOption && (
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/15 px-1.5 py-0.5 rounded leading-none">
                               Active
                             </span>
                           )}
@@ -1696,11 +1717,12 @@ export default function App() {
 
   const updateLockedPool = (field: string, values: string[], activePick?: string) => {
     setOptions(prev => {
-      const nextLockedPools = { ...(prev.lockedPools || {}), [field]: values };
+      const cleanValues = values.filter(v => v && v !== 'Default / Auto');
+      const nextLockedPools = { ...(prev.lockedPools || {}), [field]: cleanValues };
       const currentVal = (prev as any)[field];
-      const nextVal = activePick && values.includes(activePick)
+      const nextVal = activePick && cleanValues.includes(activePick)
         ? activePick
-        : (values.includes(currentVal) ? currentVal : (values.length > 0 ? values[0] : currentVal));
+        : (cleanValues.includes(currentVal) ? currentVal : (cleanValues.length > 0 ? cleanValues[0] : 'Default / Auto'));
       return {
         ...prev,
         [field]: nextVal,
@@ -2595,14 +2617,16 @@ export default function App() {
                         activeFields: nextActive
                       };
                     })} 
-                    className={`w-11 h-6 rounded-full relative p-0.5 apple-switch-track focus:outline-none cursor-pointer active:scale-95 shrink-0 ${
+                    className={`inline-flex items-center shrink-0 w-9 h-5 rounded-full p-[2px] apple-switch-track focus:outline-none cursor-pointer ${
                       options.productPreservation 
-                        ? 'bg-blue-600 dark:bg-blue-500 shadow-[0_2px_10px_rgba(37,99,235,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)] border border-blue-400/40' 
-                        : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)] border border-black/10 dark:border-white/10'
+                        ? 'bg-blue-500/90 dark:bg-blue-500/85' 
+                        : 'bg-slate-200/90 dark:bg-white/[0.08] ring-1 ring-inset ring-slate-300/70 dark:ring-white/[0.12]'
                     }`}
                   >
-                    <div className={`w-5 h-5 rounded-full bg-white shadow-[0_2px_6px_rgba(0,0,0,0.25),inset_0_1px_1px_rgba(255,255,255,0.95)] apple-switch-thumb transform ${
-                      options.productPreservation ? 'translate-x-5' : 'translate-x-0'
+                    <span className={`block w-4 h-4 rounded-full apple-switch-thumb ${
+                      options.productPreservation
+                        ? 'translate-x-4 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.2)]'
+                        : 'translate-x-0 bg-white dark:bg-slate-400 shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
                     }`} />
                   </button>
                 </div>
@@ -2731,14 +2755,16 @@ export default function App() {
                     role="switch"
                     aria-checked={options.activeFields?.smartRefinement}
                     onClick={() => setOptions({...options, activeFields: {...options.activeFields, smartRefinement: !options.activeFields?.smartRefinement}})} 
-                    className={`w-11 h-6 rounded-full relative p-0.5 apple-switch-track focus:outline-none cursor-pointer active:scale-95 ${
+                    className={`inline-flex items-center shrink-0 w-9 h-5 rounded-full p-[2px] apple-switch-track focus:outline-none cursor-pointer ${
                       options.activeFields?.smartRefinement 
-                        ? 'bg-blue-600 dark:bg-blue-500 shadow-[0_2px_10px_rgba(37,99,235,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)] border border-blue-400/40' 
-                        : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)] border border-black/10 dark:border-white/10'
+                        ? 'bg-blue-500/90 dark:bg-blue-500/85' 
+                        : 'bg-slate-200/90 dark:bg-white/[0.08] ring-1 ring-inset ring-slate-300/70 dark:ring-white/[0.12]'
                     }`}
                   >
-                    <div className={`w-5 h-5 rounded-full bg-white shadow-[0_2px_6px_rgba(0,0,0,0.25),inset_0_1px_1px_rgba(255,255,255,0.95)] apple-switch-thumb transform ${
-                      options.activeFields?.smartRefinement ? 'translate-x-5' : 'translate-x-0'
+                    <span className={`block w-4 h-4 rounded-full apple-switch-thumb ${
+                      options.activeFields?.smartRefinement
+                        ? 'translate-x-4 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.2)]'
+                        : 'translate-x-0 bg-white dark:bg-slate-400 shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
                     }`} />
                   </button>
                 </div>
