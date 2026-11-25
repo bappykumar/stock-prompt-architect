@@ -1004,6 +1004,7 @@ export default function App() {
     context: {
       subject?: string;
       imageMedium?: string;
+      visualType?: string;
       productPreservation?: boolean;
       preservationType?: 'product' | 'human';
       environment?: string;
@@ -1025,6 +1026,7 @@ export default function App() {
     ];
     const isNonHuman = nonHumanKeywords.some(k => subj.includes(k));
     const isBackgroundOnly = subj.includes('Background');
+    const isAbstractGraphic = subj.includes('Abstract Shape') || context.visualType === 'Abstract Environmental 3D';
     const isIsolatedPng = subj.includes('Isolated Object');
     const isNonPhotoMedium = med === '3D & CGI' || med === 'Art & Illustration';
 
@@ -1045,12 +1047,19 @@ export default function App() {
       next.authenticity = false;
     }
 
-    // 2. Background / Landscape only: turn OFF subject framing/position/shadow/interaction even if locked
-    if (isBackgroundOnly) {
+    // 2. Background / Landscape only & Abstract Graphic Elements: turn OFF subject framing/position/shadow/interaction
+    if (isBackgroundOnly || isAbstractGraphic) {
       next.framing = false;
       next.subjectPosition = false;
       next.shadowStyle = false;
       next.interaction = false;
+    }
+    if (isAbstractGraphic) {
+      next.cameraAngle = false;
+      const abstractSafeEnvs = ['Default / Auto', 'Solid Color / Studio', 'Pitch Black / Void', 'White Background'];
+      if (context.environment && !abstractSafeEnvs.includes(context.environment)) {
+        next.environment = false;
+      }
     }
 
     // 3. Isolated Object (PNG Ready): turn OFF incompatible environment/shadow/interaction even if locked
@@ -2224,6 +2233,7 @@ export default function App() {
         {
           subject: resolvedOptions.subject,
           imageMedium: resolvedOptions.imageMedium,
+          visualType: resolvedOptions.visualType,
           productPreservation: resolvedOptions.productPreservation,
           preservationType: resolvedOptions.preservationType,
           environment: resolvedOptions.environment,

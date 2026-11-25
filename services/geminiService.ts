@@ -344,25 +344,29 @@ CONCEPTUAL FLAT-LAY & TABLETOP STILL LIFE RULE (CRITICAL FOR BUSINESS/METAPHOR P
 - Mention "clean solid pastel background with ample copy space" to preserve commercial versatility.
 MODERN ABSTRACT, OPTICAL, GRAPHIC & 3D GLASS BACKGROUND RULE (CRITICAL FOR DESIGN WALLPAPERS & TEXTURES — DO NOT APPLY TO SCENIC NATURE LANDSCAPES):
 If the image is a modern abstract graphic design, wallpaper, optical texture, or 3D geometric background (no people, no natural hills/flowers/scenery):
-- In 'smartRefinement' (35–48 words): Capture ALL FIVE visual pillars with high precision — (1) exact geometry & layout, (2) exact multi-stop color palette & spatial placement, (3) optical/light behavior (refraction, chromatic rim glow, scanline motion blur, glossy floor reflection, directional gradients), (4) exact surface finish (fine tactile analog film grain noise vs ultra-clean smooth grainless vector), and (5) depth/focus (shallow depth-of-field softening receding 3D elements vs crisp edge-to-edge graphic flatness). NEVER invent humans, furniture, hills, or flowers!
+- ANTI-PARROTING RULE (CRITICAL): OBSERVE THIS SPECIFIC UPLOADED IMAGE DIRECTLY — NEVER copy example phrases or colors from below! Describe the EXACT colors, exact spatial color placement, exact geometry/curves/strips, symmetry vs asymmetry, and exact surface finish (fine analog film grain vs glossy optical glass vs smooth flat vector) actually visible in THIS image.
+- In 'smartRefinement' (35–48 words): Capture ALL FIVE visual pillars accurately — (1) exact flat vs 3D structure & layout, (2) exact observed color hues & where each color sits in the frame, (3) optical/light behavior (flat luminous gradient diffusion, glowing rim edges, straight-on reeded glass refraction, scanline motion blur, or 3D glass reflection), (4) exact surface texture (fine tactile analog film grain noise vs glossy smooth glass vs ultra-clean flat vector), and (5) depth/focus. NEVER invent humans, rooms, labs, furniture, hills, flowers, or physical pillars!
 - Match the exact sub-type accurately in 'settings' and 'activeFields':
-  * TYPE A — PLEATED / CURVED FLUTED RIBBED WAVES & CHROMATIC RIM GLOW (overlapping curved ribbed bands, sweeping fan arcs, glowing edge highlights, fine analog film grain):
-    - 'subject': "Abstract Shape / Graphic Element" (or "Background / Landscape only"), 'imageMedium': "3D & CGI", 'visualType': "Abstract Environmental 3D", 'materialStyle': "Matte / Soft" or "Glossy / Shiny", 'colorMood': "Vibrant & Bold", 'lighting': "Cinematic Lighting", 'environment': "Solid Color / Studio" or "Pitch Black / Void".
-    - Explicitly describe curved rib sweep/overlapping fan layers, exact color transitions, chromatic rim glow inside grooves, and fine tactile analog grain.
+  * TYPE A — FLAT 2D LUMINOUS CURVED GRADIENT BANDS / PLEATED LIGHT WAVES WITH ANALOG GRAIN (glowing curved color arcs or intersecting curved gradient fan layers filling a flat 2D canvas with luminous edge glow and fine analog film grain):
+    - 'subject': "Abstract Shape / Graphic Element", 'imageMedium': "Art & Illustration", 'visualType': "Flat Illustration", 'materialStyle': "Matte / Soft", 'colorMood': "Vibrant & Bold", 'environment': "Solid Color / Studio".
+    - Set photographic fields ('qualityCamera', 'framing', 'cameraAngle', 'lighting', 'shadowStyle', 'authenticity') strictly to FALSE in 'activeFields'.
+    - CRITICAL: Describe it explicitly as a "full-bleed 2D flat digital gradient wallpaper" with layered glowing curved light bands sweeping cleanly across the flat 2D plane, luminous edge highlights, exact observed colors/positions, and fine tactile analog film grain — NEVER describe it as a 3D render, coiled physical ribbons, or objects with cast shadows!
   * TYPE B — 2D SWISS / BAUHAUS GEOMETRIC GRADIENT GRIDS (flat hard-edged rectangular grid panels overlaid with clean semi-circles, quarter-circle arcs, and smooth directional gradients with zero 3D perspective):
     - 'subject': "Abstract Shape / Graphic Element", 'imageMedium': "Art & Illustration", 'visualType': "Minimalist Vector" (or "Flat Illustration"), 'materialStyle': "Matte / Soft", 'colorMood': "Monochromatic" or "Vibrant & Bold", 'environment': "Solid Color / Studio".
     - Set photographic fields ('qualityCamera', 'framing', 'cameraAngle', 'lighting', 'shadowStyle', 'authenticity') strictly to FALSE in 'activeFields'.
-    - Explicitly describe flat 2D Swiss geometric grid, sharp overlapping rectangles and quarter-circle/semi-circle arcs, smooth directional linear gradients, subtle translucent overlaps, and ultra-clean smooth vector finish.
-  * TYPE C — 3D TRANSLUCENT FROSTED GLASS CARDS / PANELS IN PERSPECTIVE SEQUENCE (angled diagonal row of upright rounded frosted glass cards receding into depth, elevated focal card with luminous rim, glossy floor reflection, shallow depth-of-field blur on far panels):
-    - 'subject': "Abstract Shape / Graphic Element", 'imageMedium': "3D & CGI", 'visualType': "Abstract Environmental 3D" (or "3D Render"), 'materialStyle': "Glossy / Shiny", 'colorMood': "Vibrant & Bold" or "Moody & Dark", 'lighting': "Cinematic Lighting", 'environment': "Solid Color / Studio" or "Pitch Black / Void".
-    - Explicitly describe the diagonal receding row of translucent frosted glass rounded-square panels, lifted focal hero card with glowing cyan/rim edge, glossy floor mirror reflection, and shallow depth-of-field blur softening the distant receding panels.
+    - Describe flat 2D Swiss geometric grid, crisp overlapping rectangles and circular arcs, exact observed directional gradients, subtle translucent overlaps, and smooth grainless vector finish.
+  * TYPE C — 3D TRANSLUCENT FROSTED GLASS CARDS / PANELS IN PERSPECTIVE SEQUENCE (angled diagonal row of upright rounded frosted glass cards receding into 3D depth, elevated focal card with glowing rim, glossy floor mirror reflection, shallow depth-of-field blur on far cards):
+    - 'subject': "Abstract Shape / Graphic Element", 'imageMedium': "3D & CGI", 'visualType': "Abstract Environmental 3D" (or "3D Render"), 'materialStyle': "Glossy / Shiny", 'colorMood': "Vibrant & Bold" or "Moody & Dark", 'lighting': "Cinematic Lighting", 'environment': "Pitch Black / Void" or "Solid Color / Studio".
+    - Describe the angled 3D perspective sequence of upright translucent frosted glass rounded-square cards, lifted focal hero card, glossy floor reflection, exact observed colors, and shallow depth-of-field softening far receding cards.
   * TYPE D — HORIZONTAL MOTION-BLUR / SCANLINE OPTICAL LIGHT STREAKS (dark field streaked horizontally with razor-thin scanline motion-blur rays and glowing luminous neon color blooms):
-    - 'subject': "Background / Landscape only" (or "Abstract Shape / Graphic Element"), 'imageMedium': "3D & CGI", 'visualType': "Abstract Environmental 3D", 'materialStyle': "Glossy / Shiny", 'colorMood': "Moody & Dark" or "Vibrant & Bold", 'lighting': "Cinematic Lighting", 'environment': "Pitch Black / Void".
-    - Explicitly describe full-bleed dark obsidian void streaked horizontally with ultra-fine scanline motion-blur light streaks and soft glowing luminous color blooms along edges.
-  * TYPE E — SYMMETRICAL FLUTED-GLASS / VERTICAL RIBBED SLATS & ACOUSTIC SINE-WAVE REFRACTION (vertical ribbed glass columns or louvers refracting a luminous horizontal wavy seam mirrored symmetrically, often with fine analog grain):
-    - 'subject': "Abstract Shape / Graphic Element" (or "Background / Landscape only"), 'imageMedium': "3D & CGI", 'visualType': "Abstract Environmental 3D", 'materialStyle': "Glossy / Shiny" or "Matte / Soft", 'colorMood': "Vibrant & Bold" or "Moody & Dark", 'lighting': "Cinematic Lighting", 'environment': "Pitch Black / Void" or "Solid Color / Studio".
-    - Explicitly describe vertical fluted-glass optical columns, symmetrical horizontal sine-wave refraction seam/glow, deep dark-to-luminous color tones, and fine analog grain if present.
-- In ALL 5 abstract types, set ALL human/demographic fields ('characterBackground', 'ageRange', 'interaction', 'authenticity') strictly to FALSE in 'activeFields'.
+    - 'subject': "Background / Landscape only", 'imageMedium': "Art & Illustration", 'visualType': "Flat Illustration", 'materialStyle': "Matte / Soft", 'colorMood': "Moody & Dark" or "Vibrant & Bold", 'environment': "Pitch Black / Void".
+    - Set photographic fields ('qualityCamera', 'framing', 'cameraAngle', 'lighting', 'shadowStyle', 'authenticity') strictly to FALSE in 'activeFields'.
+    - Describe full-bleed flat dark obsidian optical graphic streaked horizontally with ultra-fine scanline motion-blur light rays and exact observed glowing color blooms.
+  * TYPE E — FULL-BLEED STRAIGHT-ON VERTICAL REEDED / FLUTED GLASS SHEET REFRACTION (parallel vertical glass strips/flutes spanning edge-to-edge across the entire frame straight-on, refracting dreamy undulating liquid neon/gradient light waves behind the glass):
+    - 'subject': "Background / Landscape only", 'imageMedium': "3D & CGI", 'visualType': "Abstract Environmental 3D", 'materialStyle': "Glossy / Shiny", 'colorMood': "Vibrant & Bold" or "Moody & Dark", 'lighting': "Cinematic Lighting", 'environment': "Solid Color / Studio" or "Pitch Black / Void" (NEVER "Scientific Research Lab" or any real-world room!).
+    - Set 'framing', 'cameraAngle', 'shadowStyle', 'qualityCamera' strictly to FALSE in 'activeFields'.
+    - STRICTLY FORBIDDEN WORDS: NEVER write "columns", "pillars", "tubes", "beakers", or "lab" (those make AI generators draw physical glass cylinders in a room!). ALWAYS describe it as a "full-bleed straight-on macro view through a continuous flat sheet of parallel vertical reeded fluted glass strips spanning edge-to-edge, refracting [exact observed colors & exact flowing asymmetrical OR symmetrical wave shapes behind the glass]", noting glossy smooth glass OR fine analog grain accurately as observed!
+- In ALL 5 abstract types, set ALL human/demographic fields ('characterBackground', 'ageRange', 'interaction', 'authenticity') strictly to FALSE in 'activeFields', and NEVER set 'environment' to any real-world room (never "Scientific Research Lab", "Modern Office", "Home Interior", or "Nature / Outdoor").
 CAMERA DIRECTION RULE: ONLY if the subject's face/eyes are visible in the frame, describe where they are looking (e.g., "looking forward", "making eye contact", "looking down", "looking away"), but DO NOT use the word "camera". If their head/eyes are cropped out or not visible, completely omit gaze descriptions.
 UNIVERSAL BRAND-FREE & BLANK-SURFACE RULE (APPLIES TO ALL MODES):
 - Strip ALL brand names, trademarks, logos, printed text, graphic emblems, and stickers from every drink bottle, can, coffee cup, mug, cosmetic container, food package, bag, laptop, smartphone, book, sign, and garment visible in the image${isProdPreservation ? ' (EXCEPT the single hero referenced product itself)' : ''}.
@@ -424,7 +428,7 @@ Return ONLY this JSON structure, no markdown:
   IMPORTANT LOGIC: If there are people or characters in the scene, 'characterBackground', 'ageRange', and 'interaction' MUST be true (EXCEPT when Human Preservation is active: set 'characterBackground' to false). If there are NO people/characters, 'characterBackground', 'ageRange', and 'interaction' MUST be false, and 'subject' MUST be mapped to a non-human category (like "No person", "Isolated Object", "Background"). If the concept is a flat illustration or 2D vector art, you MUST set photographic fields (qualityCamera, framing, cameraAngle, lighting, shadowStyle, authenticity) to false, as they do not apply to flat graphics.
   SPECIAL RULE FOR PRODUCTS & ISOLATED OBJECTS: If describing a product in an environment, on a desk/table, or with background atmosphere, set 'subject' to "No person (product)". If the description explicitly specifies a cutout, PNG, transparent background, or isolated object on white/solid background with no environment or floor shadows, set 'subject' to "Isolated Object (PNG Ready)".
   SPECIAL RULE FOR HAND-ONLY CROPS & TABLETOP PROPS: If ONLY a hand or fingers interact with tabletop props/objects (faceless conceptual flat-lay or still life): set 'subject' to "Still life / Food & Drink" or "No person (product)", set 'characterBackground' and 'ageRange' to FALSE in 'activeFields' (and 'Default / Auto' in settings), set 'framing' to "Top View / Flat Lay" or "Close-up / Cropped Action (Faceless)", and set 'environment' to "Solid Color / Studio Background".
-  MODERN ABSTRACT, OPTICAL, GRAPHIC & 3D GLASS BACKGROUND RULE: If describing an abstract wallpaper, pleated/curved fluted waves with film grain, symmetrical fluted glass sine-wave refraction, horizontal scanline motion-blur light streaks, 3D frosted glass card sequences in perspective, or 2D Swiss/Bauhaus geometric gradient grids: set 'subject' to "Abstract Shape / Graphic Element" (or "Background / Landscape only"), set ALL human fields ('characterBackground', 'ageRange', 'interaction', 'authenticity') strictly to FALSE. For flat 2D Swiss/Bauhaus geometric gradient grids, map 'imageMedium' to "Art & Illustration", 'visualType' to "Minimalist Vector" or "Flat Illustration", and turn photographic fields (qualityCamera, framing, cameraAngle, lighting, shadowStyle) to FALSE. For 3D fluted glass, pleated waves, motion-blur light streaks, or frosted glass panel arrays, map 'imageMedium' to "3D & CGI", 'visualType' to "Abstract Environmental 3D" or "3D Render", 'lighting' to "Cinematic Lighting", and 'colorMood' to "Vibrant & Bold" or "Moody & Dark".
+  MODERN ABSTRACT, OPTICAL, GRAPHIC & 3D GLASS BACKGROUND RULE: If describing an abstract wallpaper, flat luminous curved gradient waves with analog grain, horizontal scanline motion-blur light streaks, 2D Swiss/Bauhaus geometric gradient grids, straight-on vertical reeded/fluted glass sheets refracting glowing liquid waves, or 3D frosted glass card sequences in perspective: set ALL human fields ('characterBackground', 'ageRange', 'interaction', 'authenticity') strictly to FALSE and NEVER set 'environment' to any physical room (never "Scientific Research Lab", "Modern Office", etc.). For flat 2D luminous curved gradients, 2D Swiss/Bauhaus grids, and horizontal scanline motion-blur streaks, map 'imageMedium' to "Art & Illustration", 'visualType' to "Flat Illustration" or "Minimalist Vector", and turn photographic fields (qualityCamera, framing, cameraAngle, lighting, shadowStyle) to FALSE. For straight-on vertical reeded/fluted glass sheets (NEVER call them "columns" or "pillars") or 3D frosted glass card perspective sequences, map 'imageMedium' to "3D & CGI", 'visualType' to "Abstract Environmental 3D" or "3D Render", 'environment' to "Solid Color / Studio" or "Pitch Black / Void", and turn 'framing', 'cameraAngle', 'shadowStyle' to FALSE.
   
   {
     "settings": {
@@ -833,8 +837,51 @@ export const generateStockPrompts = async (
       return text;
     };
 
-    // Emoji/Icon Mode Detection — NEVER hijack Photography or Art & Illustration mode!
-    const isEmojiMode = !isPhoto && !isArt && options.subject === 'No person (product)' && 
+    // --- 1.5 SUBJECT, PRESERVATION & ABSTRACT WALLPAPER DETECTION ---
+    const nonHumanSubjects = [
+      'Background',
+      'No person',
+      'Isolated Object',
+      'Still life',
+      'Abstract Shape',
+      'Icon / Logo',
+      'Domestic Pet',
+      'Wild Animal',
+      'Bird',
+      'Marine',
+      'Macro'
+    ];
+    const isBackgroundMode = options.subject === 'Background / Landscape only';
+    const isIsolatedPngMode = options.subject === 'Isolated Object (PNG Ready)';
+    const isEnvironmental3D = !isPhoto && !isArt && options.visualType === 'Abstract Environmental 3D';
+    const isFlatLineIcon = !isPhoto && !is3D && options.visualType === 'Flat Line Icon';
+    const isHumanSubject = !nonHumanSubjects.some(key => options.subject?.includes(key));
+    const isPreservationActive = !!options.productPreservation;
+    const preservationType = options.preservationType || 'product';
+    const isProductPreservation = isPreservationActive && preservationType === 'product';
+    const isHumanPreservation = isPreservationActive && preservationType === 'human';
+
+    const srRawLower = (options.smartRefinementText || '').toLowerCase();
+    const hasScenicLandscapeTerms = /\b(moss|hill|meadow|forest|mountain|beach|ocean|lake|flower|floral|botanical|tree|sky|cloud|field|grass|terrain|driftwood|landscape|scenic|nature|sunset|sunrise|stage|curtain|cityscape)\b/i.test(srRawLower);
+    const hasAbstractDesignTerms = /\b(abstract|gradient|fluted|reeded|ribbed|pleated|louver|bauhaus|swiss|geometric|grid|quarter-circle|semi-circle|glass\s*card|frosted\s*glass|glass\s*panel|glass\s*sheet|glass\s*strip|acrylic|refraction|scanline|motion[\s-]?blur|light\s*streak|sine[\s-]?wave|waveform|chromatic|film\s*grain|analog\s*grain|wallpaper|optical|holographic|iridescent|ribbon|slat|wave\s*pattern|minimalist\s*vector|light[\s-]?wave)\b/i.test(srRawLower);
+    const hasDepthOfFieldAbstractCue = /\b(shallow\s+depth|depth[\s-]?of[\s-]?field|receding|glass\s*card|frosted\s*glass\s*panel|perspectiv\w*\s+(row|sequence|array)|mirror\s+reflection|floor\s+reflection)\b/i.test(srRawLower);
+
+    const isAbstractGraphicBackground =
+      !isProductPreservation &&
+      !isHumanPreservation &&
+      !isIsolatedPngMode &&
+      !isFlatLineIcon &&
+      (
+        options.subject === 'Abstract Shape / Graphic Element' ||
+        isEnvironmental3D ||
+        (isBackgroundMode && (
+          hasAbstractDesignTerms ||
+          (!hasScenicLandscapeTerms && (is3D || isArt || options.environment === 'Solid Color / Studio' || options.environment === 'Pitch Black / Void'))
+        ))
+      );
+
+    // Emoji/Icon Mode Detection — NEVER hijack Photography, Art & Illustration, or Abstract Wallpaper mode!
+    const isEmojiMode = !isPhoto && !isArt && !isAbstractGraphicBackground && options.subject === 'No person (product)' && 
       ['Premium 3D Icon', 'Claymorphism', '3D Render'].some(t => options.visualType.includes(t));
 
     // --- 2. CONSTRUCT RENDERING LAYER (MEDIUM DEPENDENT) ---
@@ -873,7 +920,13 @@ export const generateStockPrompts = async (
       - STRICT BAN: NEVER write ANY 3D, CGI, render, clay, toy-like, plastic-figure, isometric, cartoon, stylized, vector, flat-design, or illustration words anywhere in the output! Every single prompt MUST read as a real camera photograph!
       `;
     } else if (is3D) {
-      renderingInstructions = `
+      renderingInstructions = isAbstractGraphicBackground && !hasDepthOfFieldAbstractCue
+        ? `
+      - MODE: FULL-BLEED OPTICAL / REEDED-GLASS & LUMINOUS ABSTRACT WALLPAPER (NO PHYSICAL OBJECTS OR ROOMS)
+      - RENDERING RULE (CRITICAL): Describe a seamless edge-to-edge straight-on macro abstract wallpaper filling 100% of the frame — such as looking directly through a continuous flat sheet of vertical reeded/fluted glass refracting glowing backlit liquid color waves.
+      - STRICT BANS: NEVER write "abstract graphic element", "columns", "pillars", "tubes", "scientific research lab", "studio floor", "physically accurate global illumination and realistic soft shadows", "top view", "flat lay", or "eye level"! Describe ONLY edge-to-edge luminous optical glass refraction, glowing backlit color waves, and surface finish (glossy glass or fine analog grain).
+      `
+        : `
       - MODE: 100% 3D RENDER / CGI (ABSOLUTE PRIORITY OVERRIDE)
       - MEDIUM TRANSLATION RULE: Reimagine the reference concept as a clean, polished 3D CGI render with sculpted geometry, tactile CGI materials, and global illumination.
       - VOCABULARY: Use render-based language (e.g., "3D render", "3D CGI", "global illumination", "subsurface scattering", "smooth sculpted geometry").
@@ -881,7 +934,13 @@ export const generateStockPrompts = async (
       - STRICT RULE: Never use real camera brands (Canon, Sony, etc.). DO NOT use photography terms like "DSLR", "ISO", "Shutter Speed", or "candid photograph".
       `;
     } else if (isArt) {
-      renderingInstructions = `
+      renderingInstructions = isAbstractGraphicBackground
+        ? `
+      - MODE: FULL-BLEED 2D DIGITAL GRADIENT / GRAPHIC DESIGN WALLPAPER (COMPLETELY FLAT 2D PLANE)
+      - RENDERING RULE (CRITICAL): Render as a completely flat, full-bleed 2D digital graphic design wallpaper spanning edge-to-edge across the entire canvas — e.g., flat layered luminous curved light-wave gradients with fine analog film grain, crisp flat 2D Swiss Bauhaus geometric gradient grids, or dark horizontal scanline motion-blur light streaks.
+      - STRICT BANS: NEVER write "3D render", "3D", "abstract graphic element", "sculpted", "coiled ribbons", "global illumination", "realistic soft shadows", "top view", "flat lay", "eye level", or any physical room/camera terms! Emphasize a completely flat 2D graphic plane, glowing seamless color transitions, and exact grain or smooth vector surface finish.
+      `
+        : `
       - MODE: 100% DIGITAL ART / ILLUSTRATION (ABSOLUTE PRIORITY OVERRIDE)
       - MEDIUM TRANSLATION RULE: Reimagine the reference concept cleanly as stylized 2D art or illustration matching the selected Visual Style.
       - VOCABULARY: Use stylized artistic language appropriate for the visual style.
@@ -928,14 +987,21 @@ export const generateStockPrompts = async (
        - If subject is 'Isolated Object (PNG Ready)' or shadowStyle is 'No Shadow / Flat', strictly enforce ZERO cast shadows on the pure white background.
 
     5. 3D & CGI LIGHTING RULE:
-       - IF Medium = "3D & CGI" → Use physically accurate lighting, global illumination, realistic soft shadows, natural color temp. Avoid extreme bloom/unrealistic beams.
+       - ${isAbstractGraphicBackground ? 'ABSTRACT WALLPAPER LIGHTING OVERRIDE: Use self-illuminated luminous color diffusion, backlit optical glass refraction, or glowing edge highlights — NEVER write "physically accurate global illumination and realistic soft shadows" or "crisp cool daylight tones" on luminous abstract wallpapers!' : 'IF Medium = "3D & CGI" → Use physically accurate lighting, global illumination, realistic soft shadows, natural color temp. Avoid extreme bloom/unrealistic beams.'}
 
     6. COMMERCIAL PRIORITY RULE:
        - IF Target Market = "Corporate" OR "Healthcare" OR "Education" → Reduce dramatic lighting. Prioritize clean, evenly lit visuals.
     `;
 
     // --- 4. DYNAMIC LENS & DEPTH ENGINE (v1.3) ---
-    const opticsEngine = `
+    const opticsEngine = isAbstractGraphicBackground
+      ? `
+    ABSTRACT WALLPAPER COMPOSITION & OPTICS DISCIPLINE:
+    1. EDGE-TO-EDGE FULL-BLEED FRAMING: Keep all graphic bands, grids, reeded glass flutes, or light streaks extending seamlessly off all four edges of the frame.
+    2. ZERO CAMERA / TABLETOP ANGLES: NEVER inject "top view", "flat lay", "eye level", "clean natural detail", "f/1.8", or camera-lens phrasing on flat 2D gradients, Swiss grids, or straight-on reeded glass sheets.
+    3. DEPTH RULE: Use subtle shallow depth-of-field ONLY when Smart Refinement explicitly describes a receding 3D perspective sequence of glass cards/panels; otherwise keep crisp, uniform edge-to-edge clarity.
+    `
+      : `
     DYNAMIC LENS & DEPTH ENGINE (GENERALIZED RULES):
     1. SPATIAL INTERPRETATION LOGIC:
        - IF Environment is tight/enclosed → Avoid ultra-wide distortion, use natural perspective.
@@ -968,49 +1034,6 @@ export const generateStockPrompts = async (
        - NEVER repeat the exact same boilerplate ending ("Razor-sharp focus, crisp details, ultra-high resolution.") on every prompt in a batch.
        - NEVER use words that imply blur on the main subject (avoid "soft focus", "dreamy blur").
     `;
-
-    // --- 5. COMMERCIAL SAFETY BLOCK ---
-    const nonHumanSubjects = [
-      'Background',
-      'No person',
-      'Isolated Object',
-      'Still life',
-      'Abstract Shape',
-      'Icon / Logo',
-      'Domestic Pet',
-      'Wild Animal',
-      'Bird',
-      'Marine',
-      'Macro'
-    ];
-    const isBackgroundMode = options.subject === 'Background / Landscape only';
-    const isIsolatedPngMode = options.subject === 'Isolated Object (PNG Ready)';
-    const isEnvironmental3D = !isPhoto && !isArt && options.visualType === 'Abstract Environmental 3D';
-    const isFlatLineIcon = !isPhoto && !is3D && options.visualType === 'Flat Line Icon';
-    const isHumanSubject = !nonHumanSubjects.some(key => options.subject?.includes(key));
-    const isPreservationActive = !!options.productPreservation;
-    const preservationType = options.preservationType || 'product';
-    const isProductPreservation = isPreservationActive && preservationType === 'product';
-    const isHumanPreservation = isPreservationActive && preservationType === 'human';
-
-    const srRawLower = (options.smartRefinementText || '').toLowerCase();
-    const hasScenicLandscapeTerms = /\b(moss|hill|meadow|forest|mountain|beach|ocean|lake|flower|floral|botanical|tree|sky|cloud|field|grass|terrain|driftwood|landscape|scenic|nature|sunset|sunrise|stage|curtain|cityscape)\b/i.test(srRawLower);
-    const hasAbstractDesignTerms = /\b(abstract|gradient|fluted|ribbed|pleated|louver|bauhaus|swiss|geometric|grid|quarter-circle|semi-circle|glass\s*card|frosted\s*glass|glass\s*panel|acrylic|refraction|scanline|motion[\s-]?blur|light\s*streak|sine[\s-]?wave|waveform|chromatic|film\s*grain|analog\s*grain|wallpaper|optical|holographic|iridescent|ribbon|slat|wave\s*pattern|minimalist\s*vector)\b/i.test(srRawLower);
-    const hasDepthOfFieldAbstractCue = /\b(shallow\s+depth|depth[\s-]?of[\s-]?field|receding|glass\s*card|glass\s*panel|perspectiv|bokeh|softly\s+blurred|mirror\s+reflection|floor\s+reflection)\b/i.test(srRawLower);
-
-    const isAbstractGraphicBackground =
-      !isProductPreservation &&
-      !isHumanPreservation &&
-      !isIsolatedPngMode &&
-      !isFlatLineIcon &&
-      (
-        options.subject === 'Abstract Shape / Graphic Element' ||
-        isEnvironmental3D ||
-        (isBackgroundMode && (
-          hasAbstractDesignTerms ||
-          (!hasScenicLandscapeTerms && (is3D || isArt || options.environment === 'Solid Color / Studio' || options.environment === 'Pitch Black / Void'))
-        ))
-      );
 
     // --- PRESERVATION ENGINE (PRODUCT & HUMAN IDENTITY) ---
     let productPreservationEngine = "";
@@ -1070,23 +1093,21 @@ export const generateStockPrompts = async (
     if (isAbstractGraphicBackground) {
       backgroundModeEngine = `
       MODERN ABSTRACT, OPTICAL, GRAPHIC & 3D GLASS BACKGROUND ENGINE (ACTIVE):
-      1. FULL-BLEED EDITORIAL WALLPAPER COMPOSITION:
-         - Compose as an intentional, designer-grade full-bleed abstract wallpaper, graphic design backdrop, or architectural optical composition where waves, curved pleated ribs, geometric grid cells, light streaks, or perspective glass panel arrays extend cleanly to and past the edges of the frame.
-         - NEVER turn this into a scenic landscape, sky horizon, mossy hill, botanical meadow, room interior, or floating product on a pedestal.
-         - NEVER force artificial 50%–65% empty sky margins unless the reference layout itself has dark/clean negative space.
+      1. FULL-BLEED EDITORIAL WALLPAPER COMPOSITION (ZERO PHYSICAL ROOMS OR OBJECTS):
+         - Compose as an intentional, designer-grade full-bleed abstract wallpaper or graphic backdrop where flat glowing gradient arcs, geometric grid cells, scanline light streaks, straight-on vertical reeded glass sheets, or perspective glass card arrays extend cleanly to and past all four edges of the frame.
+         - STRICTLY FORBIDDEN WORDS & ARTIFACTS: NEVER write "abstract graphic element", "columns", "pillars", "tubes", "scientific research lab", "room", "table", "top view", "flat lay", "eye level", "physically accurate global illumination and realistic soft shadows", or "crisp cool daylight tones"!
+         - NEVER turn flat luminous gradients into 3D coiled plastic/paper ribbons casting shadows, and NEVER turn a straight-on reeded glass sheet into standing glass pillars inside a laboratory or studio room!
 
       2. EXACT STRUCTURAL & SURFACE FIDELITY (LOCK THE REFERENCE DNA):
-         - Faithfully preserve the exact structural design family described in Smart Refinement:
-           * Curved/pleated ribbed waves with chromatic groove rim glow & fine tactile analog film grain.
-           * Pure flat 2D Swiss/Bauhaus geometric grids (hard-edged rectangles + semi-circles/quarter-circles + smooth directional gradients + ultra-clean smooth vector finish, ZERO 3D depth).
-           * Angled 3D perspective sequence of translucent frosted glass cards/panels (lifted focal card with illuminated rim, glossy mirror floor reflection, gentle shallow depth-of-field blur softening distant panels).
-           * Horizontal scanline optical motion-blur light streaks with glowing luminous color blooms on a deep dark field.
-           * Symmetrical vertical fluted-glass/ribbed columns refracting a luminous horizontal sine-wave seam with subtle analog grain.
-         - SURFACE TEXTURE ACCURACY: Explicitly include fine tactile analog film grain / subtle noise texture whenever the reference uses grain, and keep pure 2D Swiss vector grids ultra-smooth and crisp when grainless.
-         - COLOR PRECISION: Name exact rich designer color transitions (e.g., electric cobalt blue to luminous cyan with thin crimson-red rim glow; neon lime-yellow fading through emerald into deep cobalt; obsidian black with glowing chartreuse and emerald streaks).
+         - Faithfully match the exact structural design family described in Smart Refinement:
+           * Flat 2D luminous curved gradient waves: completely flat 2D graphic plane with sweeping translucent curved light bands, glowing rim edges, rich airbrushed color diffusion, and fine tactile analog film grain (ZERO 3D thickness or cast shadows).
+           * Flat 2D Swiss/Bauhaus geometric grids: hard-edged rectangular grid cells + clean semi-circles/quarter-circles + smooth directional gradients + ultra-clean smooth grainless vector finish (ZERO 3D depth).
+           * Full-bleed straight-on vertical reeded/fluted glass sheet: continuous flat sheet of parallel vertical glass strips filling 100% of the frame edge-to-edge, refracting glowing undulating liquid-neon color waves behind the glass (matching observed flowing or symmetrical wave shapes and glossy glass OR fine analog grain).
+           * Horizontal scanline motion-blur streaks: flat dark obsidian field streaked horizontally with razor-thin light rays and luminous neon blooms.
+           * 3D angled frosted glass cards (ONLY when Smart Refinement specifies a receding 3D perspective sequence of glass cards/panels): angled diagonal row of upright translucent frosted glass cards, elevated focal card, glossy floor mirror reflection, gentle shallow depth-of-field blur softening distant cards.
 
       3. DEPTH, OPTICS & MEDIUM ALIGNMENT:
-         - ${isArt ? 'Pure 2D graphic clarity: flat geometric precision, crisp edge-to-edge vector gradients, ZERO 3D perspective or camera lens physics.' : isPhoto ? 'Translate into genuine real-world optical macro photography (physical fluted/ribbed glass, real studio prism light refraction, or long-exposure light streaks captured on camera — ZERO 3D/CGI/render terminology).' : 'High-craft 3D/optical rendering: physically believable glass translucency, crisp luminous edge refraction, subtle specular reflections, and accurate depth of field (use gentle shallow depth-of-field blur ONLY when receding 3D perspective arrays like frosted glass cards call for it; keep flat ribbed/optical textures crisp edge-to-edge).'}
+         - ${isArt ? 'Pure 2D flat graphic plane: edge-to-edge luminous digital gradient or crisp vector precision, ZERO 3D objects, ZERO cast shadows, ZERO camera angles.' : isPhoto ? 'Genuine real-world optical macro photography looking straight through physical reeded/fluted glass or long-exposure light streaks captured on camera — ZERO 3D/CGI/render terminology.' : hasDepthOfFieldAbstractCue ? 'High-craft 3D translucent glass rendering: crisp focus on the hero lifted glass card, subtle glossy floor mirror reflection, and gentle shallow depth-of-field blur softening far receding panels.' : 'Seamless edge-to-edge straight-on optical glass-sheet refraction filling 100% of the frame with glowing backlit color waves, glossy optical refraction seams, ZERO physical columns/rooms/shadows.'}
       `;
     } else if (isBackgroundMode) {
       backgroundModeEngine = `
@@ -1157,15 +1178,40 @@ export const generateStockPrompts = async (
       : null;
     const effectiveSmartRefinement = baseSmartRefinement ? sanitizeSmartRefinementForMedium(baseSmartRefinement) : null;
 
+    const abstractAllowedEnvs = ['Pitch Black / Void', 'White Background'];
+    const daylightRoomLights = ['Natural Daylight', 'Warm Indoor Lighting', 'Window Light', 'Golden Hour', 'Soft Studio Lighting'];
+    const envPoolValues: string[] = ((options as any).lockedPools?.environment || []).filter((v: string) => v && v !== 'Default / Auto');
+    const isAbstractEnvSafe = envPoolValues.length > 0
+      ? envPoolValues.every(v => abstractAllowedEnvs.includes(v))
+      : abstractAllowedEnvs.includes(options.environment);
+    const lightPoolValues: string[] = ((options as any).lockedPools?.lighting || []).filter((v: string) => v && v !== 'Default / Auto');
+    const hasDaylightRoomLight = lightPoolValues.length > 0
+      ? lightPoolValues.some(v => daylightRoomLights.includes(v))
+      : daylightRoomLights.includes(options.lighting);
+
+    const effectiveAbstractEnv = isAbstractGraphicBackground
+      ? (isAbstractEnvSafe ? getFieldVal('environment', options.environment) : null)
+      : (isIsolatedPngMode ? 'Pure flat solid color (White or contrasting, NO environment details)' : getFieldVal('environment', options.environment));
+    const effectiveAbstractLighting = isAbstractGraphicBackground
+      ? ((isArt || hasDaylightRoomLight) ? null : getFieldVal('lighting', options.lighting))
+      : getFieldVal('lighting', options.lighting);
+    const effectiveAbstractColorMood = isProductPreservation
+      ? null
+      : (isAbstractGraphicBackground && options.colorMood === 'Cool & Clinical' && !options.lockedFields?.colorMood)
+        ? null
+        : getFieldVal('colorMood', options.colorMood || 'Default / Auto');
+
     const inputs = {
       imageMedium: isImageMediumActive && medium !== 'Default / Auto' ? medium : null,
-      subject: getFieldVal('subject', options.subject),
+      subject: isAbstractGraphicBackground
+        ? 'Full-bleed abstract wallpaper background (NOT a standalone sculptural object or element)'
+        : getFieldVal('subject', options.subject),
       culturalContext: !isHumanSubject || isHumanPreservation ? null : getFieldVal('characterBackground', options.characterBackground),
-      environment: isIsolatedPngMode ? 'Pure flat solid color (White or contrasting, NO environment details)' : getFieldVal('environment', options.environment),
-      lighting: (isAbstractGraphicBackground && isArt) ? null : getFieldVal('lighting', options.lighting),
-      // Ignore subject-specific framing/position/shadows if Background or Abstract Graphic Background Mode is active
+      environment: effectiveAbstractEnv,
+      lighting: effectiveAbstractLighting,
+      // Ignore subject-specific framing/position/shadows/camera-angles if Background or Abstract Graphic Background Mode is active
       framing: (isBackgroundMode || isAbstractGraphicBackground) ? null : (isIsolatedPngMode ? 'Full Object in Frame (Centered, Uncropped)' : getFieldVal('framing', options.framing)),
-      angle: (isAbstractGraphicBackground && isArt) ? null : getFieldVal('cameraAngle', options.cameraAngle),
+      angle: isAbstractGraphicBackground ? null : getFieldVal('cameraAngle', options.cameraAngle),
       position: (isBackgroundMode || isAbstractGraphicBackground) ? null : (isIsolatedPngMode ? 'Perfectly Centered' : getFieldVal('subjectPosition', options.subjectPosition)),
       shadows: (isBackgroundMode || isAbstractGraphicBackground) ? null : (isIsolatedPngMode ? 'No Shadow / Flat (No cast shadows on ground)' : getFieldVal('shadowStyle', options.shadowStyle)),
       style: effectiveStyleVal,
@@ -1178,7 +1224,7 @@ export const generateStockPrompts = async (
       season: options.useCalendar ? `${options.calendarMonth} (${options.calendarEvent})` : null,
       smartRefinement: effectiveSmartRefinement,
       ageRange: (!isHumanSubject || isHumanPreservation) ? null : getFieldVal('ageRange', options.ageRange || 'Default / Auto'),
-      colorMood: isProductPreservation ? null : getFieldVal('colorMood', options.colorMood || 'Default / Auto'),
+      colorMood: effectiveAbstractColorMood,
       preservationMode: isProductPreservation 
         ? 'PRODUCT PRESERVATION ENABLED (Prompt #1 = 100% Exact Reference Clone; Prompts #2+ = 100% Locked Reference Product Packaging & Label + Commercial Shoot Variations)' 
         : isHumanPreservation 
@@ -1218,7 +1264,9 @@ export const generateStockPrompts = async (
         // Also skip human-only locks if the current subject is non-human
         if (!isHumanSubject && ['characterBackground', 'ageRange', 'interaction', 'authenticity'].includes(key)) continue;
         if ((isBackgroundMode || isAbstractGraphicBackground) && ['framing', 'subjectPosition', 'shadowStyle', 'interaction'].includes(key)) continue;
-        if (isAbstractGraphicBackground && isArt && ['cameraAngle', 'lighting'].includes(key)) continue;
+        if (isAbstractGraphicBackground && key === 'cameraAngle') continue;
+        if (isAbstractGraphicBackground && key === 'environment' && !isAbstractEnvSafe) continue;
+        if (isAbstractGraphicBackground && (isArt || hasDaylightRoomLight) && key === 'lighting') continue;
         if (isIsolatedPngMode && ['environment', 'shadowStyle', 'interaction'].includes(key)) continue;
         if ((is3D || isArt) && key === 'qualityCamera') continue;
         if (isProductPreservation && key === 'colorMood') continue;
@@ -1294,11 +1342,11 @@ export const generateStockPrompts = async (
       : isAbstractGraphicBackground
       ? `* CATEGORY B1 — MODERN ABSTRACT, OPTICAL, GRAPHIC & 3D GLASS BACKGROUNDS (ACTIVE FOR ALL PROMPTS):
         - STRICTLY LOCKED ACROSS THE BATCH:
-          1. Keep the EXACT signature visual technique, geometry family, and surface finish of the reference (e.g., pleated ribbed waves with fine analog grain, 2D Swiss Bauhaus geometric gradient grid, 3D frosted glass card perspective sequence with glossy floor reflection, horizontal scanline motion-blur light streaks, or symmetrical vertical fluted-glass sine-wave refraction).
-          2. Full-bleed edge-to-edge modern wallpaper composition — NEVER inject scenic hills, flowers, horizons, clouds, room furniture, or floating pedestal products.
-          3. Honor depth-of-field accurately: keep gentle shallow depth-of-field blur on distant elements ONLY when receding 3D arrays (like glass card rows) call for it; keep 2D grids and flat optical/ribbed textures crisp edge-to-edge.
-        - SAFE DESIGNER VARIATIONS FOR PROMPTS #2 TO #${options.quantity} (75% SAME SIGNATURE TECHNIQUE / 25% FRESH ART DIRECTION):
-          * Keep the exact same visual technique and surface finish as Prompt #1 while thoughtfully varying curated designer color palettes (e.g., electric cobalt/cyan/crimson, neon lime/emerald/indigo, ultraviolet/magenta/warm amber, deep teal/aqua/coral, obsidian/acid-lime), wave sweep angle or grid cell arrangement, focal glass card elevation, or optical light bloom positioning.`
+          1. PROMPT #1 (EXACT MASTER CLONE): MUST preserve 100% of the EXACT observed colors, spatial color placement, structural technique, and surface finish from Smart Refinement — NEVER swap Prompt #1's colors to another palette!
+          2. Keep the EXACT signature visual technique across the entire batch (e.g., completely flat 2D luminous curved gradient waves with fine analog grain; flat 2D Swiss Bauhaus geometric gradient grid; straight-on macro full-bleed sheet of parallel vertical reeded glass refracting liquid color waves; horizontal scanline motion-blur streaks; or angled 3D frosted glass card sequence with floor reflection).
+          3. Full-bleed edge-to-edge wallpaper framing — NEVER write "abstract graphic element", "columns", "pillars", "scientific research lab", "top view", "flat lay", "eye level", "global illumination and realistic soft shadows", or "crisp cool daylight tones", and NEVER turn flat gradients into 3D coiled plastic/paper ribbons or rooms!
+        - SAFE DESIGNER VARIATIONS FOR PROMPTS #2 TO #${options.quantity} ONLY (75% SAME SIGNATURE TECHNIQUE / 25% FRESH ART DIRECTION):
+          * Keep the EXACT same flat/reeded/perspective visual technique and surface finish as Prompt #1 while thoughtfully shifting ONLY the curated designer color palette and wave/arc sweep direction (or focal card elevation for 3D glass card rows).`
       : isBackgroundMode
       ? `* CATEGORY B2 — SCENIC COPY-SPACE BACKDROPS & FOREGROUNDS (ACTIVE FOR ALL PROMPTS):
         - STRICTLY LOCKED: Continuous edge-to-edge foreground (never a small isolated mound), 50%–65% clean open copy space, zero "studio backdrop/paper roll/metal stand" terms, keep front horizon perspective.
@@ -1317,7 +1365,7 @@ export const generateStockPrompts = async (
 
     const environmental3DRuleBlock = isEnvironmental3D ? `
     [ENVIRONMENTAL 3D RULE]:
-    When visualType = 'Abstract Environmental 3D': Full-bleed edge-to-edge architectural, ribbed, pleated, fluted-glass, optical motion-streak, or translucent glass-panel composition with luminous color gradients, precise optical refraction/rim lighting, and faithful surface texture (fine analog grain or glossy glass clarity). ${hasDepthOfFieldAbstractCue ? 'Keep tack-sharp focus on the hero lifted glass panel/foreground element with natural shallow depth-of-field softening distant receding panels and glossy floor reflections.' : 'Maintain crisp edge-to-edge optical clarity across the frame.'} 50–75 words.` : '';
+    When visualType = 'Abstract Environmental 3D': ${hasDepthOfFieldAbstractCue ? 'Angled 3D perspective sequence of translucent frosted glass cards/panels with crisp focus on the hero lifted panel, glossy floor mirror reflection, and natural shallow depth-of-field softening far receding panels.' : 'Full-bleed straight-on edge-to-edge macro view looking directly through a continuous flat sheet of vertical reeded/fluted glass panels refracting glowing backlit liquid color waves across 100% of the frame — ZERO standalone pillars/columns, ZERO rooms/labs, ZERO cast shadows, ZERO tabletop/flat-lay angles.'} 50–75 words.` : '';
 
     const flatLineIconRuleBlock = isFlatLineIcon ? `
     [FLAT LINE ICON RULE]:
@@ -1337,7 +1385,7 @@ export const generateStockPrompts = async (
     ${lockedFieldsRule}
     ${isMasterAnchorMode ? `
     [RULE 1 — PROMPT #1 MUST BE A 100% EXACT SAME-TO-SAME MASTER CLONE OF REFERENCE${medium !== 'Default / Auto' ? ` (STRICTLY IN ${medium.toUpperCase()} MEDIUM)` : ''}]:
-    - Option 1 MUST faithfully clone the exact subject, pose/arrangement, composition, colors, and scene from Smart Refinement and Input Configuration${isPhoto ? ' — translated 100% into a genuine real-world camera photograph (NEVER 3D render, CGI, clay, cartoon, or illustration!)' : is3D ? ' — rendered strictly as a clean 3D CGI render' : isArt ? ' — rendered strictly as 2D art/illustration' : ''} (${isProductPreservation ? '100% locked product packaging, typography & original colors — refer to "the referenced hero product" without guessing pump/dropper mechanics' : isHumanPreservation ? '100% locked facial identity, bone structure, skin tone & hair — avoid biometric text overrides' : 'plain unbranded blank surfaces on all props/bottles/clothing, zero studio hardware'}).` : ''}
+    - Option 1 MUST faithfully clone the exact subject, pose/arrangement, composition, colors, and scene from Smart Refinement and Input Configuration${isPhoto ? ' — translated 100% into a genuine real-world camera photograph (NEVER 3D render, CGI, clay, cartoon, or illustration!)' : is3D ? (isAbstractGraphicBackground && !hasDepthOfFieldAbstractCue ? ' — rendered as a full-bleed straight-on optical/reeded-glass abstract wallpaper filling 100% of the frame with exact reference colors (NEVER a standalone 3D sculpture, glass columns, or room)' : ' — rendered strictly as a clean 3D CGI render') : isArt ? (isAbstractGraphicBackground ? ' — rendered strictly as a completely flat full-bleed 2D digital gradient/graphic wallpaper with exact reference colors (ZERO 3D depth, objects, or shadows)' : ' — rendered strictly as 2D art/illustration') : ''} (${isProductPreservation ? '100% locked product packaging, typography & original colors — refer to "the referenced hero product" without guessing pump/dropper mechanics' : isHumanPreservation ? '100% locked facial identity, bone structure, skin tone & hair — avoid biometric text overrides' : 'plain unbranded blank surfaces on all props/bottles/clothing, zero studio hardware'}).` : ''}
     [RULE 2 — PROMPTS #${isMasterAnchorMode ? '2' : '1'} TO #${options.quantity}: COMMERCIAL STOCK VARIATIONS]:
     - Keep every prompt 100% commercially usable and visually distinct from others in the batch:
     ${activeCategoryBlock}
@@ -1360,7 +1408,8 @@ export const generateStockPrompts = async (
        - Rule: Replace vague wording with specific, clean spatial descriptions.
     3.5 [COLOR LAYER]:
        ${isProductPreservation ? `
-       - [BRAND COLOR PALETTE HARMONIZATION DIRECTIVE]: Since Product Preservation Mode is ACTIVE, prompt MUST explicitly instruct the generator to sample and extract the brand color palette directly from the attached reference images (product packaging, logo, and brand color palette/swatches). The prompt must strategically distribute and harmonize these brand colors across the scene backdrop, stage props, model wardrobe/styling, and ambient lighting accents. The hero product's original physical colors, packaging materials, and labels must remain authentic and untouched, receiving only realistic environmental lighting adjustment to blend seamlessly into the scene without color clashing or muddiness.` : `If colorMood is active, weave the color tone naturally into the lighting or scene description without overriding the natural colors of the subject or tinting a pure white background:
+       - [BRAND COLOR PALETTE HARMONIZATION DIRECTIVE]: Since Product Preservation Mode is ACTIVE, prompt MUST explicitly instruct the generator to sample and extract the brand color palette directly from the attached reference images (product packaging, logo, and brand color palette/swatches). The prompt must strategically distribute and harmonize these brand colors across the scene backdrop, stage props, model wardrobe/styling, and ambient lighting accents. The hero product's original physical colors, packaging materials, and labels must remain authentic and untouched, receiving only realistic environmental lighting adjustment to blend seamlessly into the scene without color clashing or muddiness.` : isAbstractGraphicBackground ? `
+       - [ABSTRACT WALLPAPER COLOR FIDELITY DIRECTIVE]: Prompt #1 MUST preserve 100% of the exact vibrant colors and spatial color transitions described in Smart Refinement — NEVER wash them out with "crisp cool daylight tones" or substitute unrelated colors! Only in Prompts #2+ may you shift to fresh, equally rich designer color palettes while keeping the exact same visual technique.` : `If colorMood is active, weave the color tone naturally into the lighting or scene description without overriding the natural colors of the subject or tinting a pure white background:
        - 'Warm & Golden' → warm golden tones
        - 'Cool & Clinical' → crisp cool daylight tones
        - 'Soft Pastel' → soft muted pastel tones
@@ -1398,7 +1447,7 @@ export const generateStockPrompts = async (
          * For Isolated Objects (PNG Ready), Flat-Lays, Stages, Cutouts, and Flat 2D Graphic Grids: Enforce edge-to-edge tack-sharp focus across the entire frame with clean, even illumination and ZERO bokeh or lens blur. Do NOT inject "85mm-100mm macro prime lens" or "creamy depth-of-field bokeh" on isolated objects, flat 2D graphics, or full-frame flat textures!
          * For 3D Receding Perspective Glass/Panel Arrays: Keep crisp focus on the foreground/hero lifted glass panel while allowing gentle, natural shallow depth-of-field blur to soften far receding panels and glossy floor reflections.
          * For Photography Portraits or Close-up Still Life: Use natural lens perspective with tack-sharp focus on the main subject and gentle, natural background separation.`}
-    6. [COMMERCIAL INTENT]: End naturally with a clean, varied quality phrase suited to the medium and scene (for preservation modes: "${isHumanPreservation ? 'Preserve exact reference human facial identity, facial structure, natural skin tone, and hairstyle identically.' : isProductPreservation ? 'Preserve exact reference product packaging, label typography, and authentic product colors identically.' : isAbstractGraphicBackground ? 'e.g., modern editorial graphic wallpaper with refined color balance and tactile surface depth (use zero camera/photography words if Art/3D medium).' : 'e.g., authentic commercial lifestyle photography with natural textures and soft depth of field.'}"). Do NOT stamp the exact same closing sentence onto every prompt.
+    6. [COMMERCIAL INTENT]: End naturally with a fresh, concise visual finish suited to the medium and scene (for preservation modes: "${isHumanPreservation ? 'Preserve exact reference human facial identity, facial structure, natural skin tone, and hairstyle identically.' : isProductPreservation ? 'Preserve exact reference product packaging, label typography, and authentic product colors identically.' : isAbstractGraphicBackground ? 'close naturally on the actual surface texture, luminous color harmony, and seamless full-bleed wallpaper feel without repeating stock boilerplate or camera terms.' : 'e.g., authentic commercial lifestyle photography with natural textures and soft depth of field.'}"). Do NOT stamp the exact same closing sentence onto every prompt.
 
     NATURAL LANGUAGE & ZERO-CONTRADICTION RULES (CRITICAL — READ CAREFULLY):
     - ZERO RAW UI LABELS, SLASHES, OR BRACKETS: NEVER copy dropdown strings verbatim into the final prompt! Strictly FORBIDDEN tokens in output text: slashes "/" (like "close-up / cropped", "North American / Diverse", "Hispanic / Latin American", "Documentary / Editorial", "Top view / flat lay"), UI parentheticals ("(waist-up)", "(20s-30s)", "(40s-50s)", "(faceless)"), robotic labels ("Standard photo", "independent and reflective interaction", "natural shadow", generic "in a home interior"), and clinical AI jargon ("authentic epidermal skin micro-texture", "natural 5-finger anatomy").
