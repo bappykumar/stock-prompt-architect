@@ -63,7 +63,7 @@ export const testApiKey = async (apiKey: string, provider: 'gemini' | 'groq' | '
   try {
     const cleanKey = apiKey.trim();
     if (provider === 'gemini') {
-      let serverOk = false;
+      let routeUnavailable = false;
       let serverErrMsg = '';
       try {
         const response = await fetch('/api/gemini/test-key', {
@@ -74,19 +74,25 @@ export const testApiKey = async (apiKey: string, provider: 'gemini' | 'groq' | '
         if (response.ok) {
           return true;
         }
-        const errData = await response.json().catch(() => ({}));
-        serverErrMsg = errData.error || `Gemini API test failed (${response.status})`;
+        if (response.status === 404 || response.status === 405) {
+          routeUnavailable = true;
+        } else {
+          const errData = await response.json().catch(() => ({}));
+          serverErrMsg = errData.error || `Gemini API test failed (${response.status})`;
+        }
       } catch (e: any) {
+        routeUnavailable = true;
         serverErrMsg = e?.message || 'Server test route unreachable';
       }
 
-      if (!cleanKey) {
+      if (!routeUnavailable || !cleanKey) {
         throw new Error(serverErrMsg || 'No Gemini API key provided.');
       }
 
+      // Direct fallback ONLY when server proxy route is unavailable (e.g., static hosting)
       const isVertexKey = cleanKey.startsWith('AQ.');
-      if (isVertexKey) {
-        const vertexModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+      const tryVertex = async () => {
+        const vertexModels = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
         for (const vm of vertexModels) {
           const vertexRes = await fetch(
             `https://aiplatform.googleapis.com/v1beta1/publishers/google/models/${vm}:countTokens?key=${encodeURIComponent(cleanKey)}`,
@@ -96,34 +102,31 @@ export const testApiKey = async (apiKey: string, provider: 'gemini' | 'groq' | '
               body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'ping' }] }] })
             }
           );
-          if (vertexRes.ok) return true;
+          if (vertexRes.ok) return { ok: true as const, status: 200, err: '' };
+          if (vertexRes.status === 401 || vertexRes.status === 403) {
+            return { ok: false as const, status: vertexRes.status, err: await vertexRes.text() };
+          }
         }
-      }
+        return { ok: false as const, status: 400, err: 'Vertex Express verification failed' };
+      };
+      const tryStandard = async () => {
+        const directRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(cleanKey)}`
+        );
+        if (directRes.ok) return { ok: true as const, status: 200, err: '' };
+        return { ok: false as const, status: directRes.status, err: await directRes.text() };
+      };
 
-      const directRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(cleanKey)}`
-      );
-      if (directRes.ok) {
-        return true;
+      const checks = isVertexKey ? [tryVertex, tryStandard] : [tryStandard, tryVertex];
+      let firstFail: { status: number; err: string } | null = null;
+      for (const check of checks) {
+        const res = await check();
+        if (res.ok) return true;
+        if (!firstFail) firstFail = { status: res.status, err: res.err };
       }
-      const errText = await directRes.text();
-      if (!isVertexKey) {
-        const vertexModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
-        for (const vm of vertexModels) {
-          const vertexRes = await fetch(
-            `https://aiplatform.googleapis.com/v1beta1/publishers/google/models/${vm}:countTokens?key=${encodeURIComponent(cleanKey)}`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'ping' }] }] })
-            }
-          );
-          if (vertexRes.ok) return true;
-        }
-      }
-      let parsedMsg = errText;
-      try { parsedMsg = JSON.parse(errText).error?.message || errText; } catch (e) {}
-      throw new Error(`Gemini API test failed: ${directRes.status} - ${parsedMsg}`);
+      let parsedMsg = firstFail?.err || serverErrMsg;
+      try { parsedMsg = JSON.parse(parsedMsg).error?.message || parsedMsg; } catch (e) {}
+      throw new Error(`Gemini API test failed: ${firstFail?.status || 400} - ${parsedMsg}`);
     } else if (provider === 'groq') {
       const response = await fetch('https://api.groq.com/openai/v1/models', {
         headers: {
@@ -151,7 +154,7 @@ export const testApiKey = async (apiKey: string, provider: 'gemini' | 'groq' | '
       }
       return true;
     } else if (provider === 'openrouter') {
-      const response = await fetch('https://openrouter.ai/api/v1/models', {
+      const response = await fetch('https://openrouter.ai/api/v1/auth/key', {
         headers: {
           'Authorization': `Bearer ${cleanKey}`
         }
@@ -319,7 +322,8 @@ export async function analyzeReferenceAndSuggestSettings(
   apiKey: string,
   provider: 'gemini' | 'groq' | 'mistral' | 'openrouter' = 'gemini',
   isProductPreservation: boolean = false,
-  preservationType: 'product' | 'human' = 'product'
+  preservationType: 'product' | 'human' = 'product',
+  onAttempt?: (info: { provider: 'gemini' | 'groq' | 'mistral' | 'openrouter'; model: string; statusMessage?: string }) => void
 ): Promise<any> {
   const isPreservationActive = !!isProductPreservation;
   const isProdPreservation = isPreservationActive && preservationType === 'product';
@@ -538,11 +542,44 @@ Return ONLY this JSON structure, no markdown:
     let rawText = "";
     
     if (provider === 'gemini') {
-      let directSuccess = false;
-      let lastDirectErr: any = null;
+      const expectedModel = finalKey ? 'gemini-2.5-flash' : 'gemini-4-hydrogen';
+      onAttempt?.({
+        provider: 'gemini',
+        model: expectedModel,
+        statusMessage: input.type === 'image' ? 'ANALYZING IMAGE VIA GEMINI...' : 'ANALYZING PROMPT VIA GEMINI...'
+      });
 
-      // Fast-path: When user has their own API key, call Google directly first to skip serverless cold-start double-hop
-      if (finalKey) {
+      let serverSucceeded = false;
+      let routeUnavailable = false;
+      let serverErrMsg = '';
+      try {
+        const response = await fetch('/api/gemini/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents, apiKey: finalKey })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          rawText = data.text || "";
+          if (data.model) {
+            onAttempt?.({ provider: 'gemini', model: data.model });
+          }
+          if (rawText) serverSucceeded = true;
+        } else if (response.status === 404 || response.status === 405) {
+          routeUnavailable = true;
+        } else {
+          const errData = await response.json().catch(() => ({}));
+          serverErrMsg = errData.error || `Gemini analysis failed (${response.status})`;
+        }
+      } catch (e: any) {
+        routeUnavailable = true;
+        serverErrMsg = e?.message || 'Gemini analysis route unreachable';
+      }
+
+      // Direct fallback ONLY if server route is unavailable (e.g. static hosting) and user has a custom key
+      if (!serverSucceeded && routeUnavailable && finalKey) {
+        let directSuccess = false;
+        let lastDirectErr: any = null;
         const isVertexKey = finalKey.startsWith('AQ.');
         const restParts = contents.map((item: any) => {
           if (item.inlineData) {
@@ -550,29 +587,28 @@ Return ONLY this JSON structure, no markdown:
           }
           return { text: item.text };
         });
-        const candidateModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest', 'gemini-1.5-flash'];
+        const candidateModels = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
         const standardEndpoint = (m: string) => `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(finalKey)}`;
         const vertexEndpoint = (m: string) => `https://aiplatform.googleapis.com/v1beta1/publishers/google/models/${m}:generateContent?key=${encodeURIComponent(finalKey)}`;
         const endpoints = isVertexKey ? [vertexEndpoint, standardEndpoint] : [standardEndpoint, vertexEndpoint];
 
         for (const buildUrl of endpoints) {
+          let rateLimited = false;
           for (const m of candidateModels) {
+            onAttempt?.({ provider: 'gemini', model: m, statusMessage: `ANALYZING WITH ${m.toUpperCase()}...` });
             try {
               const generationConfig: Record<string, any> = { responseMimeType: 'application/json' };
               if (m.includes('2.5-flash') || m === 'gemini-flash-latest') {
                 generationConfig.thinkingConfig = { thinkingBudget: 0 };
               }
-              const directRes = await fetch(
-                buildUrl(m),
-                {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    contents: [{ role: 'user', parts: restParts }],
-                    generationConfig
-                  })
-                }
-              );
+              const directRes = await fetch(buildUrl(m), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{ role: 'user', parts: restParts }],
+                  generationConfig
+                })
+              });
               if (directRes.ok) {
                 const directData = await directRes.json();
                 rawText = directData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
@@ -586,8 +622,14 @@ Return ONLY this JSON structure, no markdown:
                 try { parsedMsg = JSON.parse(errText).error?.message || errText; } catch (e) {}
                 lastDirectErr = new Error(parsedMsg || `Gemini analysis failed (${directRes.status})`);
                 const errLower = parsedMsg.toLowerCase();
-                if (errLower.includes('api key not valid') || errLower.includes('api_key_invalid')) break;
-                if (directRes.status === 404 || directRes.status === 400 || directRes.status === 401 || directRes.status === 403 || directRes.status === 503) continue;
+                if (directRes.status === 429 || errLower.includes('quota') || errLower.includes('resource_exhausted')) {
+                  rateLimited = true;
+                  break;
+                }
+                if (directRes.status === 401 || directRes.status === 403 || errLower.includes('api key not valid') || errLower.includes('api_key_invalid')) {
+                  break;
+                }
+                if (directRes.status === 404 || directRes.status === 400 || directRes.status === 503) continue;
                 break;
               }
             } catch (networkErr: any) {
@@ -595,34 +637,17 @@ Return ONLY this JSON structure, no markdown:
               break;
             }
           }
-          if (directSuccess) break;
+          if (directSuccess || rateLimited) break;
+        }
+        if (directSuccess) {
+          serverSucceeded = true;
+        } else if (lastDirectErr) {
+          throw lastDirectErr;
         }
       }
 
-      if (!directSuccess) {
-        let serverSucceeded = false;
-        let serverErrMsg = '';
-        try {
-          const response = await fetch('/api/gemini/analyze', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents, apiKey: finalKey })
-          });
-          if (response.ok) {
-            const data = await response.json();
-            rawText = data.text || "";
-            if (rawText) serverSucceeded = true;
-          } else {
-            const errData = await response.json().catch(() => ({}));
-            serverErrMsg = errData.error || `Gemini analysis failed (${response.status})`;
-          }
-        } catch (e: any) {
-          serverErrMsg = e?.message || 'Gemini analysis route unreachable';
-        }
-
-        if (!serverSucceeded) {
-          throw lastDirectErr || new Error(serverErrMsg || 'No Gemini API key found. Please add your Gemini API key in Config.');
-        }
+      if (!serverSucceeded) {
+        throw new Error(serverErrMsg || 'No Gemini API key found. Please add your Gemini API key in Config.');
       }
     } else if (provider === 'groq') {
       const isImageInput = input.type === 'image';
@@ -642,6 +667,7 @@ Return ONLY this JSON structure, no markdown:
       let groqSuccess = false;
       let lastGroqErr: any = null;
       for (const m of groqModels) {
+        onAttempt?.({ provider: 'groq', model: m, statusMessage: `ANALYZING VIA GROQ (${m})...` });
         const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -664,7 +690,7 @@ Return ONLY this JSON structure, no markdown:
           let errText = await response.text();
           try { const parsed = JSON.parse(errText); errText = parsed.error?.message || errText; } catch(e) {}
           lastGroqErr = new Error(`Groq API Error: ${response.status} - ${errText}`);
-          if (response.status === 404 || response.status === 400 || response.status === 429 || response.status === 503) continue;
+          if (response.status === 404 || response.status === 400 || response.status === 503) continue;
           throw lastGroqErr;
         }
       }
@@ -687,6 +713,7 @@ Return ONLY this JSON structure, no markdown:
       let mistralSuccess = false;
       let lastMistralErr: any = null;
       for (const m of mistralModels) {
+        onAttempt?.({ provider: 'mistral', model: m, statusMessage: `ANALYZING VIA MISTRAL (${m})...` });
         const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -709,7 +736,7 @@ Return ONLY this JSON structure, no markdown:
           let errText = await response.text();
           try { const parsed = JSON.parse(errText); errText = parsed.error?.message || parsed.message || errText; } catch(e) {}
           lastMistralErr = new Error(`Mistral API Error: ${response.status} - ${errText}`);
-          if (response.status === 404 || response.status === 400 || response.status === 429 || response.status === 503) continue;
+          if (response.status === 404 || response.status === 400 || response.status === 503) continue;
           throw lastMistralErr;
         }
       }
@@ -732,6 +759,7 @@ Return ONLY this JSON structure, no markdown:
       let orSuccess = false;
       let lastOrErr: any = null;
       for (const m of orModels) {
+        onAttempt?.({ provider: 'openrouter', model: m, statusMessage: `ANALYZING VIA OPENROUTER (${m})...` });
         const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -794,7 +822,8 @@ export const generateStockPrompts = async (
   sessionHistory: HistoricalPrompt[] = [],
   provider: 'gemini' | 'groq' | 'mistral' | 'openrouter' = 'gemini',
   isSubBatchContinuation: boolean = false,
-  subBatchIndex: number = 0
+  subBatchIndex: number = 0,
+  onAttempt?: (info: { provider: 'gemini' | 'groq' | 'mistral' | 'openrouter'; model: string; statusMessage?: string }) => void
 ): Promise<{text: string}[]> => {
   
   const finalKey = apiKey ? apiKey.trim() : '';
@@ -829,7 +858,8 @@ export const generateStockPrompts = async (
         sessionHistory,
         provider,
         !isFirstChunk,
-        idx
+        idx,
+        isFirstChunk ? onAttempt : undefined
       );
     });
 
@@ -1748,42 +1778,83 @@ export const generateStockPrompts = async (
     let rawText = "";
 
     if (provider === 'gemini') {
-      let directSuccess = false;
-      let lastDirectErr: any = null;
+      const deprecatedSet = new Set(['gemini-3.8-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']);
+      const normalizedModel = !options.model || deprecatedSet.has(options.model) ? 'gemini-2.5-flash' : options.model;
+      onAttempt?.({
+        provider: 'gemini',
+        model: normalizedModel,
+        statusMessage: `GENERATING VIA GEMINI (${normalizedModel})...`
+      });
 
-      // Fast-path: When user has their own API key, call Google directly first with thinkingBudget: 0 (avoids serverless cold start & 5-15s thinking delay)
-      if (finalKey) {
+      let serverSucceeded = false;
+      let routeUnavailable = false;
+      let serverErrMsg = '';
+      try {
+        const response = await fetch('/api/gemini/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: normalizedModel,
+            systemPrompt,
+            apiKey: finalKey
+          })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          rawText = data.text?.trim() || '{"prompts":[]}';
+          if (data.model) {
+            onAttempt?.({ provider: 'gemini', model: data.model });
+          }
+          if (rawText && rawText !== '{"prompts":[]}') {
+            serverSucceeded = true;
+          }
+        } else if (response.status === 404 || response.status === 405) {
+          routeUnavailable = true;
+        } else {
+          const errData = await response.json().catch(() => ({}));
+          serverErrMsg = errData.error || `Gemini generation failed (${response.status})`;
+        }
+      } catch (e: any) {
+        routeUnavailable = true;
+        serverErrMsg = e?.message || 'Gemini generation route unreachable';
+      }
+
+      // Direct fallback ONLY when server proxy route is unavailable (e.g., static hosting) and user has a custom key
+      if (!serverSucceeded && routeUnavailable && finalKey) {
+        let directSuccess = false;
+        let lastDirectErr: any = null;
         const isVertexKey = finalKey.startsWith('AQ.');
-        const normalizedModel = options.model === 'gemini-3.8-flash' ? 'gemini-2.5-flash' : options.model;
         const candidateModels = Array.from(
-          new Set([normalizedModel, 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest', 'gemini-1.5-flash'].filter(Boolean))
+          new Set([normalizedModel, 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'].filter(Boolean))
         );
         const standardEndpoint = (m: string) => `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(finalKey)}`;
         const vertexEndpoint = (m: string) => `https://aiplatform.googleapis.com/v1beta1/publishers/google/models/${m}:generateContent?key=${encodeURIComponent(finalKey)}`;
         const endpoints = isVertexKey ? [vertexEndpoint, standardEndpoint] : [standardEndpoint, vertexEndpoint];
 
         for (const buildUrl of endpoints) {
+          let rateLimited = false;
           for (const m of candidateModels) {
+            onAttempt?.({ provider: 'gemini', model: m, statusMessage: `GENERATING WITH ${m.toUpperCase()}...` });
             try {
+              const isGemini4 = m.startsWith('gemini-4-');
               const generationConfig: Record<string, any> = {
-                responseMimeType: 'application/json',
-                temperature: 0.78,
-                topP: 0.92
+                responseMimeType: 'application/json'
               };
+              if (!isGemini4) {
+                generationConfig.temperature = 0.78;
+                generationConfig.topP = 0.92;
+              }
               if (m.includes('2.5-flash') || m === 'gemini-flash-latest') {
                 generationConfig.thinkingConfig = { thinkingBudget: 0 };
               }
-              const directRes = await fetch(
-                buildUrl(m),
-                {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    contents: [{ role: 'user', parts: [{ text: systemPrompt }] }],
-                    generationConfig
-                  })
-                }
-              );
+              const directRes = await fetch(buildUrl(m), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{ role: 'user', parts: [{ text: systemPrompt }] }],
+                  generationConfig
+                })
+              });
               if (directRes.ok) {
                 const directData = await directRes.json();
                 rawText = directData?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '{"prompts":[]}';
@@ -1797,8 +1868,14 @@ export const generateStockPrompts = async (
                 try { parsedMsg = JSON.parse(errText).error?.message || errText; } catch (e) {}
                 lastDirectErr = new Error(parsedMsg || `Gemini generation failed (${directRes.status})`);
                 const errLower = parsedMsg.toLowerCase();
-                if (errLower.includes('api key not valid') || errLower.includes('api_key_invalid')) break;
-                if (directRes.status === 404 || directRes.status === 400 || directRes.status === 401 || directRes.status === 403 || directRes.status === 503) continue;
+                if (directRes.status === 429 || errLower.includes('quota') || errLower.includes('resource_exhausted')) {
+                  rateLimited = true;
+                  break;
+                }
+                if (directRes.status === 401 || directRes.status === 403 || errLower.includes('api key not valid') || errLower.includes('api_key_invalid')) {
+                  break;
+                }
+                if (directRes.status === 404 || directRes.status === 400 || directRes.status === 503) continue;
                 break;
               }
             } catch (networkErr: any) {
@@ -1806,40 +1883,17 @@ export const generateStockPrompts = async (
               break;
             }
           }
-          if (directSuccess) break;
+          if (directSuccess || rateLimited) break;
+        }
+        if (directSuccess) {
+          serverSucceeded = true;
+        } else if (lastDirectErr) {
+          throw lastDirectErr;
         }
       }
 
-      if (!directSuccess) {
-        let serverSucceeded = false;
-        let serverErrMsg = '';
-        try {
-          const response = await fetch('/api/gemini/generate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              model: options.model,
-              systemPrompt,
-              apiKey: finalKey
-            })
-          });
-          if (response.ok) {
-            const data = await response.json();
-            rawText = data.text?.trim() || '{"prompts":[]}';
-            if (rawText && rawText !== '{"prompts":[]}') {
-              serverSucceeded = true;
-            }
-          } else {
-            const errData = await response.json().catch(() => ({}));
-            serverErrMsg = errData.error || `Gemini generation failed (${response.status})`;
-          }
-        } catch (e: any) {
-          serverErrMsg = e?.message || 'Gemini generation route unreachable';
-        }
-
-        if (!serverSucceeded) {
-          throw lastDirectErr || new Error(serverErrMsg || 'No Gemini API key found. Please add your Gemini API key in Config.');
-        }
+      if (!serverSucceeded) {
+        throw new Error(serverErrMsg || 'No Gemini API key found. Please add your Gemini API key in Config.');
       }
     } else if (provider === 'groq') {
       // Groq with automatic fallback for deprecated models (e.g. mixtral-8x7b-32768)
@@ -1848,6 +1902,7 @@ export const generateStockPrompts = async (
       let groqSuccess = false;
       let lastGroqErr: any = null;
       for (const m of groqCandidates) {
+        onAttempt?.({ provider: 'groq', model: m, statusMessage: `GENERATING VIA GROQ (${m})...` });
         const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -1882,6 +1937,7 @@ export const generateStockPrompts = async (
       let mistralSuccess = false;
       let lastMistralErr: any = null;
       for (const m of mistralCandidates) {
+        onAttempt?.({ provider: 'mistral', model: m, statusMessage: `GENERATING VIA MISTRAL (${m})...` });
         const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -1919,6 +1975,7 @@ export const generateStockPrompts = async (
       let orSuccess = false;
       let lastOrErr: any = null;
       for (const m of orCandidates) {
+        onAttempt?.({ provider: 'openrouter', model: m, statusMessage: `GENERATING VIA OPENROUTER (${m})...` });
         const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: {

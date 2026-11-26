@@ -1227,7 +1227,7 @@ export const ApiKeyVaultModal: React.FC<ApiKeyVaultModalProps> = ({
         <div className="px-6 py-3 border-t border-slate-100 dark:border-white/[0.08] bg-slate-50/50 dark:bg-white/[0.02] flex items-center justify-between text-xs text-slate-500">
           <div className="flex items-center gap-2 text-[11px]">
             <Key size={13} className="text-slate-400" />
-            <span>Secure Client-Side Storage (AES localStorage)</span>
+            <span>Local Browser Storage (Keys stay on this device)</span>
           </div>
 
           <button

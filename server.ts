@@ -7,19 +7,22 @@ import { GoogleGenAI, Type } from "@google/genai";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-  httpOptions: {
-    apiVersion: "v1beta",
-    headers: {
-      "User-Agent": "aistudio-build",
-    },
-  },
-});
+const serverApiKey = process.env.GEMINI_API_KEY?.trim() || "";
+const ai = serverApiKey
+  ? new GoogleGenAI({
+      apiKey: serverApiKey,
+      httpOptions: {
+        apiVersion: "v1beta",
+        headers: {
+          "User-Agent": "aistudio-build",
+        },
+      },
+    })
+  : null;
 
 function getGeminiClients(customApiKey?: string): GoogleGenAI[] {
   const trimmed = customApiKey?.trim();
-  if (trimmed && trimmed !== process.env.GEMINI_API_KEY) {
+  if (trimmed && trimmed !== serverApiKey) {
     const standardClient = new GoogleGenAI({
       apiKey: trimmed,
       httpOptions: {
@@ -39,11 +42,53 @@ function getGeminiClients(customApiKey?: string): GoogleGenAI[] {
       ? [vertexExpressClient, standardClient]
       : [standardClient, vertexExpressClient];
   }
-  return [ai];
+  return ai ? [ai] : [];
 }
 
 const isGemini4Model = (modelName: string) =>
   modelName.startsWith("gemini-4-");
+
+const DEPRECATED_MODELS = new Set([
+  "gemini-1.5-flash",
+  "gemini-1.5-pro",
+  "gemini-pro",
+  "gemini-2.0-flash",
+  "gemini-2.0-pro",
+  "gemini-2.0-flash-thinking",
+  "gemini-3.8-flash",
+]);
+
+function normalizeRequestedModel(model?: string): string {
+  const trimmed = model?.trim() || "";
+  if (!trimmed || DEPRECATED_MODELS.has(trimmed)) return "gemini-2.5-flash";
+  return trimmed;
+}
+
+function getHttpStatusFromError(error: any): number {
+  const directStatus = Number(error?.status || error?.statusCode || error?.code);
+  if (directStatus >= 400 && directStatus < 600) return directStatus;
+  const msg = String(error?.message || "").toLowerCase();
+  if (msg.includes("429") || msg.includes("resource_exhausted") || msg.includes("quota") || msg.includes("rate limit")) return 429;
+  if (msg.includes("401") || msg.includes("unauthenticated")) return 401;
+  if (msg.includes("403") || msg.includes("permission_denied") || msg.includes("forbidden") || msg.includes("referer")) return 403;
+  if (msg.includes("api_key_invalid") || msg.includes("api key not valid")) return 400;
+  if (msg.includes("404") || msg.includes("not found")) return 404;
+  if (msg.includes("503") || msg.includes("unavailable")) return 503;
+  return 500;
+}
+
+function isKeyAuthFailure(msgLower: string, status: number): boolean {
+  return (
+    status === 401 ||
+    status === 403 ||
+    msgLower.includes("api key not valid") ||
+    msgLower.includes("api_key_invalid") ||
+    msgLower.includes("unauthenticated") ||
+    msgLower.includes("permission_denied") ||
+    msgLower.includes("ip_referer_blocked") ||
+    msgLower.includes("referer")
+  );
+}
 
 async function startServer() {
   const app = express();
@@ -55,51 +100,75 @@ async function startServer() {
   app.post("/api/gemini/test-key", async (req, res) => {
     try {
       const customKey = req.body?.apiKey?.trim();
-      const keyToTest = customKey || process.env.GEMINI_API_KEY;
+      const keyToTest = customKey || serverApiKey;
       if (!keyToTest) {
         res.status(400).json({ error: "No Gemini API key configured." });
         return;
       }
 
-      // 1. Try standard Gemini Developer API (generativelanguage.googleapis.com)
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(keyToTest)}`
-      );
-      if (response.ok) {
-        res.json({ ok: true });
-        return;
-      }
-
-      const firstErrText = await response.text();
-
-      // 2. Fallback: Try Vertex AI Express Mode endpoint (for AQ.Ab8RN... Google Cloud / Vertex keys)
-      const vertexModels = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
-      for (const vm of vertexModels) {
-        const vertexRes = await fetch(
-          `https://aiplatform.googleapis.com/v1beta1/publishers/google/models/${vm}:countTokens?key=${encodeURIComponent(keyToTest)}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [{ role: "user", parts: [{ text: "ping" }] }],
-            }),
-          }
+      const tryStandard = async () => {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(keyToTest)}`
         );
-        if (vertexRes.ok) {
+        if (response.ok) return { ok: true as const, status: 200, error: "" };
+        const errText = await response.text();
+        let parsedMsg = errText;
+        try {
+          parsedMsg = JSON.parse(errText).error?.message || errText;
+        } catch {}
+        return { ok: false as const, status: response.status, error: parsedMsg };
+      };
+
+      const tryVertexExpress = async () => {
+        const vertexModels = ["gemini-2.5-flash", "gemini-2.5-flash-lite"];
+        let lastStatus = 400;
+        let lastMsg = "Vertex AI Express verification failed";
+        for (const vm of vertexModels) {
+          const vertexRes = await fetch(
+            `https://aiplatform.googleapis.com/v1beta1/publishers/google/models/${vm}:countTokens?key=${encodeURIComponent(keyToTest)}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                contents: [{ role: "user", parts: [{ text: "ping" }] }],
+              }),
+            }
+          );
+          if (vertexRes.ok) return { ok: true as const, status: 200, error: "" };
+          lastStatus = vertexRes.status;
+          const errText = await vertexRes.text();
+          try {
+            lastMsg = JSON.parse(errText).error?.message || errText;
+          } catch {
+            lastMsg = errText;
+          }
+          if (isKeyAuthFailure(lastMsg.toLowerCase(), lastStatus)) break;
+        }
+        return { ok: false as const, status: lastStatus, error: lastMsg };
+      };
+
+      const checks = keyToTest.startsWith("AQ.")
+        ? [tryVertexExpress, tryStandard]
+        : [tryStandard, tryVertexExpress];
+
+      let primaryFailure: { status: number; error: string } | null = null;
+      for (const check of checks) {
+        const result = await check();
+        if (result.ok) {
           res.json({ ok: true });
           return;
         }
+        if (!primaryFailure) {
+          primaryFailure = { status: result.status, error: result.error };
+        }
       }
 
-      let parsedMsg = firstErrText;
-      try {
-        const parsed = JSON.parse(firstErrText);
-        parsedMsg = parsed.error?.message || firstErrText;
-      } catch {}
-      res.status(response.status).json({ error: parsedMsg });
+      res
+        .status(primaryFailure?.status || 400)
+        .json({ error: primaryFailure?.error || "Gemini API verification failed" });
     } catch (error: any) {
       res
-        .status(500)
+        .status(getHttpStatusFromError(error))
         .json({ error: error?.message || "Gemini API verification failed" });
     }
   });
@@ -109,29 +178,31 @@ async function startServer() {
     try {
       const { contents, apiKey } = req.body || {};
       const clients = getGeminiClients(apiKey);
+      if (clients.length === 0) {
+        res.status(400).json({ error: "No Gemini API key configured. Please add a Gemini API key in Config." });
+        return;
+      }
 
       const hasCustomKey = Boolean(apiKey?.trim());
       const candidateModels = hasCustomKey
         ? [
             "gemini-2.5-flash",
-            "gemini-2.0-flash",
             "gemini-flash-latest",
-            "gemini-1.5-flash",
+            "gemini-3.1-flash-lite",
             "gemini-4-hydrogen",
           ]
         : [
             "gemini-4-hydrogen",
             "gemini-2.5-flash",
-            "gemini-2.0-flash",
             "gemini-flash-latest",
+            "gemini-3.1-flash-lite",
           ];
       let response: any = null;
+      let usedModel = "";
       let lastErr: any = null;
 
       for (const client of clients) {
-        const normalizedContents = client.vertexai
-          ? contents.map((p: any) => p)
-          : contents;
+        const normalizedContents = Array.isArray(contents) ? contents : [];
         for (const m of candidateModels) {
           if (client.vertexai && isGemini4Model(m)) continue;
           try {
@@ -146,19 +217,29 @@ async function startServer() {
               contents: client.vertexai ? [{ role: "user", parts: normalizedContents }] : normalizedContents,
               config,
             });
-            if (response) break;
+            if (response) {
+              usedModel = m;
+              break;
+            }
           } catch (innerErr: any) {
             lastErr = innerErr;
+            const status = getHttpStatusFromError(innerErr);
             const msg = String(innerErr?.message || "").toLowerCase();
+            // Immediately propagate quota/rate-limit errors so the client rotates keys immediately
+            if (status === 429) {
+              throw innerErr;
+            }
+            // If key itself is rejected by this endpoint, jump directly to next endpoint instead of retrying all models
+            if (isKeyAuthFailure(msg, status)) {
+              break;
+            }
+            // Try next fallback model if this specific model is unavailable or unsupported
             if (
+              status === 404 ||
+              status === 503 ||
+              status === 400 ||
               msg.includes("not found") ||
-              msg.includes("404") ||
-              msg.includes("unavailable") ||
-              msg.includes("503") ||
-              msg.includes("unauthenticated") ||
-              msg.includes("401") ||
-              msg.includes("403") ||
-              msg.includes("api key not valid")
+              msg.includes("unavailable")
             ) {
               continue;
             }
@@ -169,10 +250,10 @@ async function startServer() {
       }
 
       if (!response && lastErr) throw lastErr;
-      res.json({ text: response?.text || "" });
+      res.json({ text: response?.text || "", model: usedModel });
     } catch (error: any) {
       res
-        .status(500)
+        .status(getHttpStatusFromError(error))
         .json({ error: error?.message || "Gemini analysis failed" });
     }
   });
@@ -182,6 +263,10 @@ async function startServer() {
     try {
       const { model, systemPrompt, apiKey } = req.body || {};
       const clients = getGeminiClients(apiKey);
+      if (clients.length === 0) {
+        res.status(400).json({ error: "No Gemini API key configured. Please add a Gemini API key in Config." });
+        return;
+      }
 
       const schema = {
         type: Type.OBJECT,
@@ -204,31 +289,30 @@ async function startServer() {
       };
 
       const hasCustomKey = Boolean(apiKey?.trim());
-      const normalizedModel =
-        model === "gemini-3.8-flash" ? "gemini-2.5-flash" : model;
+      const normalizedModel = normalizeRequestedModel(model);
       const candidateModels = Array.from(
         new Set(
           (hasCustomKey
             ? [
                 normalizedModel,
                 "gemini-2.5-flash",
-                "gemini-2.0-flash",
                 "gemini-flash-latest",
-                "gemini-1.5-flash",
+                "gemini-3.1-flash-lite",
                 "gemini-4-hydrogen",
               ]
             : [
                 normalizedModel,
                 "gemini-4-hydrogen",
                 "gemini-2.5-flash",
-                "gemini-2.0-flash",
                 "gemini-flash-latest",
+                "gemini-3.1-flash-lite",
               ]
           ).filter(Boolean)
         )
       );
 
       let response: any = null;
+      let usedModel = "";
       let lastErr: any = null;
 
       for (const client of clients) {
@@ -254,19 +338,26 @@ async function startServer() {
                 : systemPrompt,
               config,
             });
-            if (response) break;
+            if (response) {
+              usedModel = m;
+              break;
+            }
           } catch (innerErr: any) {
             lastErr = innerErr;
+            const status = getHttpStatusFromError(innerErr);
             const msg = String(innerErr?.message || "").toLowerCase();
+            if (status === 429) {
+              throw innerErr;
+            }
+            if (isKeyAuthFailure(msg, status)) {
+              break;
+            }
             if (
+              status === 404 ||
+              status === 503 ||
+              status === 400 ||
               msg.includes("not found") ||
-              msg.includes("404") ||
-              msg.includes("unavailable") ||
-              msg.includes("503") ||
-              msg.includes("unauthenticated") ||
-              msg.includes("401") ||
-              msg.includes("403") ||
-              msg.includes("api key not valid")
+              msg.includes("unavailable")
             ) {
               continue;
             }
@@ -277,10 +368,10 @@ async function startServer() {
       }
 
       if (!response && lastErr) throw lastErr;
-      res.json({ text: response?.text?.trim() || '{"prompts":[]}' });
+      res.json({ text: response?.text?.trim() || '{"prompts":[]}', model: usedModel });
     } catch (error: any) {
       res
-        .status(500)
+        .status(getHttpStatusFromError(error))
         .json({ error: error?.message || "Gemini generation failed" });
     }
   });

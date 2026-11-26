@@ -14,7 +14,7 @@ import {
   CircleDot, Grid3X3, RotateCcw, FileUp, FileDown, Database, AlertTriangle, PackageCheck, ScanFace, UserCheck, Star
 } from 'lucide-react';
 import { PromptOptions, GeneratedPrompt, PromptBatch, HistoricalPrompt, ApiKeyRecord } from './types';
-import { generateStockPrompts, testApiKey, analyzeReferenceAndSuggestSettings, stripColorDescriptors, stripBiometricDescriptors } from './services/geminiService';
+import { generateStockPrompts, testApiKey, analyzeReferenceAndSuggestSettings, formatApiErrorMessage, stripColorDescriptors, stripBiometricDescriptors } from './services/geminiService';
 import { QUICK_START_PRESETS } from './presets';
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -408,7 +408,8 @@ const OPTIONS = {
   ],
   model: [
     { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Turbo)', desc: 'Ultra-fast zero-thinking mode. Best for Free Tier limits.', provider: 'gemini' },
-    { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (Instant)', desc: 'Instant low-latency generation.', provider: 'gemini' },
+    { value: 'gemini-4-hydrogen', label: 'Gemini 4 Hydrogen (Fast)', desc: 'Next-gen fast multimodal reasoning.', provider: 'gemini' },
+    { value: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash Lite (Instant)', desc: 'Instant low-latency generation.', provider: 'gemini' },
     { value: 'gemini-flash-latest', label: 'Gemini Flash (Latest)', desc: 'Auto-adapts to latest stable Gemini Flash.', provider: 'gemini' },
     { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', desc: 'Deep complex reasoning. Recommended for Paid tier.', provider: 'gemini' },
     { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B (Groq)', desc: 'Lightning-fast 300+ tok/s generation via Groq.', provider: 'groq' },
@@ -1411,18 +1412,28 @@ export default function App() {
 
   const [apiTrackerState, setApiTrackerState] = useState<{
     visible: boolean;
+    stage: 'analyzing' | 'generating';
     totalKeys: number;
+    currentKeyIndex: number;
     currentKeyId: string | null;
+    currentKeyLabel: string | null;
     currentProvider: string | null;
+    currentModel: string | null;
     attempt: number;
+    maxAttempts: number;
     failedKeys: string[];
     statusMessage: string | null;
   }>({
     visible: false,
+    stage: 'generating',
     totalKeys: 0,
+    currentKeyIndex: 1,
     currentKeyId: null,
+    currentKeyLabel: null,
     currentProvider: null,
+    currentModel: null,
     attempt: 1,
+    maxAttempts: 2,
     failedKeys: [],
     statusMessage: null
   });
@@ -1586,6 +1597,17 @@ export default function App() {
   const handleAddKey = () => {
     const cleanInput = newKeyInput.trim();
     if (!cleanInput) return;
+
+    // Prevent duplicate keys
+    const existingDuplicate = apiKeys.find(k => k.key.trim() === cleanInput);
+    if (existingDuplicate) {
+      setActiveProviderTab(existingDuplicate.provider);
+      setActiveKeyId(existingDuplicate.id);
+      setNewKeyInput("");
+      addToast('This API key is already saved in your vault.', 'info', 3000);
+      return;
+    }
+
     let detectedProvider: 'gemini' | 'groq' | 'mistral' | 'openrouter' = activeProviderTab;
     if (cleanInput.startsWith('AIzaSy') || cleanInput.startsWith('AQ.')) detectedProvider = 'gemini';
     else if (cleanInput.startsWith('gsk_')) detectedProvider = 'groq';
@@ -1601,22 +1623,26 @@ export default function App() {
     setApiKeys(prev => [...prev, newKey]);
     if (detectedProvider !== activeProviderTab) {
       setActiveProviderTab(detectedProvider);
+      const modelsForProvider = OPTIONS.model.filter(m => m.provider === detectedProvider);
+      if (modelsForProvider.length > 0 && !modelsForProvider.find(m => m.value === options.model)) {
+        setOptions(prev => ({ ...prev, model: modelsForProvider[0].value as any }));
+      }
     }
     if (!activeKeyId) setActiveKeyId(newKey.id);
     setNewKeyInput("");
     
-    // Automatically test the key right after it is added
+    // Pass newKey directly so auto-test doesn't read a stale apiKeys closure
     setTimeout(() => {
-      handleTestKey(newKey.id);
-    }, 100);
+      handleTestKey(newKey.id, newKey);
+    }, 50);
   };
 
   const handleRemoveKey = (id: string) => {
     setApiKeys(prev => prev.filter(k => k.id !== id));
   };
 
-  const handleTestKey = async (id: string) => {
-    const keyRecord = apiKeys.find(k => k.id === id);
+  const handleTestKey = async (id: string, recordOverride?: ApiKeyRecord) => {
+    const keyRecord = recordOverride || apiKeys.find(k => k.id === id);
     if (!keyRecord) return;
     
     setApiKeys(prev => prev.map(k => k.id === id ? { ...k, status: 'testing', errorMessage: undefined } : k));
@@ -1682,34 +1708,40 @@ export default function App() {
 
   const handleImportKeys = async (newKeys: ApiKeyRecord[], autoTest: boolean) => {
     if (newKeys.length === 0) return;
-    
-    let mergedList: ApiKeyRecord[] = [];
-    setApiKeys(prev => {
-      const existingKeySet = new Set(prev.map(k => k.key.trim()));
-      const filtered = newKeys.filter(k => !existingKeySet.has(k.key.trim()));
-      mergedList = [...prev, ...filtered];
-      safeLocalStorage.setItem('user_api_keys', JSON.stringify(mergedList));
-      return mergedList;
+
+    const existingKeySet = new Set(apiKeys.map(k => k.key.trim()));
+    const seenIncoming = new Set<string>();
+    const actuallyNewKeys = newKeys.filter(k => {
+      const trimmed = k.key.trim();
+      if (!trimmed || existingKeySet.has(trimmed) || seenIncoming.has(trimmed)) return false;
+      seenIncoming.add(trimmed);
+      return true;
     });
 
-    // If current tab doesn't have an active key, activate newly imported key for this tab
-    setActiveKeyId(currentActive => {
-      if (currentActive && apiKeys.some(k => k.id === currentActive)) {
-        return currentActive;
-      }
-      const matchForTab = newKeys.find(k => k.provider === activeProviderTab);
-      if (matchForTab) return matchForTab.id;
-      return newKeys[0]?.id || currentActive;
-    });
+    if (actuallyNewKeys.length === 0) {
+      addToast('All imported keys already exist in your vault.', 'info', 3000);
+      return;
+    }
+
+    const mergedList = [...apiKeys, ...actuallyNewKeys];
+    setApiKeys(mergedList);
+    safeLocalStorage.setItem('user_api_keys', JSON.stringify(mergedList));
+
+    // If no active key exists yet, activate a newly imported key matching the active tab
+    if (!activeKeyId || !mergedList.some(k => k.id === activeKeyId)) {
+      const matchForTab = actuallyNewKeys.find(k => k.provider === activeProviderTab);
+      setActiveKeyId(matchForTab ? matchForTab.id : actuallyNewKeys[0].id);
+    }
 
     if (autoTest) {
       setTimeout(async () => {
-        const newKeyIds = new Set(newKeys.map(k => k.id));
+        const newKeyIds = new Set(actuallyNewKeys.map(k => k.id));
         setApiKeys(prev => prev.map(item => newKeyIds.has(item.id) ? { ...item, status: 'testing', errorMessage: undefined } : item));
         let validCount = 0;
         let invalidCount = 0;
         const resultsMap = new Map<string, { status: 'valid' | 'invalid'; errorMessage?: string }>();
-        await Promise.all(newKeys.map(async (k) => {
+        await Promise.all(actuallyNewKeys.map(async (k, idx) => {
+          if (idx > 0) await new Promise(r => setTimeout(r, idx * 60));
           try {
             await testApiKey(k.key, k.provider);
             validCount++;
@@ -1723,10 +1755,10 @@ export default function App() {
           const res = resultsMap.get(item.id);
           return res ? { ...item, status: res.status, errorMessage: res.errorMessage } : item;
         }));
-        if (newKeys.length > 1) {
+        if (actuallyNewKeys.length > 1) {
           addToast(`Auto-test complete: ${validCount} valid, ${invalidCount} invalid.`, validCount > 0 ? 'success' : 'warning', 4000);
         }
-      }, 100);
+      }, 60);
     }
   };
 
@@ -1870,9 +1902,14 @@ export default function App() {
   }, [batches]);
 
   const executeWithKeyRotation = async <T,>(
-    operation: (keyRecord: { id: string, key: string, provider: 'gemini'|'groq'|'mistral'|'openrouter' }, fallbackModel?: string) => Promise<T>,
+    operation: (
+      keyRecord: { id: string, key: string, provider: 'gemini'|'groq'|'mistral'|'openrouter' },
+      fallbackModel?: string,
+      onAttempt?: (info: { provider: 'gemini'|'groq'|'mistral'|'openrouter'; model: string; statusMessage?: string }) => void
+    ) => Promise<T>,
     providerOverride?: 'gemini' | 'groq' | 'mistral' | 'openrouter',
-    strictProvider: boolean = false
+    strictProvider: boolean = false,
+    stage: 'analyzing' | 'generating' = 'generating'
   ): Promise<T> => {
     const activeModelObj = OPTIONS.model.find(m => m.value === options.model);
     const requiredProvider = providerOverride || (activeModelObj ? (activeModelObj as any).provider as 'gemini'|'groq'|'mistral'|'openrouter' : 'gemini');
@@ -1911,21 +1948,58 @@ export default function App() {
 
     const maxRetriesPerKey = 2;
     let lastError: any = null;
-    
-    setApiTrackerState(prev => ({
-      ...prev,
+
+    const getMaskedKeyLabel = (rec: { id: string; key: string }) =>
+      rec.id === 'system'
+        ? 'SERVER DEFAULT KEY'
+        : rec.key
+          ? `${rec.key.substring(0, 6)}...${rec.key.substring(rec.key.length - 4)}`
+          : 'CUSTOM KEY';
+
+    const getInitialModelForKey = (rec: { id: string; key: string; provider: 'gemini'|'groq'|'mistral'|'openrouter' }, fallbackModel?: string) => {
+      if (stage === 'analyzing') {
+        if (rec.provider === 'gemini') return rec.key ? 'gemini-2.5-flash' : 'gemini-4-hydrogen';
+        if (rec.provider === 'groq') return autoFillMode === 'image' ? 'meta-llama/llama-4-scout-17b-16e-instruct' : 'llama-3.3-70b-versatile';
+        if (rec.provider === 'mistral') return autoFillMode === 'image' ? 'pixtral-12b-2409' : 'mistral-small-latest';
+        return autoFillMode === 'image' ? 'google/gemma-3-27b-it:free' : 'meta-llama/llama-3.3-70b-instruct:free';
+      }
+      if (fallbackModel) return fallbackModel;
+      return options.model;
+    };
+
+    const firstKey = keysToTry[0];
+    const firstFallbackModel =
+      firstKey && firstKey.provider !== requiredProvider
+        ? OPTIONS.model.find(m => (m as any).provider === firstKey.provider)?.value
+        : undefined;
+
+    setApiTrackerState({
       visible: true,
+      stage,
       totalKeys: keysToTry.length,
-      currentKeyId: keysToTry[0]?.id || null,
-      currentProvider: keysToTry[0]?.provider?.toUpperCase() || null,
+      currentKeyIndex: 1,
+      currentKeyId: firstKey?.id || null,
+      currentKeyLabel: firstKey ? getMaskedKeyLabel(firstKey) : null,
+      currentProvider: firstKey?.provider?.toUpperCase() || null,
+      currentModel: firstKey ? getInitialModelForKey(firstKey, firstFallbackModel) : options.model,
       attempt: 1,
+      maxAttempts: firstKey?.id === 'system' ? 1 : maxRetriesPerKey,
       failedKeys: [],
-      statusMessage: 'ESTABLISHING CONNECTION...'
-    }));
+      statusMessage: stage === 'analyzing' ? 'ANALYZING REFERENCE...' : 'ESTABLISHING CONNECTION...'
+    });
+
+    const handleAttemptUpdate = (info: { provider: 'gemini'|'groq'|'mistral'|'openrouter'; model: string; statusMessage?: string }) => {
+      setApiTrackerState(prev => ({
+        ...prev,
+        currentProvider: info.provider.toUpperCase(),
+        currentModel: info.model,
+        statusMessage: info.statusMessage || prev.statusMessage
+      }));
+    };
 
     for (let keyIdx = 0; keyIdx < keysToTry.length; keyIdx++) {
       const keyRecord = keysToTry[keyIdx];
-      const maskedKey = keyRecord.key ? `${keyRecord.key.substring(0, 6)}...${keyRecord.key.substring(keyRecord.key.length - 4)}` : 'unspecified';
+      const maskedKey = getMaskedKeyLabel(keyRecord);
 
       // Find a default model for this provider if it's not the requiredProvider
       let fallbackModel = undefined;
@@ -1937,16 +2011,30 @@ export default function App() {
       }
 
       const retriesForThisKey = keyRecord.id === 'system' ? 1 : maxRetriesPerKey;
+      const expectedModelForKey = getInitialModelForKey(keyRecord, fallbackModel);
 
       for (let attempt = 1; attempt <= retriesForThisKey; attempt++) {
         try {
           setApiTrackerState(prev => ({
             ...prev,
+            stage,
             attempt,
+            maxAttempts: retriesForThisKey,
+            currentKeyIndex: keyIdx + 1,
             currentKeyId: keyRecord.id,
-            currentProvider: keyRecord.provider.toUpperCase()
+            currentKeyLabel: maskedKey,
+            currentProvider: keyRecord.provider.toUpperCase(),
+            currentModel: expectedModelForKey,
+            statusMessage:
+              attempt > 1
+                ? `RETRYING ${keyRecord.provider.toUpperCase()} (${attempt}/${retriesForThisKey})...`
+                : keyIdx > 0
+                  ? `SWITCHED TO ${keyRecord.provider.toUpperCase()} (${keyIdx + 1}/${keysToTry.length})...`
+                  : stage === 'analyzing'
+                    ? `ANALYZING VIA ${keyRecord.provider.toUpperCase()}...`
+                    : `GENERATING VIA ${keyRecord.provider.toUpperCase()}...`
           }));
-          const result = await operation(keyRecord, fallbackModel);
+          const result = await operation(keyRecord, fallbackModel, handleAttemptUpdate);
           if (keyRecord.id !== 'system') {
             if (keyRecord.id !== activeKeyId) {
               setActiveKeyId(keyRecord.id);
@@ -1962,32 +2050,50 @@ export default function App() {
           console.warn(`Attempt ${attempt} failed with key ${maskedKey} (${keyRecord.provider}):`, err);
           
           const errLower = String(err?.message || '').toLowerCase();
-          const isImmediateRotateError =
+          const isPermanentAuthError =
             errLower.includes('401') ||
             errLower.includes('403') ||
+            errLower.includes('api_key_invalid') ||
+            errLower.includes('api key not valid') ||
+            errLower.includes('invalid api key') ||
+            errLower.includes('unauthorized') ||
+            errLower.includes('permission_denied') ||
+            errLower.includes('forbidden') ||
+            errLower.includes('ip_referer_blocked') ||
+            errLower.includes('project deleted');
+
+          const isImmediateRotateError =
+            isPermanentAuthError ||
             errLower.includes('404') ||
             errLower.includes('429') ||
             errLower.includes('quota') ||
+            errLower.includes('resource_exhausted') ||
             errLower.includes('rate limit') ||
-            errLower.includes('invalid api key') ||
             errLower.includes('not found') ||
-            errLower.includes('decommissioned') ||
-            errLower.includes('forbidden');
+            errLower.includes('decommissioned');
 
           const isLastAttempt = isImmediateRotateError || attempt === retriesForThisKey;
           const isLastKey = keyIdx === keysToTry.length - 1;
           
           if (isLastAttempt) {
              setApiTrackerState(prev => ({ ...prev, failedKeys: [...prev.failedKeys, keyRecord.id] }));
+             // Mark permanently invalid user keys so they are deprioritized on future runs
+             if (keyRecord.id !== 'system' && isPermanentAuthError) {
+               const cleanErr = formatApiErrorMessage(err, keyRecord.provider);
+               setApiKeys(prev => prev.map(k => k.id === keyRecord.id ? { ...k, status: 'invalid', errorMessage: cleanErr } : k));
+             }
           }
 
           if (!isLastAttempt) {
             const backoffMs = 350; // Fast 350ms retry for transient network hiccups
-            setApiTrackerState(prev => ({ ...prev, statusMessage: `RETRYING NODE (${attempt}/${retriesForThisKey})...` }));
+            setApiTrackerState(prev => ({ ...prev, statusMessage: `RETRYING ${keyRecord.provider.toUpperCase()} (${attempt}/${retriesForThisKey})...` }));
             await new Promise(resolve => setTimeout(resolve, backoffMs));
           } else if (!isLastKey) {
-            // Instant key rotation (no 800ms artificial sleep)
-            setApiTrackerState(prev => ({ ...prev, statusMessage: 'SWITCHING TO NEXT ACTIVE KEY...' }));
+            const nextRec = keysToTry[keyIdx + 1];
+            setApiTrackerState(prev => ({
+              ...prev,
+              statusMessage: `ROTATING TO ${nextRec.provider.toUpperCase()} (${keyIdx + 2}/${keysToTry.length})...`
+            }));
             break;
           }
         }
@@ -2072,10 +2178,10 @@ export default function App() {
 
       const passedPreservation = !!options.productPreservation;
       const preservationType = options.preservationType || 'product';
-      const result = await executeWithKeyRotation((keyRecord, fallbackModel) => {
+      const result = await executeWithKeyRotation((keyRecord, fallbackModel, onAttempt) => {
         const passedOptions = fallbackModel ? { ...visualOptions, model: fallbackModel } : visualOptions;
-        return analyzeReferenceAndSuggestSettings(input, passedOptions, keyRecord.key, keyRecord.provider, passedPreservation, preservationType);
-      }, providerToUse, false);
+        return analyzeReferenceAndSuggestSettings(input, passedOptions, keyRecord.key, keyRecord.provider, passedPreservation, preservationType, onAttempt);
+      }, providerToUse, false, 'analyzing');
       
       const rawSettings = { ...result.settings };
       delete rawSettings.model;
@@ -2409,10 +2515,10 @@ export default function App() {
         preservationType: activeOpts.preservationType || 'product'
       };
 
-      const results = await executeWithKeyRotation((keyRecord, fallbackModel) => {
+      const results = await executeWithKeyRotation((keyRecord, fallbackModel, onAttempt) => {
         const passedOptions = fallbackModel ? { ...effectiveOptions, model: fallbackModel } : effectiveOptions;
-        return generateStockPrompts(passedOptions, keyRecord.key, history, keyRecord.provider);
-      });
+        return generateStockPrompts(passedOptions, keyRecord.key, history, keyRecord.provider, false, 0, onAttempt);
+      }, undefined, false, 'generating');
 
       const newPrompts: GeneratedPrompt[] = results.map((r, rIdx) => ({
         id: crypto.randomUUID(),
@@ -3427,7 +3533,12 @@ export default function App() {
             <span className="uppercase tracking-wider text-[10px]">Open Parameters</span>
           </button>
         )}
-        {(isGenerating || apiTrackerState.visible) && (
+        {(isGenerating || isAnalyzing || apiTrackerState.visible) && (() => {
+          const liveModelValue = apiTrackerState.currentModel || options.model;
+          const liveModelMatch = OPTIONS.model.find(m => m.value === liveModelValue);
+          const liveModelDisplay = liveModelMatch ? liveModelMatch.label : liveModelValue;
+          const isAnalyzeStage = !isGenerating && (apiTrackerState.stage === 'analyzing' || isAnalyzing);
+          return (
           <div className={`fixed inset-0 ${isSidebarOpen ? 'lg:left-[340px] xl:left-[370px]' : 'left-0'} z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/45 dark:bg-black/65 pointer-events-none transition-all duration-300 animate-in fade-in`}>
             <div className="relative w-full max-w-sm pointer-events-auto">
               {/* Localized frosted blur directly underneath the loading card */}
@@ -3456,11 +3567,13 @@ export default function App() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-[13px] font-bold tracking-tight text-slate-900 dark:text-white uppercase truncate">
-                      {isGenerating ? LOADING_STEPS[loadingStepIdx] : 'System Diagnostic'}
+                      {isAnalyzeStage ? 'Analyzing Reference' : LOADING_STEPS[loadingStepIdx]}
                     </h3>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
-                      <p className="text-[10px] font-mono font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">SYS.NET • ACTIVE</p>
+                      <p className="text-[10px] font-mono font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        {isAnalyzeStage ? 'VISION & CONTEXT • LIVE' : 'PROMPT ENGINE • ACTIVE'}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -3468,23 +3581,31 @@ export default function App() {
                 {/* Recessed Frosted Data Tray (macOS Control Center style) */}
                 <div className="bg-slate-100/95 dark:bg-black/60 border border-slate-200/90 dark:border-white/10 shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.4)] rounded-2xl p-3.5 space-y-2.5 font-mono text-[11px] relative z-10">
                   <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
-                    <span className="opacity-80 text-[10px] uppercase tracking-wider font-semibold">TARGET NODE:</span>
+                    <span className="opacity-80 text-[10px] uppercase tracking-wider font-semibold">ENGINE:</span>
                     <span className="uppercase text-emerald-600 dark:text-emerald-400 font-bold">{apiTrackerState.currentProvider || activeProvider.toUpperCase()}</span>
                   </div>
                   <div className="flex justify-between items-center text-slate-600 dark:text-slate-300 pt-1.5 border-t border-slate-200/80 dark:border-white/[0.08]">
                     <span className="opacity-80 text-[10px] uppercase tracking-wider font-semibold">AI MODEL:</span>
-                    <span className="uppercase text-blue-600 dark:text-blue-400 font-bold truncate max-w-[170px] text-right" title={activeModelLabel}>{activeModelLabel}</span>
+                    <span className="uppercase text-blue-600 dark:text-blue-400 font-bold truncate max-w-[185px] text-right" title={liveModelDisplay}>{liveModelDisplay}</span>
                   </div>
+                  {apiTrackerState.currentKeyLabel && (
+                    <div className="flex justify-between items-center text-slate-600 dark:text-slate-300 pt-1.5 border-t border-slate-200/80 dark:border-white/[0.08]">
+                      <span className="opacity-80 text-[10px] uppercase tracking-wider font-semibold">API KEY:</span>
+                      <span className="text-slate-800 dark:text-slate-200 font-bold truncate max-w-[185px] text-right" title={apiTrackerState.currentKeyLabel}>
+                        {apiTrackerState.currentKeyLabel}{apiTrackerState.totalKeys > 1 ? ` (${apiTrackerState.currentKeyIndex}/${apiTrackerState.totalKeys})` : ''}
+                      </span>
+                    </div>
+                  )}
                   {apiTrackerState.failedKeys.length > 0 && (
                     <div className="flex justify-between items-center text-amber-500 pt-1.5 border-t border-slate-200/80 dark:border-white/[0.08]">
-                      <span className="opacity-80 text-[10px] uppercase tracking-wider font-semibold">ERRORS:</span>
+                      <span className="opacity-80 text-[10px] uppercase tracking-wider font-semibold">ROTATED / FAILED:</span>
                       <span className="font-bold">{apiTrackerState.failedKeys.length}/{apiTrackerState.totalKeys}</span>
                     </div>
                   )}
                   {apiTrackerState.attempt > 1 && (
                     <div className="flex justify-between items-center text-blue-500 pt-1.5 border-t border-slate-200/80 dark:border-white/[0.08]">
-                      <span className="opacity-80 text-[10px] uppercase tracking-wider font-semibold">CYCLE:</span>
-                      <span className="font-bold">{apiTrackerState.attempt}/3</span>
+                      <span className="opacity-80 text-[10px] uppercase tracking-wider font-semibold">RETRY CYCLE:</span>
+                      <span className="font-bold">{apiTrackerState.attempt}/{apiTrackerState.maxAttempts}</span>
                     </div>
                   )}
                 </div>
@@ -3493,14 +3614,15 @@ export default function App() {
                 <div className="mt-3.5 px-3 py-2.5 rounded-xl bg-slate-100/95 dark:bg-black/55 border border-slate-200/90 dark:border-white/10 text-[10px] font-mono text-slate-800 dark:text-slate-200 flex items-center gap-2 leading-none relative z-10">
                   <span className="text-blue-500 font-bold shrink-0">&gt;</span> 
                   <div className="flex-1 truncate font-semibold">
-                    <span className="uppercase"><TerminalText text={isGenerating ? (apiTrackerState.statusMessage || 'ESTABLISHING SECURE CONNECTION...') : (apiTrackerState.statusMessage || 'ESTABLISHING SECURE HANDSHAKE...')} /></span>
+                    <span className="uppercase"><TerminalText text={apiTrackerState.statusMessage || (isAnalyzeStage ? 'ANALYZING REFERENCE...' : 'ESTABLISHING SECURE CONNECTION...')} /></span>
                   </div>
                   <span className="inline-block w-1.5 h-3 bg-blue-500 animate-pulse shrink-0 rounded-xs"></span>
                 </div>
               </div>
             </div>
           </div>
-        )}
+          );
+        })()}
 
         <div className={`mx-auto px-3.5 sm:px-6 md:px-8 py-6 sm:py-10 md:py-14 min-h-full flex flex-col transition-all duration-300 ${containerMaxWidth}`}>
           {batches.length > 0 ? (
