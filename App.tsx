@@ -917,24 +917,17 @@ export default function App() {
     }
   });
 
-  const [autoRunMode, setAutoRunMode] = useState<boolean>(() => {
-    return safeLocalStorage.getItem('prompt_auto_run_mode') === 'true';
-  });
-  const [autoRunPreset, setAutoRunPreset] = useState<PromptOptions | null>(() => {
+  const [userOffFields, setUserOffFields] = useState<Record<string, boolean>>(() => {
     try {
-      const saved = safeLocalStorage.getItem('prompt_auto_run_preset');
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
-  const [autoRunAutoFilled, setAutoRunAutoFilled] = useState<Record<string, boolean>>(() => {
-    try {
-      const saved = safeLocalStorage.getItem('prompt_auto_run_auto_filled');
+      const saved = safeLocalStorage.getItem('prompt_user_off_fields');
       return saved ? JSON.parse(saved) : {};
     } catch {
       return {};
     }
+  });
+
+  const [autoRunMode, setAutoRunMode] = useState<boolean>(() => {
+    return safeLocalStorage.getItem('prompt_auto_run_mode') === 'true';
   });
 
   useEffect(() => {
@@ -942,24 +935,12 @@ export default function App() {
   }, [autoFilledFields]);
 
   useEffect(() => {
+    safeLocalStorage.setItem('prompt_user_off_fields', JSON.stringify(userOffFields));
+  }, [userOffFields]);
+
+  useEffect(() => {
     safeLocalStorage.setItem('prompt_auto_run_mode', String(autoRunMode));
   }, [autoRunMode]);
-
-  useEffect(() => {
-    if (autoRunPreset) {
-      safeLocalStorage.setItem('prompt_auto_run_preset', JSON.stringify(autoRunPreset));
-    } else {
-      safeLocalStorage.removeItem('prompt_auto_run_preset');
-    }
-  }, [autoRunPreset]);
-
-  useEffect(() => {
-    if (autoRunMode) {
-      safeLocalStorage.setItem('prompt_auto_run_auto_filled', JSON.stringify(autoRunAutoFilled));
-    } else {
-      safeLocalStorage.removeItem('prompt_auto_run_auto_filled');
-    }
-  }, [autoRunMode, autoRunAutoFilled]);
 
   const markFieldManual = useCallback((field: string) => {
     setAutoFilledFields(prev => (prev[field] ? { ...prev, [field]: false } : prev));
@@ -972,37 +953,12 @@ export default function App() {
 
   const handleToggleAutoRun = (nextVal: boolean) => {
     if (nextVal) {
-      const snapshot: PromptOptions = {
-        ...options,
-        activeFields: { ...options.activeFields, smartRefinement: true },
-        lockedFields: { ...(options.lockedFields || {}) },
-        lockedPools: JSON.parse(JSON.stringify(options.lockedPools || {}))
-      };
-      setAutoRunPreset(snapshot);
-      setAutoRunAutoFilled({ ...autoFilledFields });
       setOptions(prev => ({
         ...prev,
         activeFields: { ...prev.activeFields, smartRefinement: true }
       }));
       setAutoRunMode(true);
     } else {
-      if (autoRunPreset) {
-        setOptions(prev => ({
-          ...autoRunPreset,
-          smartRefinementText: prev.smartRefinementText,
-          isFromImageReference: prev.isFromImageReference,
-          productPreservation: prev.productPreservation,
-          preservationType: prev.preservationType,
-          model: prev.model,
-          activeFields: {
-            ...autoRunPreset.activeFields,
-            smartRefinement: prev.activeFields?.smartRefinement ?? true
-          }
-        }));
-      }
-      setAutoFilledFields({ ...autoRunAutoFilled });
-      setAutoRunPreset(null);
-      setAutoRunAutoFilled({});
       setAutoRunMode(false);
     }
   };
@@ -1081,10 +1037,10 @@ export default function App() {
     const isIsolatedPng = subj.includes('Isolated Object');
     const isNonPhotoMedium = med === '3D & CGI' || med === 'Art & Illustration';
 
-    // Optionally re-enable locked fields that ARE relevant in the new context
+    // Optionally re-enable locked fields that ARE relevant in the new context (unless explicitly switched OFF by user)
     if (reEnableValidLocks) {
       Object.keys(locks).forEach(k => {
-        if (locks[k]) {
+        if (locks[k] && !userOffFields[k]) {
           next[k] = true;
         }
       });
@@ -1827,6 +1783,7 @@ export default function App() {
   };
 
   const toggleField = (field: string, isActive: boolean) => {
+    setUserOffFields(prev => ({ ...prev, [field]: !isActive }));
     if (isActive) {
       markFieldManual(field);
     }
@@ -1839,6 +1796,9 @@ export default function App() {
   const toggleLock = (field: string, isLocked: boolean) => {
     if (isLocked) {
       markFieldManual(field);
+    } else {
+      // Unlocking immediately hands the field back to dynamic AI auto-fill in Auto-Run Mode
+      setAutoFilledFields(prev => ({ ...prev, [field]: true }));
     }
     setOptions(prev => {
       const nextLockedFields = { ...(prev.lockedFields || {}), [field]: isLocked };
@@ -2078,7 +2038,7 @@ export default function App() {
     const runText = runMode === 'text' ? (options.smartRefinementText.trim() || null) : null;
     let generatedInAutoRun = false;
     try {
-      const basePreset = (autoRunMode && autoRunPreset) ? autoRunPreset : options;
+      const basePreset = options;
 
       let input: any;
       if (autoFillMode === 'image' && referenceImage) {
@@ -2156,24 +2116,22 @@ export default function App() {
       const runLockedFields: Record<string, boolean> = { ...(basePreset.lockedFields || {}) };
       const runLockedPools: Record<string, string[]> = JSON.parse(JSON.stringify(basePreset.lockedPools || {}));
       const preservedManualFields = new Set<string>();
-      const presetAutoFilled = autoRunMode ? autoRunAutoFilled : autoFilledFields;
 
       if (autoRunMode) {
-        // In Auto-Run Mode, strictly honor the user's configured workspace rules:
-        // 1. Manually turned OFF toggles ALWAYS stay OFF across every run.
+        // In Auto-Run Mode (live visible settings):
+        // 1. User-disabled toggles (userOffFields) stay OFF across runs, while context auto-offs from a prior non-human image can re-enable cleanly on a new human image!
         // 2. Explicitly LOCKED / Multi-Locked fields strictly enforce their saved value or pool
         //    (except when an uploaded non-human image would conflict with a human subject lock).
         // 3. Manually chosen (non-default, non-auto-filled) settings are HONORED across runs!
-        // 4. Fields left on 'Default / Auto' OR stale AI auto-fills from earlier Classic SR runs
-        //    dynamically adapt to the newly analyzed image/text (ZERO stale leftovers!).
+        // 4. Fields left on 'Default / Auto' OR AI auto-filled from the previous run dynamically re-analyze and update visibly!
         configurableFieldKeys.forEach(k => {
-          const wasActiveInPreset = basePreset.activeFields?.[k] !== false;
+          const isExplicitlyUserOff = !!userOffFields[k];
           const presetVal = (basePreset as any)[k];
           const isFieldLocked = !!basePreset.lockedFields?.[k];
           const pool = (lockedPools[k] || []).filter((v: string) => v && v !== 'Default / Auto');
-          const isManuallyChosen = !isFieldLocked && !!presetVal && presetVal !== 'Default / Auto' && !presetAutoFilled?.[k];
+          const isManuallyChosen = !isFieldLocked && !!presetVal && presetVal !== 'Default / Auto' && !autoFilledFields?.[k];
 
-          if (!wasActiveInPreset) {
+          if (isExplicitlyUserOff) {
             newSettings[k] = presetVal ?? 'Default / Auto';
             nextActiveFields[k] = false;
             runLockedFields[k] = false;
@@ -2221,7 +2179,7 @@ export default function App() {
       } else {
         // Classic 2-step mode: Restore locked fields values cleanly; deterministic applyContextRelevanceToActiveFields disables truly incompatible ones
         lockedKeys.forEach(k => {
-          if (basePreset.activeFields?.[k] === false) {
+          if (userOffFields[k]) {
             newSettings[k] = (basePreset as any)[k] ?? 'Default / Auto';
             nextActiveFields[k] = false;
             return;
@@ -2365,24 +2323,28 @@ export default function App() {
         activeFields: finalActiveFields
       };
       
+      // Track AI-populated fields vs user-locked/manually-chosen fields so consecutive runs always re-analyze cleanly
+      const nextAutoFilled: Record<string, boolean> = {};
+      configurableFieldKeys.forEach(k => {
+        nextAutoFilled[k] = !basePreset.lockedFields?.[k] && !preservedManualFields.has(k);
+      });
+      setAutoFilledFields(nextAutoFilled);
+
+      // Keep UI lock icons & Multi-Lock pools exactly as the user configured them while showing live auto-filled values & active toggles
+      const uiOptions: PromptOptions = {
+        ...newOptions,
+        lockedFields: { ...(basePreset.lockedFields || {}) },
+        lockedPools: JSON.parse(JSON.stringify(basePreset.lockedPools || {}))
+      };
+
       if (autoRunMode) {
-        // Keep user's live options synced with SR text while preserving autoRunPreset untouched for next run
-        setOptions(prev => ({
-          ...prev,
-          smartRefinementText: cleanSrText,
-          isFromImageReference: input.type === 'image'
-        }));
+        // Live-update all visible settings immediately so the user can inspect every change as prompts generate
+        setOptions(uiOptions);
         setIsAnalyzing(false);
         generatedInAutoRun = true;
         await handleGenerate(newOptions, { mode: runMode, file: runFile, text: (cleanSrText || '').trim() || runText });
       } else {
-        // Track unlocked AI-populated fields so they never masquerade as deliberate manual rules if Auto-Run is enabled later
-        const nextAutoFilled: Record<string, boolean> = {};
-        configurableFieldKeys.forEach(k => {
-          nextAutoFilled[k] = !basePreset.lockedFields?.[k];
-        });
-        setAutoFilledFields(nextAutoFilled);
-        setOptions(newOptions);
+        setOptions(uiOptions);
         setLastUsedReference({
           mode: runMode === 'image' ? 'both' : 'text',
           value: (cleanSrText || '').trim() || runText,
@@ -2868,14 +2830,8 @@ export default function App() {
                           ...lockedOverrides // Keep locked fields intact
                         };
                         setAutoFilledFields({});
+                        setUserOffFields({});
                         setOptions(nextPresetOpts);
-                        if (autoRunMode) {
-                          setAutoRunPreset({
-                            ...nextPresetOpts,
-                            activeFields: { ...nextPresetOpts.activeFields, smartRefinement: true }
-                          });
-                          setAutoRunAutoFilled({});
-                        }
                       }}
                       className="py-2 px-3 bg-white/60 hover:bg-white/90 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] backdrop-blur-md border border-white/70 dark:border-white/[0.07] rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 shadow-[0_2px_6px_rgba(0,0,0,0.02),inset_0_1px_1px_rgba(255,255,255,0.7)] dark:shadow-[0_2px_6px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.06)] transition-all text-left truncate"
                     >
@@ -3240,7 +3196,7 @@ export default function App() {
                                   ? 'bg-blue-500/90 dark:bg-blue-500/85'
                                   : 'bg-slate-200/90 dark:bg-white/[0.08] ring-1 ring-inset ring-slate-300/70 dark:ring-white/[0.12]'
                               }`}
-                              title={autoRunMode ? 'Turn off Auto-Run to reveal & edit settings' : 'Lock current settings, hide panels & generate in 1 click'}
+                              title={autoRunMode ? 'Auto-Run ON: analyzes, auto-fills visible settings & generates in 1 click' : 'Turn on Auto-Run to auto-analyze, auto-fill visible settings & generate in 1 click'}
                             >
                               <span className={`block w-3 h-3 rounded-full apple-switch-thumb ${
                                 autoRunMode
@@ -3317,42 +3273,9 @@ export default function App() {
                   </>
                 )}
               </div>
-
-              {autoRunMode && (
-                <div className="space-y-3">
-                  <div className="px-3.5 py-2.5 rounded-2xl bg-slate-100/70 dark:bg-white/[0.03] border border-slate-200/70 dark:border-white/[0.06] flex items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400">
-                    <span className="truncate font-medium">
-                      Settings locked &amp; hidden · {(autoRunPreset || options).quantity} Prompts
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleToggleAutoRun(false)}
-                      className="shrink-0 text-[10.5px] font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
-                    >
-                      Edit
-                    </button>
-                  </div>
-                  {errorMessage && (
-                    <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-xl text-red-600 dark:text-red-400 text-[11px] flex items-start gap-2.5 shadow-sm">
-                      <div className="mt-0.5"><AlertCircle size={15} className="shrink-0 text-red-500" /></div>
-                      <div className="flex-1 font-medium leading-tight">{errorMessage}</div>
-                      <button 
-                        type="button"
-                        onClick={() => setErrorMessage(null)} 
-                        className="p-1 rounded-lg hover:bg-red-500/10 text-red-500 hover:text-red-700 dark:hover:text-red-300 transition-colors shrink-0 cursor-pointer"
-                        title="Dismiss error"
-                        aria-label="Dismiss error"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
 
-            {/* Config Sections (Hidden in Auto-Run Mode) */}
-            {!autoRunMode && (
+            {/* Config Sections (Always visible so user can inspect live Auto-Run changes) */}
             <div className="space-y-10">
               <section className="space-y-6">
                 <header className="flex items-center gap-3 px-1">
@@ -3456,12 +3379,10 @@ export default function App() {
                 </div>
               </section>
             </div>
-            )}
           </div>
         </div>
 
-        {/* Action Button Docking Bar (Hidden in Auto-Run Mode) */}
-        {!autoRunMode && (
+        {/* Action Button Docking Bar */}
         <div className="shrink-0 p-3.5 sm:p-4 md:p-5 bg-white/95 dark:bg-slate-950/95 lg:bg-white/90 lg:dark:bg-slate-950/90 backdrop-blur-2xl backdrop-saturate-[180%] border-t border-slate-200/80 dark:border-white/[0.08] shadow-[0_-8px_24px_rgba(0,0,0,0.04)] dark:shadow-[0_-8px_24px_rgba(0,0,0,0.4)] z-50 flex flex-col gap-2.5 relative">
           {/* Subtle top rim highlight */}
           <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/20 to-transparent pointer-events-none" />
@@ -3489,7 +3410,6 @@ export default function App() {
             hasError={!!errorMessage}
           />
         </div>
-        )}
         </div>
       </aside>
 
@@ -3868,11 +3788,11 @@ export default function App() {
                     safeLocalStorage.removeItem('prompt_auto_run_preset');
                     safeLocalStorage.removeItem('prompt_auto_filled_fields');
                     safeLocalStorage.removeItem('prompt_auto_run_auto_filled');
+                    safeLocalStorage.removeItem('prompt_user_off_fields');
                     safeLocalStorage.setItem('use_system_api_key', 'false');
                     setAutoRunMode(false);
-                    setAutoRunPreset(null);
                     setAutoFilledFields({});
-                    setAutoRunAutoFilled({});
+                    setUserOffFields({});
                     setOptions(getFreshDefaultOptions());
                     setBatches([]);
                     setDisplayedPresets(getRandomPresets(4));
